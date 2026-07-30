@@ -1,6 +1,6 @@
-import { initRouter, navigate } from './router.js';
+import { initRouter } from './router.js';
 import { initSidebar } from './components/Sidebar.js';
-import { isAuthenticated } from './services/authService.js';
+import { isAuthenticated } from './utils/helpers.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const theme = localStorage.getItem('sieac_theme') || 'light';
