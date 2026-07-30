@@ -1,28 +1,9 @@
-import { showToast } from '../utils/helpers.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config.js';
 
-const SUPABASE_URL = localStorage.getItem('supabase_url') || '';
-const SUPABASE_KEY = localStorage.getItem('supabase_key') || '';
-
-let cachedClient = null;
+const client = { url: SUPABASE_URL, key: SUPABASE_ANON_KEY };
 
 export function getClient() {
-  if (cachedClient) return cachedClient;
-  const url = SUPABASE_URL || promptConfig('Supabase URL');
-  const key = SUPABASE_KEY || promptConfig('Supabase Anon Key');
-  if (!url || !key) {
-    showToast('Configure as credenciais do Supabase nas Configurações', 'warning');
-    return null;
-  }
-  cachedClient = { url, key };
-  return cachedClient;
-}
-
-function promptConfig(label) {
-  const val = prompt(`Informe ${label}:\n(Configuração salva no navegador)`);
-  if (!val) return null;
-  if (label.includes('URL')) localStorage.setItem('supabase_url', val);
-  if (label.includes('Key')) localStorage.setItem('supabase_key', val);
-  return val;
+  return client;
 }
 
 function buildHeaders(client) {

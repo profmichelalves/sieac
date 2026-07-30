@@ -35,9 +35,7 @@ export function renderLogin() {
         <div class="auth-link">
           Não tem conta? <a href="#registrar">Cadastre-se</a>
         </div>
-        <div class="auth-link" style="margin-top:8px;font-size:0.75rem;">
-          <a href="#" id="config-supabase-link">Configurar Supabase</a>
-        </div>
+
       </div>
     </div>
   `;
@@ -71,14 +69,6 @@ export function renderLogin() {
     }
   });
 
-  document.getElementById('config-supabase-link').addEventListener('click', (e) => {
-    e.preventDefault();
-    const url = prompt('Supabase URL:', localStorage.getItem('supabase_url') || '');
-    if (url) localStorage.setItem('supabase_url', url);
-    const key = prompt('Supabase Anon Key:', localStorage.getItem('supabase_key') || '');
-    if (key) localStorage.setItem('supabase_key', key);
-    showToast('Configurações salvas!', 'success');
-  });
 }
 
 export function renderRegister() {
