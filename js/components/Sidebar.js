@@ -70,7 +70,9 @@ export function setActiveRoute(route) {
     'dashboard-geral': 'Dashboard Geral',
     'dashboard-desempenho': 'Dashboard de Desempenho',
     'dashboard-frequencia': 'Dashboard de Frequência',
+    'relatorios': 'Relatório de Notas',
     'dashboard-comparativo': 'Dashboard Comparativo',
+    'dashboard-estudante': 'Consulta por Estudante',
     'importar': 'Importar Dados',
     'usuarios': 'Gerenciar Usuários',
   };

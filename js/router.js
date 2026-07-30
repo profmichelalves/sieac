@@ -9,6 +9,7 @@ const routes = {
   'dashboard-desempenho': { page: 'dashboardDesempenho', auth: true },
   'dashboard-frequencia': { page: 'dashboardFrequencia', auth: true },
   'dashboard-comparativo': { page: 'dashboardComparativo', auth: true },
+  'dashboard-estudante': { page: 'dashboardEstudante', auth: true },
   'relatorios': { page: 'relatoriosPage', auth: true },
   'importar': { page: 'importPage', auth: true },
   'usuarios': { page: 'usuariosPage', auth: true, perfil: 'Administrador' },
