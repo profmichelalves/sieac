@@ -1,10 +1,20 @@
 import { $, showToast } from '../utils/helpers.js';
 import { supabaseQuery } from '../services/supabase.js';
+import { isProfessor, getProfessorVinculo } from '../services/authService.js';
 
 let currentFilters = {};
 let onChangeCallback = null;
+let professorVinculo = null;
 
 async function getFilterData() {
+  const userIsProfessor = isProfessor();
+  if (userIsProfessor) {
+    professorVinculo = await getProfessorVinculo();
+  }
+
+  const turmaFilter = userIsProfessor && professorVinculo
+    ? {} : {};
+
   const [series, turmas, componentes, professores, etapas, estudantes] = await Promise.all([
     supabaseQuery('series', { select: 'id,nome,etapa_ensino_id', order: 'nome' }),
     supabaseQuery('turmas', { select: 'id,nome,serie_id,turno', order: 'nome' }),
@@ -23,15 +33,41 @@ async function getFilterData() {
   const anos = new Set((freqs || []).map(f => f.ano_letivo).filter(Boolean));
   anosLetivos = [...anos].sort((a, b) => b - a);
 
+  let seriesData = series.data || [];
+  let turmasData = turmas.data || [];
+  let compData = componentes.data || [];
+  let profData = professores.data || [];
+  let estData = estudantes.data || [];
+
+  if (userIsProfessor && professorVinculo) {
+    seriesData = professorVinculo.series;
+    turmasData = professorVinculo.turmas;
+    const compIdsSet = new Set(professorVinculo.compIds);
+    compData = compData.filter(c => compIdsSet.has(c.id));
+    profData = profData.filter(p => p.id === professorVinculo.id);
+    const turmaIdsSet = new Set(professorVinculo.turmaIds);
+    const { data: ests } = await supabaseQuery('estudantes', { select: 'id,nome,matricula', limit: 5000 });
+    if (ests) {
+      const { data: notas } = await supabaseQuery('notas', { select: 'estudante_id,alocacao_id', limit: 20000 });
+      const { data: alocacoes } = await supabaseQuery('alocacoes', { select: 'id,turma_id', filters: [{ col: 'professor_id', val: professorVinculo.id }] });
+      const alocTurmaIds = new Set((alocacoes || []).map(a => a.turma_id));
+      const alocIds = new Set((alocacoes || []).map(a => a.id));
+      const estIds = new Set((notas || []).filter(n => alocIds.has(n.alocacao_id)).map(n => n.estudante_id));
+      estData = ests.filter(e => estIds.has(e.id));
+    }
+  }
+
   return {
-    series: series.data || [],
-    turmas: turmas.data || [],
-    componentes: componentes.data || [],
-    professores: professores.data || [],
+    series: seriesData,
+    turmas: turmasData,
+    componentes: compData,
+    professores: profData,
     etapas: etapas.data || [],
-    estudantes: estudantes.data || [],
+    estudantes: estData,
     turnos: turnoOptions,
     anosLetivos,
+    userIsProfessor,
+    profId: professorVinculo?.id,
   };
 }
 
@@ -39,6 +75,8 @@ export async function renderFilterPanel(containerId, onChange) {
   onChangeCallback = onChange;
   const container = document.getElementById(containerId);
   if (!container) return;
+
+  const data = await getFilterData();
 
   container.innerHTML = `
     <div class="filter-bar">
@@ -94,8 +132,8 @@ export async function renderFilterPanel(containerId, onChange) {
         <div class="col-6 col-md-3">
           <div class="filter-group">
             <label class="filter-label">Professor</label>
-            <select class="filter-select" id="filter-professor">
-              <option value="">Todos</option>
+            <select class="filter-select" id="filter-professor" ${data.userIsProfessor ? 'disabled' : ''}>
+              <option value="">${data.userIsProfessor ? (data.professores[0]?.nome || 'Meus dados') : 'Todos'}</option>
             </select>
           </div>
         </div>
@@ -108,16 +146,15 @@ export async function renderFilterPanel(containerId, onChange) {
           </div>
         </div>
         <div class="col-12">
-          <button class="btn btn-sm btn-outline-secondary" id="filter-clear" style="border-radius:var(--sieac-radius-pill);">
+          <button class="btn btn-sm btn-outline-secondary" id="filter-clear" style="border-radius:var(--sieac-radius-pill);${data.userIsProfessor ? 'display:none;' : ''}">
             <i class="bi bi-x-circle"></i> Limpar Filtros
           </button>
+          ${data.userIsProfessor ? '<span style="font-size:0.78rem;color:var(--sieac-text-muted);"><i class="bi bi-person-badge"></i> Visualizando apenas seus dados</span>' : ''}
           <span id="filter-badges" style="margin-left:12px;"></span>
         </div>
       </div>
     </div>
   `;
-
-  const data = await getFilterData();
 
   const fillSelect = (id, items, textFn, valueFn) => {
     const sel = document.getElementById(id);
@@ -134,7 +171,12 @@ export async function renderFilterPanel(containerId, onChange) {
   fillSelect('filter-turno', data.turnos, t => t, t => t);
   fillSelect('filter-disciplina', data.componentes, c => c.nome, c => c.id);
   fillSelect('filter-professor', data.professores, p => p.nome, p => p.id);
-  fillSelect('filter-estudante', data.estudantes, e => `${e.nome} (${e.matricula || e.id})`, e => e.id);
+  fillSelect('filter-estudante', data.estudantes, e => `${e.nome}${e.matricula ? ` (${e.matricula})` : ''}`, e => e.id);
+
+  if (data.userIsProfessor && data.profId) {
+    document.getElementById('filter-professor').value = data.profId;
+    currentFilters = { professor_id: String(data.profId) };
+  }
 
   window.__filterData = data;
   bindFilterEvents(data);
@@ -147,13 +189,15 @@ function bindFilterEvents(data) {
   ];
   selectIds.forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.addEventListener('change', applyFilters);
+    if (el && !el.disabled) el.addEventListener('change', applyFilters);
   });
 
   const clearBtn = document.getElementById('filter-clear');
-  if (clearBtn) clearBtn.addEventListener('click', clearFilters);
+  if (clearBtn) clearBtn.addEventListener('click', () => {
+    if (data.userIsProfessor) return;
+    clearFilters();
+  });
 
-  // Hierarquia: etapa -> serie -> turma
   const etapaSel = document.getElementById('filter-etapa');
   const serieSel = document.getElementById('filter-serie');
   const turmaSel = document.getElementById('filter-turma');
@@ -183,7 +227,9 @@ function bindFilterEvents(data) {
 }
 
 function applyFilters() {
-  currentFilters = {};
+  if (isProfessor() && professorVinculo) {
+    currentFilters.professor_id = String(professorVinculo.id);
+  }
   const map = {
     'filter-ano-letivo': 'ano_letivo',
     'filter-etapa': 'etapa_id',
@@ -196,8 +242,13 @@ function applyFilters() {
   };
 
   for (const [elId, key] of Object.entries(map)) {
-    const val = document.getElementById(elId)?.value;
-    if (val) currentFilters[key] = val;
+    if (key === 'professor_id' && isProfessor()) continue;
+    const el = document.getElementById(elId);
+    if (el && !el.disabled) {
+      const val = el.value;
+      if (val) currentFilters[key] = val;
+      else delete currentFilters[key];
+    }
   }
 
   updateBadges();
@@ -205,15 +256,18 @@ function applyFilters() {
 }
 
 function clearFilters() {
+  currentFilters = {};
+  if (isProfessor() && professorVinculo) {
+    currentFilters.professor_id = String(professorVinculo.id);
+  }
   ['filter-ano-letivo', 'filter-etapa', 'filter-serie', 'filter-turma',
    'filter-turno', 'filter-disciplina', 'filter-professor', 'filter-estudante'
   ].forEach(id => {
     const el = document.getElementById(id);
-    if (el) { el.value = ''; }
+    if (el && !el.disabled) el.value = '';
   });
-  currentFilters = {};
   updateBadges();
-  if (onChangeCallback) onChangeCallback({});
+  if (onChangeCallback) onChangeCallback(currentFilters);
 }
 
 function updateBadges() {

@@ -119,6 +119,11 @@ function applyFrequenciaFilters(freqs, filters) {
     result = result.filter(f => turmaIds.has(f.turma_id));
   }
 
+  if (filters.professor_id) {
+    const turmasProf = new Set(cache.alocacoes.filter(a => a.professor_id == filters.professor_id).map(a => a.turma_id));
+    result = result.filter(f => turmasProf.has(f.turma_id));
+  }
+
   return result;
 }
 
@@ -484,7 +489,7 @@ export async function getScatterFreqNota(filters = {}) {
 export async function getNotasEstudante(estudanteId) {
   const { data: notas } = await supabaseQuery('notas', {
     select: 'nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,alocacao_id',
-    estudante_id: estudanteId,
+    filters: [{ col: 'estudante_id', val: estudanteId }],
   });
   if (!notas) return { data: [], error: null };
 
@@ -506,7 +511,7 @@ export async function getNotasEstudante(estudanteId) {
 export async function getFrequenciaEstudante(estudanteId) {
   const { data: freqs } = await supabaseQuery('frequencias', {
     select: 'percentual_frequencia,mes_referencia',
-    estudante_id: estudanteId,
+    filters: [{ col: 'estudante_id', val: estudanteId }],
   });
   if (!freqs) return { data: [], error: null };
   const meses = { '1':'Jan','2':'Fev','3':'Mar','4':'Abr','5':'Mai','6':'Jun','7':'Jul','8':'Ago','9':'Set','10':'Out','11':'Nov','12':'Dez' };
@@ -518,7 +523,11 @@ export async function getFrequenciaEstudante(estudanteId) {
 }
 
 export async function getTurmasEstudante(estudanteId) {
-  const { data: notas } = await supabaseQuery('notas', { select: 'alocacao_id', estudante_id: estudanteId, limit: 100 });
+  const { data: notas } = await supabaseQuery('notas', {
+    select: 'alocacao_id',
+    filters: [{ col: 'estudante_id', val: estudanteId }],
+    limit: 100,
+  });
   if (!notas || !notas.length) return [];
   const ids = [...new Set(notas.map(n => n.alocacao_id))];
   await getRefCache();

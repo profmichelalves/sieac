@@ -111,3 +111,63 @@ export function isGestao() {
   const user = getCurrentUser();
   return user?.perfil === 'Gestao Escolar' || user?.perfil === 'Administrador';
 }
+
+export function isProfessor() {
+  const user = getCurrentUser();
+  return user?.perfil === 'Professor';
+}
+
+let professorVinculo = null;
+
+export async function getProfessorVinculo() {
+  if (professorVinculo) return professorVinculo;
+  const user = getCurrentUser();
+  if (!user || user.perfil !== 'Professor') return null;
+
+  const { data: professores } = await supabaseQuery('professores', {
+    select: 'id,matricula,nome',
+    filters: [{ col: 'matricula', val: user.matricula }]
+  });
+  if (!professores || !professores.length) {
+    const { data: all } = await supabaseQuery('professores', {
+      select: 'id,matricula,nome', limit: 100
+    });
+    return null;
+  }
+
+  const prof = professores[0];
+  const { data: alocacoes } = await supabaseQuery('alocacoes', {
+    select: 'id,turma_id,componente_id',
+    filters: [{ col: 'professor_id', val: prof.id }]
+  });
+
+  const turmaIds = [...new Set((alocacoes || []).map(a => a.turma_id))];
+  const compIds = [...new Set((alocacoes || []).map(a => a.componente_id))];
+
+  const { data: turmas } = await supabaseQuery('turmas', {
+    select: 'id,nome,serie_id,turno'
+  });
+  const { data: series } = await supabaseQuery('series', {
+    select: 'id,nome,etapa_ensino_id'
+  });
+
+  const turmasFiltradas = (turmas || []).filter(t => turmaIds.includes(t.id));
+  const serieIds = [...new Set(turmasFiltradas.map(t => t.serie_id))];
+  const seriesFiltradas = (series || []).filter(s => serieIds.includes(s.id));
+
+  professorVinculo = {
+    id: prof.id,
+    nome: prof.nome,
+    matricula: prof.matricula,
+    turmaIds,
+    compIds,
+    serieIds,
+    turmas: turmasFiltradas,
+    series: seriesFiltradas,
+  };
+  return professorVinculo;
+}
+
+export function clearProfessorCache() {
+  professorVinculo = null;
+}
