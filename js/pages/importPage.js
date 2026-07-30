@@ -1,5 +1,20 @@
 import { $, showToast } from '../utils/helpers.js';
 import { importarNotas, importarFrequencia } from '../services/importService.js';
+import { supabaseRpc } from '../services/supabase.js';
+
+const TABELAS = [
+  { id: 'notas', label: 'Notas' },
+  { id: 'frequencias', label: 'Frequência' },
+  { id: 'alocacoes', label: 'Alocações' },
+  { id: 'importacoes', label: 'Histórico de Importações' },
+  { id: 'estudantes', label: 'Estudantes' },
+  { id: 'turmas', label: 'Turmas' },
+  { id: 'professores', label: 'Professores' },
+  { id: 'componentes_curriculares', label: 'Componentes Curriculares' },
+  { id: 'series', label: 'Séries' },
+  { id: 'etapas_ensino', label: 'Etapas de Ensino' },
+  { id: 'escolas', label: 'Escolas' },
+];
 
 export async function render() {
   const main = document.getElementById('main-content');
@@ -51,7 +66,17 @@ export async function render() {
           </div>
         </div>
       </div>
+    </div>
 
+    <div class="row g-4" style="margin-top:8px;">
+      <div class="col-12">
+        <button class="btn btn-outline-danger" id="btn-limpar-dados" style="display:inline-flex;align-items:center;gap:8px;">
+          <i class="bi bi-trash3"></i> Limpar Dados
+        </button>
+      </div>
+    </div>
+
+    <div class="row g-4" style="margin-top:20px;">
       <div class="col-12">
         <div class="card-sieac">
           <div class="card-sieac-header">Histórico de Importações</div>
@@ -67,36 +92,61 @@ export async function render() {
         </div>
       </div>
     </div>
+
+    <!-- Modal Limpar Dados -->
+    <div class="modal fade" id="modal-limpar-dados" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-trash3" style="margin-right:8px;"></i>Limpar Dados</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p style="font-size:0.9rem;color:var(--sieac-text-muted);margin-bottom:16px;">
+              Selecione as tabelas que deseja limpar. A exclusão respeita a ordem das dependências (filhos primeiro).
+            </p>
+            <div style="margin-bottom:12px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.85rem;font-weight:600;">
+                <input type="checkbox" id="check-toggle-all" checked> Selecionar / Desmarcar Todos
+              </label>
+            </div>
+            <div id="check-list">
+              ${TABELAS.map(t => `
+                <label class="limpar-check-item" data-id="${t.id}">
+                  <input type="checkbox" class="limpar-check" value="${t.id}" checked>
+                  <span>${t.label}</span>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-danger" id="btn-confirmar-limpeza">
+              <i class="bi bi-trash3"></i> Limpar Selecionados
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 
   setupImportArea('notas');
   setupImportArea('freq');
+  setupLimparDados();
 }
 
 function setupImportArea(tipo) {
   const area = document.getElementById(`import-${tipo}-area`);
   const input = document.getElementById(`import-${tipo}-input`);
-
   if (!area || !input) return;
-
   area.addEventListener('click', () => input.click());
-
-  area.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    area.classList.add('dragover');
-  });
-
-  area.addEventListener('dragleave', () => {
-    area.classList.remove('dragover');
-  });
-
+  area.addEventListener('dragover', (e) => { e.preventDefault(); area.classList.add('dragover'); });
+  area.addEventListener('dragleave', () => { area.classList.remove('dragover'); });
   area.addEventListener('drop', (e) => {
     e.preventDefault();
     area.classList.remove('dragover');
-    const files = e.dataTransfer.files;
-    if (files.length) processFile(tipo, files[0]);
+    if (e.dataTransfer.files.length) processFile(tipo, e.dataTransfer.files[0]);
   });
-
   input.addEventListener('change', (e) => {
     if (e.target.files.length) processFile(tipo, e.target.files[0]);
   });
@@ -111,16 +161,8 @@ async function processFile(tipo, file) {
   progress.style.display = 'block';
   result.style.display = 'none';
 
-  let importFn;
-  let tipoNome;
-
-  if (tipo === 'notas') {
-    importFn = importarNotas;
-    tipoNome = 'Notas';
-  } else {
-    importFn = importarFrequencia;
-    tipoNome = 'Frequência';
-  }
+  const importFn = tipo === 'notas' ? importarNotas : importarFrequencia;
+  const tipoNome = tipo === 'notas' ? 'Notas' : 'Frequência';
 
   const onProgress = (pct, msg) => {
     bar.style.width = `${pct}%`;
@@ -135,9 +177,7 @@ async function processFile(tipo, file) {
 
   if (res.error) {
     result.style.display = 'block';
-    result.innerHTML = `
-      <div class="auth-alert error">${res.error}</div>
-    `;
+    result.innerHTML = `<div class="auth-alert error">${res.error}</div>`;
     return;
   }
 
@@ -175,4 +215,64 @@ async function processFile(tipo, file) {
   `;
 
   showToast(`${tipoNome}: ${res.registros} registros processados`, 'success');
+}
+
+function setupLimparDados() {
+  const btn = document.getElementById('btn-limpar-dados');
+  if (!btn) return;
+
+  btn.addEventListener('click', () => {
+    const modal = new bootstrap.Modal(document.getElementById('modal-limpar-dados'));
+    modal.show();
+  });
+
+  // Toggle todos
+  const toggleAll = document.getElementById('check-toggle-all');
+  toggleAll?.addEventListener('change', () => {
+    document.querySelectorAll('.limpar-check').forEach(cb => cb.checked = toggleAll.checked);
+  });
+
+  // Confirmar limpeza
+  const btnConfirmar = document.getElementById('btn-confirmar-limpeza');
+  btnConfirmar?.addEventListener('click', async () => {
+    const checks = document.querySelectorAll('.limpar-check:checked');
+    if (!checks.length) {
+      showToast('Selecione pelo menos uma tabela para limpar.', 'warning');
+      return;
+    }
+
+    const tabelas = [...checks].map(cb => cb.value);
+    const nomes = TABELAS.filter(t => tabelas.includes(t.id)).map(t => t.label);
+    const msgConfirm = `Tem certeza que deseja limpar os dados de:\n\n• ${nomes.join('\n• ')}\n\nEsta operação não pode ser desfeita.`;
+
+    if (!confirm(msgConfirm)) return;
+
+    const modalEl = document.getElementById('modal-limpar-dados');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal?.hide();
+
+    btnConfirmar.disabled = true;
+    btnConfirmar.innerHTML = '<span class="spinner-border spinner-border-sm" style="margin-right:4px;"></span> Limpando...';
+
+    try {
+      const res = await supabaseRpc('limpar_dados', { tabelas });
+      if (res.error) {
+        showToast(`Erro ao limpar dados: ${res.error}`, 'error');
+        return;
+      }
+
+      const linhas = (res.data || []).map(r =>
+        `${r.tabela}: ${r.linhas} linha(s) removida(s)${r.sequencia_reset ? ' (ID resetado)' : ''}`
+      ).join('\n');
+
+      showToast(`Dados limpos com sucesso:\n${linhas}`, 'success');
+
+      window.location.hash = '#/importar';
+    } catch (e) {
+      showToast(`Erro: ${e.message}`, 'error');
+    } finally {
+      btnConfirmar.disabled = false;
+      btnConfirmar.innerHTML = '<i class="bi bi-trash3"></i> Limpar Selecionados';
+    }
+  });
 }

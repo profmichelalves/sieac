@@ -95,6 +95,10 @@ export async function supabaseUpsert(table, rows, onConflict) {
   }
 }
 
+export async function supabaseRpc(functionName, params = {}) {
+  return rest.post(`/rest/v1/rpc/${functionName}`, params);
+}
+
 export async function supabaseDelete(table, col, val) {
   const client = getClient();
   if (!client) return { error: 'Supabase não configurado' };
