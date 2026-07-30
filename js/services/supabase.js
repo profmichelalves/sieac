@@ -1,0 +1,117 @@
+import { showToast } from '../utils/helpers.js';
+
+const SUPABASE_URL = localStorage.getItem('supabase_url') || '';
+const SUPABASE_KEY = localStorage.getItem('supabase_key') || '';
+
+let cachedClient = null;
+
+export function getClient() {
+  if (cachedClient) return cachedClient;
+  const url = SUPABASE_URL || promptConfig('Supabase URL');
+  const key = SUPABASE_KEY || promptConfig('Supabase Anon Key');
+  if (!url || !key) {
+    showToast('Configure as credenciais do Supabase nas Configurações', 'warning');
+    return null;
+  }
+  cachedClient = { url, key };
+  return cachedClient;
+}
+
+function promptConfig(label) {
+  const val = prompt(`Informe ${label}:\n(Configuração salva no navegador)`);
+  if (!val) return null;
+  if (label.includes('URL')) localStorage.setItem('supabase_url', val);
+  if (label.includes('Key')) localStorage.setItem('supabase_key', val);
+  return val;
+}
+
+function buildHeaders(client) {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': client.key,
+    'Authorization': `Bearer ${client.key}`
+  };
+}
+
+async function request(method, path, body = null) {
+  const client = getClient();
+  if (!client) return { error: 'Supabase não configurado' };
+  try {
+    const options = { method, headers: buildHeaders(client) };
+    if (body) options.body = JSON.stringify(body);
+    const res = await fetch(`${client.url}${path}`, options);
+    if (res.status === 204) return { data: null, error: null };
+    const json = await res.json();
+    if (res.status >= 400) {
+      return { data: null, error: json.message || json.error || `Erro ${res.status}` };
+    }
+    return { data: Array.isArray(json) ? json : json, error: null };
+  } catch (err) {
+    return { data: null, error: err.message };
+  }
+}
+
+export const rest = {
+  get: (path) => request('GET', path),
+  post: (path, body) => request('POST', path, body),
+  patch: (path, body) => request('PATCH', path, body),
+  delete: (path) => request('DELETE', path),
+};
+
+export function buildQuery(table, options = {}) {
+  const { select = '*', filters = [], order, limit, range } = options;
+  let query = `/rest/v1/${table}?select=${select}`;
+  filters.forEach(f => {
+    if (f.col && f.val !== undefined && f.val !== null && f.val !== '') {
+      query += `&${f.col}=eq.${encodeURIComponent(f.val)}`;
+    }
+  });
+  if (order) query += `&order=${order}`;
+  if (limit) query += `&limit=${limit}`;
+  return query;
+}
+
+export async function supabaseQuery(table, options = {}) {
+  const path = buildQuery(table, options);
+  return rest.get(path);
+}
+
+export async function supabaseUpsert(table, rows, onConflict) {
+  const client = getClient();
+  if (!client) return { error: 'Supabase não configurado' };
+  try {
+    const headers = buildHeaders(client);
+    if (onConflict) headers['Prefer'] = `resolution=merge-duplicates&return=minimal`;
+    const res = await fetch(`${client.url}/rest/v1/${table}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(rows)
+    });
+    if (res.status >= 400) {
+      const text = await res.text();
+      return { error: text };
+    }
+    const data = res.status === 201 ? await res.json() : null;
+    return { data, error: null };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+export async function supabaseDelete(table, col, val) {
+  const client = getClient();
+  if (!client) return { error: 'Supabase não configurado' };
+  try {
+    const res = await fetch(`${client.url}/rest/v1/${table}?${col}=eq.${encodeURIComponent(val)}`, {
+      method: 'DELETE',
+      headers: buildHeaders(client)
+    });
+    if (res.status >= 400) {
+      const text = await res.text();
+      return { error: text };
+    }
+    return { error: null };
+  } catch (err) {
+    return { error: err.message };
+  }
+}

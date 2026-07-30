@@ -1,0 +1,24 @@
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--sieac-text);
+}
+
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.125rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.875rem; }
+
+.display-1 { font-size: 2.5rem; font-weight: 800; }
+.display-2 { font-size: 2rem; font-weight: 800; }
+
+.text-muted { color: var(--sieac-text-muted) !important; }
+.text-primary-sieac { color: var(--sieac-primary) !important; }
+.text-secondary-sieac { color: var(--sieac-secondary) !important; }
+.text-danger-sieac { color: var(--sieac-danger) !important; }
+.text-warning-sieac { color: var(--sieac-warning) !important; }
+.text-success-sieac { color: var(--sieac-success) !important; }
+
+.font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; }

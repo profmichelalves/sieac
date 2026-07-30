@@ -1,0 +1,35 @@
+.chart-container {
+  position: relative;
+  width: 100%;
+  min-height: 300px;
+}
+
+.chart-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.chart-card {
+  background: var(--sieac-surface);
+  border: 1px solid var(--sieac-border);
+  border-radius: var(--sieac-radius-lg);
+  padding: 20px;
+  box-shadow: var(--sieac-shadow-sm);
+}
+
+.chart-card-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--sieac-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chart-card-title .badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--sieac-radius-pill);
+}

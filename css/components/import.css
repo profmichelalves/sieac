@@ -1,0 +1,73 @@
+.import-area {
+  border: 2px dashed var(--sieac-border);
+  border-radius: var(--sieac-radius-lg);
+  padding: 48px 24px;
+  text-align: center;
+  transition: all var(--sieac-transition);
+  cursor: pointer;
+  background: var(--sieac-bg);
+}
+
+.import-area:hover,
+.import-area.dragover {
+  border-color: var(--sieac-secondary);
+  background: rgba(var(--sieac-secondary-rgb), 0.04);
+}
+
+.import-area-icon {
+  font-size: 3rem;
+  color: var(--sieac-text-muted);
+  margin-bottom: 12px;
+}
+
+.import-area-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--sieac-text);
+}
+
+.import-area-sub {
+  font-size: 0.8rem;
+  color: var(--sieac-text-muted);
+  margin-top: 4px;
+}
+
+.import-progress {
+  height: 8px;
+  border-radius: var(--sieac-radius-pill);
+  background: var(--sieac-bg-alt);
+  overflow: hidden;
+}
+
+.import-progress-bar {
+  height: 100%;
+  border-radius: var(--sieac-radius-pill);
+  background: linear-gradient(90deg, var(--sieac-warning), var(--sieac-primary));
+  transition: width 0.5s ease;
+}
+
+.import-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.import-stat {
+  background: var(--sieac-bg);
+  border-radius: var(--sieac-radius-md);
+  padding: 12px 16px;
+  text-align: center;
+}
+
+.import-stat-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--sieac-text);
+}
+
+.import-stat-label {
+  font-size: 0.7rem;
+  color: var(--sieac-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

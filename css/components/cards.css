@@ -1,0 +1,97 @@
+.card-sieac {
+  background: var(--sieac-surface);
+  border: 1px solid var(--sieac-border);
+  border-radius: var(--sieac-radius-lg);
+  box-shadow: var(--sieac-shadow-sm);
+  transition: all var(--sieac-transition);
+}
+
+.card-sieac:hover {
+  box-shadow: var(--sieac-shadow-md);
+}
+
+.card-sieac-header {
+  padding: 20px 24px 0;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--sieac-text);
+}
+
+.card-sieac-body {
+  padding: 20px 24px;
+}
+
+.card-sieac-body:first-child { padding-top: 24px; }
+
+/* KPI Cards */
+.kpi-card {
+  background: var(--sieac-surface);
+  border: 1px solid var(--sieac-border);
+  border-radius: var(--sieac-radius-lg);
+  padding: 20px 24px;
+  box-shadow: var(--sieac-shadow-sm);
+  transition: all var(--sieac-transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  border-radius: 0 2px 2px 0;
+}
+
+.kpi-card.primary::before { background: var(--sieac-primary); }
+.kpi-card.secondary::before { background: var(--sieac-secondary); }
+.kpi-card.success::before { background: var(--sieac-success); }
+.kpi-card.danger::before { background: var(--sieac-danger); }
+.kpi-card.warning::before { background: var(--sieac-warning); }
+
+.kpi-card:hover {
+  box-shadow: var(--sieac-shadow-md);
+  transform: translateY(-2px);
+}
+
+.kpi-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sieac-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.kpi-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--sieac-text);
+  line-height: 1.2;
+}
+
+.kpi-sub {
+  font-size: 0.8rem;
+  color: var(--sieac-text-muted);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kpi-icon {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 2rem;
+  opacity: 0.12;
+  color: var(--sieac-primary);
+}
+
+.kpi-card.primary .kpi-icon { color: var(--sieac-primary); }
+.kpi-card.secondary .kpi-icon { color: var(--sieac-secondary); }
+.kpi-card.success .kpi-icon { color: var(--sieac-success); }
+.kpi-card.danger .kpi-icon { color: var(--sieac-danger); }
+.kpi-card.warning .kpi-icon { color: var(--sieac-warning); }

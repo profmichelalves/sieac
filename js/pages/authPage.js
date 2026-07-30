@@ -1,0 +1,166 @@
+import { $, showToast } from '../utils/helpers.js';
+import { validateLoginFields, validateRegisterFields } from '../utils/validators.js';
+import { login, register } from '../services/authService.js';
+
+export function renderLogin() {
+  const container = document.getElementById('auth-container');
+  const shell = document.getElementById('app-shell');
+  if (container) container.style.display = 'flex';
+  if (shell) shell.style.display = 'none';
+
+  if (!container) return;
+  container.innerHTML = `
+    <div class="auth-page">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <div class="auth-logo-icon">S</div>
+          <div class="auth-logo-text">
+            SIEAC
+            <small>Sistema de Indicadores Educacionais Abel Coelho</small>
+          </div>
+        </div>
+        <h2 class="auth-title">Acessar o Sistema</h2>
+        <div id="auth-alert"></div>
+        <form class="auth-form" id="login-form">
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="login-email" placeholder="seu@email.com" required autocomplete="email">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Senha</label>
+            <input type="password" class="form-control" id="login-senha" placeholder="Sua senha" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="auth-btn" id="login-btn">Entrar</button>
+        </form>
+        <div class="auth-link">
+          Não tem conta? <a href="#registrar">Cadastre-se</a>
+        </div>
+        <div class="auth-link" style="margin-top:8px;font-size:0.75rem;">
+          <a href="#" id="config-supabase-link">Configurar Supabase</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const senha = document.getElementById('login-senha').value;
+    const alertEl = document.getElementById('auth-alert');
+    const btn = document.getElementById('login-btn');
+
+    const errors = validateLoginFields(email, senha);
+    if (errors.length) {
+      alertEl.innerHTML = `<div class="auth-alert error">${errors.join('<br>')}</div>`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Entrando...';
+    alertEl.innerHTML = '';
+
+    const result = await login(email, senha);
+    if (result.error) {
+      alertEl.innerHTML = `<div class="auth-alert error">${result.error}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+    } else {
+      showToast('Bem-vindo, ' + result.user.nome + '!', 'success');
+      window.location.hash = 'dashboard-geral';
+      window.location.reload();
+    }
+  });
+
+  document.getElementById('config-supabase-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    const url = prompt('Supabase URL:', localStorage.getItem('supabase_url') || '');
+    if (url) localStorage.setItem('supabase_url', url);
+    const key = prompt('Supabase Anon Key:', localStorage.getItem('supabase_key') || '');
+    if (key) localStorage.setItem('supabase_key', key);
+    showToast('Configurações salvas!', 'success');
+  });
+}
+
+export function renderRegister() {
+  const container = document.getElementById('auth-container');
+  const shell = document.getElementById('app-shell');
+  if (container) container.style.display = 'flex';
+  if (shell) shell.style.display = 'none';
+
+  if (!container) return;
+  container.innerHTML = `
+    <div class="auth-page">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <div class="auth-logo-icon">S</div>
+          <div class="auth-logo-text">
+            SIEAC
+            <small>Sistema de Indicadores Educacionais Abel Coelho</small>
+          </div>
+        </div>
+        <h2 class="auth-title">Criar Conta</h2>
+        <div id="auth-alert"></div>
+        <form class="auth-form" id="register-form">
+          <div class="mb-3">
+            <label class="form-label">Nome Completo</label>
+            <input type="text" class="form-control" id="reg-nome" placeholder="Seu nome" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="reg-email" placeholder="seu@email.com" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Matrícula</label>
+            <input type="text" class="form-control" id="reg-matricula" placeholder="Sua matrícula" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Senha</label>
+            <input type="password" class="form-control" id="reg-senha" placeholder="Crie uma senha" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirmar Senha</label>
+            <input type="password" class="form-control" id="reg-confirm" placeholder="Repita a senha" required>
+          </div>
+          <button type="submit" class="auth-btn" id="register-btn">Cadastrar</button>
+        </form>
+        <div class="auth-link">
+          Já tem conta? <a href="#login">Faça login</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nome = document.getElementById('reg-nome').value;
+    const email = document.getElementById('reg-email').value;
+    const matricula = document.getElementById('reg-matricula').value;
+    const senha = document.getElementById('reg-senha').value;
+    const confirm = document.getElementById('reg-confirm').value;
+    const alertEl = document.getElementById('auth-alert');
+    const btn = document.getElementById('register-btn');
+
+    const errors = validateRegisterFields(nome, email, matricula, senha, confirm);
+    if (errors.length) {
+      alertEl.innerHTML = `<div class="auth-alert error">${errors.join('<br>')}</div>`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Cadastrando...';
+
+    const result = await register(nome, email, matricula, senha);
+    if (result.error) {
+      alertEl.innerHTML = `<div class="auth-alert error">${result.error}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Cadastrar';
+    } else {
+      alertEl.innerHTML = `<div class="auth-alert success">Cadastro realizado! Aguarde ativação pelo administrador.</div>`;
+      btn.textContent = 'Cadastro enviado';
+      setTimeout(() => {
+        window.location.hash = 'login';
+        window.location.reload();
+      }, 3000);
+    }
+  });
+}

@@ -1,0 +1,110 @@
+import { $, showToast } from '../utils/helpers.js';
+import { listarUsuarios, atualizarUsuario } from '../services/authService.js';
+
+export async function render() {
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="page-title">Gerenciar Usuários</div>
+    <div class="page-subtitle">Administração de contas de acesso ao sistema</div>
+
+    <div class="card-sieac">
+      <div class="card-sieac-body">
+        <div class="table-responsive-custom">
+          <table class="table-sieac" id="usuarios-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Matrícula</th>
+                <th>Perfil</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="usuarios-tbody">
+              <tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  await carregarUsuarios();
+}
+
+async function carregarUsuarios() {
+  const tbody = document.getElementById('usuarios-tbody');
+  if (!tbody) return;
+
+  const { data: usuarios, error } = await listarUsuarios();
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--sieac-danger);">Erro ao carregar: ${error}</td></tr>`;
+    return;
+  }
+
+  if (!usuarios || !usuarios.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Nenhum usuário cadastrado</td></tr>`;
+    return;
+  }
+
+  const perfisMap = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor' };
+
+  tbody.innerHTML = usuarios.map(u => `
+    <tr>
+      <td><strong>${u.nome}</strong></td>
+      <td>${u.email}</td>
+      <td>${u.matricula}</td>
+      <td><span class="badge ${getPerfilBadge(u.perfil_id)}">${u.perfil}</span></td>
+      <td>
+        <span class="user-status ${u.ativo ? 'active' : 'inactive'}"></span>
+        ${u.ativo ? 'Ativo' : 'Inativo'}
+      </td>
+      <td>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm btn-outline-primary usuario-toggle" data-id="${u.id}" data-ativo="${u.ativo}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
+            ${u.ativo ? 'Desativar' : 'Ativar'}
+          </button>
+          <button class="btn btn-sm btn-outline-danger usuario-delete" data-id="${u.id}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('.usuario-toggle').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const ativo = btn.dataset.ativo === 'true';
+      const { error } = await atualizarUsuario(id, { ativo: !ativo });
+      if (error) {
+        showToast('Erro ao atualizar: ' + error, 'error');
+      } else {
+        showToast(`Usuário ${!ativo ? 'ativado' : 'desativado'} com sucesso!`, 'success');
+        await carregarUsuarios();
+      }
+    });
+  });
+
+  tbody.querySelectorAll('.usuario-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+      const { supabaseDelete } = await import('../services/supabase.js');
+      const { error } = await supabaseDelete('usuarios', 'id', btn.dataset.id);
+      if (error) {
+        showToast('Erro ao excluir: ' + error, 'error');
+      } else {
+        showToast('Usuário excluído!', 'success');
+        await carregarUsuarios();
+      }
+    });
+  });
+}
+
+function getPerfilBadge(perfilId) {
+  if (perfilId === 1) return 'badge-sieac-primary';
+  if (perfilId === 2) return 'badge-sieac-secondary';
+  return 'badge-sieac-warning';
+}
