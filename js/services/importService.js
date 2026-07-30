@@ -117,34 +117,45 @@ export async function importarNotas(file, onProgress) {
     }
   }
 
-  // Fase 1: inserir referências (apenas as que ainda não existem)
+  // Fase 1a: inserir referências sem FK (podem ser inseridas em qq ordem)
   onProgress(5, 'Inserindo escolas...');
   await inserirNovos('escolas', [...escolas.values()], 'id_escola');
 
   onProgress(10, 'Inserindo etapas de ensino...');
   await inserirNovos('etapas_ensino', [...etapas.values()], 'id_etapa');
 
-  onProgress(15, 'Inserindo séries...');
+  onProgress(12, 'Inserindo séries...');
   await inserirNovos('series', [...seriesList.values()], 'id_serie');
 
-  onProgress(20, 'Inserindo turmas...');
-  await inserirNovos('turmas', [...turmasList.values()], 'id_turma');
-
-  onProgress(25, 'Inserindo professores...');
+  onProgress(15, 'Inserindo professores...');
   await inserirNovos('professores', [...professoresList.values()], 'id_pessoa');
 
-  onProgress(30, 'Inserindo componentes curriculares...');
+  onProgress(18, 'Inserindo componentes curriculares...');
   await inserirNovos('componentes_curriculares', [...componentesList.values()], 'id_componente');
 
-  onProgress(35, 'Inserindo estudantes...');
+  onProgress(20, 'Inserindo estudantes...');
   await inserirNovos('estudantes', [...estudantesList.values()], 'id_pessoa');
 
-  // Fase 2: carregar IDs do Supabase
-  onProgress(40, 'Mapeando IDs...');
+  // Fase 1b: carregar IDs de series para mapear turmas
+  onProgress(22, 'Mapeando séries...');
+  const { data: seriesDB } = await supabaseQuery('series', { select: 'id,id_serie' });
+  const serieIdMap = {};
+  (seriesDB || []).forEach(s => serieIdMap[s.id_serie] = s.id);
+
+  // Fase 1c: inserir turmas COM serie_id
+  onProgress(25, 'Inserindo turmas...');
+  const turmasParaInserir = [...turmasList.values()].map(t => ({
+    ...t,
+    serie_id: serieIdMap[t.id_serie] || null,
+  }));
+  await inserirNovos('turmas', turmasParaInserir, 'id_turma');
+
+  // Fase 2: carregar IDs do Supabase para todas as referências
+  onProgress(30, 'Mapeando IDs...');
   const map = await carregarMapas();
 
   // Fase 3: inserir alocações com Supabase IDs
-  onProgress(45, 'Inserindo alocações...');
+  onProgress(35, 'Inserindo alocações...');
   const alocRows = [...alocacoesList.values()].map(a => ({
     professor_id: map.professores[a.professor_natural],
     turma_id: map.turmas[a.turma_natural],
@@ -153,14 +164,14 @@ export async function importarNotas(file, onProgress) {
     data_fim: a.data_fim,
   })).filter(a => a.professor_id && a.turma_id && a.componente_id);
 
-  await inserirNovosAlocacoes(alocRows, map);
+  await inserirNovosAlocacoes(alocRows);
 
   // Fase 4: carregar IDs das alocações
-  onProgress(50, 'Mapeando alocações...');
+  onProgress(40, 'Mapeando alocações...');
   const alocLookup = await carregarLookupAlocacoes(map);
 
   // Fase 5: inserir notas
-  onProgress(55, 'Inserindo notas...');
+  onProgress(45, 'Inserindo notas...');
   const notasParaInserir = notasList.map(n => ({
     estudante_id: map.estudantes[n.estudante_id],
     alocacao_id: alocLookup[`${n.professor_id}_${n.turma_id}_${n.componente_id}`],
