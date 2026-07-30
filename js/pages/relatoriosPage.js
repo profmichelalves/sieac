@@ -35,28 +35,38 @@ export async function render() {
       .report-meta span { display:inline-block; margin-right:24px; }
       .report-table { width:100%; border-collapse:collapse; margin-bottom:28px; }
       .report-table th {
-        background:#1a2a3a; color:#fff; padding:8px 12px;
-        font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;
+        background:#1a2a3a; color:#fff; padding:7px 10px;
+        font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;
         text-align:left; border:1px solid #2a3a4a;
       }
       .report-table td {
-        padding:7px 12px; border:1px solid var(--sieac-border);
-        font-size:0.85rem; color:var(--sieac-text);
+        padding:6px 10px; border:1px solid var(--sieac-border);
+        font-size:0.82rem; color:var(--sieac-text);
       }
-      .report-table tbody tr:nth-child(even) { background:var(--sieac-bg); }
+      .report-table tbody tr:nth-child(even):not(.group-header) { background:var(--sieac-bg); }
       .report-table .num { text-align:center; }
       .report-table .acima { color:var(--sieac-success); font-weight:600; }
       .report-table .abaixo { color:var(--sieac-danger); font-weight:600; }
+      .report-table .group-header td {
+        background:#1a2a3a; color:#fff; font-weight:700; font-size:0.85rem;
+        padding:8px 10px;
+      }
       .report-section-title {
         font-size:1rem; font-weight:600; color:var(--sieac-text);
         margin:24px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--sieac-border);
       }
+      .media-badge {
+        display:inline-block; padding:2px 10px; border-radius:12px;
+        font-size:0.78rem; font-weight:600;
+      }
+      .media-badge.acima { background:#d4edda; color:#155724; }
+      .media-badge.abaixo { background:#f8d7da; color:#721c24; }
     </style>
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div>
         <div class="page-title">Relatório de Notas</div>
-        <div class="page-subtitle">Comparativo de notas acima e abaixo da média (nota de corte: ${MEDIA_CORTE}) por disciplina e turma</div>
+        <div class="page-subtitle">Alunos agrupados por disciplina e por turma — nota de corte ${MEDIA_CORTE}</div>
       </div>
       <button class="btn btn-primary btn-print no-print" onclick="window.print()">
         <i class="bi bi-printer"></i> Imprimir
@@ -79,17 +89,17 @@ export async function render() {
         <span id="rel-filtros-info"></span>
       </div>
 
-      <div class="report-section-title">Por Disciplina</div>
+      <div class="report-section-title">Alunos por Disciplina</div>
       <div style="overflow-x:auto;">
         <table class="report-table" id="rel-table-disciplina">
           <thead>
             <tr>
-              <th style="min-width:160px;">Disciplina</th>
-              <th class="num">Total</th>
-              <th class="num">Acima da Média</th>
-              <th class="num">%</th>
-              <th class="num">Abaixo da Média</th>
-              <th class="num">%</th>
+              <th style="min-width:120px;">Disciplina</th>
+              <th style="min-width:100px;">Turma</th>
+              <th style="min-width:160px;">Aluno</th>
+              <th class="num" style="min-width:70px;">Matrícula</th>
+              <th class="num" style="min-width:80px;">Média Final</th>
+              <th style="min-width:90px;">Situação</th>
             </tr>
           </thead>
           <tbody id="rel-tbody-disciplina">
@@ -98,17 +108,17 @@ export async function render() {
         </table>
       </div>
 
-      <div class="report-section-title">Por Turma</div>
+      <div class="report-section-title">Alunos por Turma</div>
       <div style="overflow-x:auto;">
         <table class="report-table" id="rel-table-turma">
           <thead>
             <tr>
-              <th style="min-width:160px;">Turma</th>
-              <th class="num">Total</th>
-              <th class="num">Acima da Média</th>
-              <th class="num">%</th>
-              <th class="num">Abaixo da Média</th>
-              <th class="num">%</th>
+              <th style="min-width:100px;">Turma</th>
+              <th style="min-width:120px;">Disciplina</th>
+              <th style="min-width:160px;">Aluno</th>
+              <th class="num" style="min-width:70px;">Matrícula</th>
+              <th class="num" style="min-width:80px;">Média Final</th>
+              <th style="min-width:90px;">Situação</th>
             </tr>
           </thead>
           <tbody id="rel-tbody-turma">
@@ -124,15 +134,17 @@ export async function render() {
 }
 
 async function getCache() {
-  const [t, c, a] = await Promise.all([
+  const [t, c, a, e] = await Promise.all([
     supabaseQuery('turmas', { select: 'id,nome,serie_id,turno' }),
     supabaseQuery('componentes_curriculares', { select: 'id,nome' }),
     supabaseQuery('alocacoes', { select: 'id,turma_id,componente_id,professor_id' }),
+    supabaseQuery('estudantes', { select: 'id,nome,matricula' }),
   ]);
   return {
     turmas: t.data || [],
     componentes: c.data || [],
     alocacoes: a.data || [],
+    estudantes: e.data || [],
   };
 }
 
@@ -180,69 +192,83 @@ async function loadData() {
   }
   filtroInfo.innerHTML = filtrosAtivos.length ? `<strong>Filtros:</strong> ${filtrosAtivos.join(' | ')}` : '';
 
-  const { data: notas } = await supabaseQuery('notas', { select: 'media_final,alocacao_id', limit: 20000 });
+  const { data: notas } = await supabaseQuery('notas', { select: 'estudante_id,media_final,alocacao_id', limit: 20000 });
   const filtradas = aplicarFiltros(notas || [], filters, cache);
 
   const alocComp = {}; cache.alocacoes.forEach(a => alocComp[a.id] = a.componente_id);
   const alocTurma = {}; cache.alocacoes.forEach(a => alocTurma[a.id] = a.turma_id);
   const compMap = {}; cache.componentes.forEach(c => compMap[c.id] = c.nome);
   const turmaMap = {}; cache.turmas.forEach(t => turmaMap[t.id] = t.nome);
+  const estMap = {}; cache.estudantes.forEach(e => estMap[e.id] = e);
 
-  const validas = filtradas.filter(n => {
+  const linhas = filtradas.map(n => {
     const mf = parseFloat(n.media_final);
-    return !isNaN(mf) && mf > 0;
-  });
-
-  // Grupo por disciplina
-  const discMap = {};
-  validas.forEach(n => {
+    if (isNaN(mf) || mf <= 0) return null;
     const cId = alocComp[n.alocacao_id];
-    const nome = compMap[cId] || `Disciplina ${cId}`;
-    if (!discMap[nome]) discMap[nome] = { total: 0, acima: 0 };
-    discMap[nome].total++;
-    if (parseFloat(n.media_final) >= MEDIA_CORTE) discMap[nome].acima++;
-  });
-  const discData = Object.entries(discMap).map(([nome, v]) => ({
-    nome, total: v.total, acima: v.acima, abaixo: v.total - v.acima,
-    pctAcima: Math.round(v.acima / v.total * 100),
-    pctAbaixo: Math.round((v.total - v.acima) / v.total * 100),
-  })).sort((a, b) => a.nome.localeCompare(b.nome));
-
-  renderTable('rel-tbody-disciplina', discData);
-
-  // Grupo por turma
-  const turmaGroup = {};
-  validas.forEach(n => {
     const tId = alocTurma[n.alocacao_id];
-    const nome = turmaMap[tId] || `Turma ${tId}`;
-    if (!turmaGroup[nome]) turmaGroup[nome] = { total: 0, acima: 0 };
-    turmaGroup[nome].total++;
-    if (parseFloat(n.media_final) >= MEDIA_CORTE) turmaGroup[nome].acima++;
-  });
-  const turmaData = Object.entries(turmaGroup).map(([nome, v]) => ({
-    nome, total: v.total, acima: v.acima, abaixo: v.total - v.acima,
-    pctAcima: Math.round(v.acima / v.total * 100),
-    pctAbaixo: Math.round((v.total - v.acima) / v.total * 100),
-  })).sort((a, b) => a.nome.localeCompare(b.nome));
+    const estudante = estMap[n.estudante_id];
+    if (!cId || !tId || !estudante) return null;
+    return {
+      disciplina: compMap[cId] || `Disciplina ${cId}`,
+      turma: turmaMap[tId] || `Turma ${tId}`,
+      aluno: estudante.nome,
+      matricula: estudante.matricula || '-',
+      media_final: mf,
+      situacao: mf >= MEDIA_CORTE ? 'Acima' : 'Abaixo',
+    };
+  }).filter(Boolean);
 
-  renderTable('rel-tbody-turma', turmaData);
+  renderGrupo('rel-tbody-disciplina', linhas, 'disciplina');
+  renderGrupo('rel-tbody-turma', linhas, 'turma');
 }
 
-function renderTable(tbodyId, data) {
+function renderGrupo(tbodyId, linhas, groupKey) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
-  if (!data.length) {
+
+  if (!linhas.length) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Nenhum registro encontrado</td></tr>';
     return;
   }
-  tbody.innerHTML = data.map(d => `
-    <tr>
-      <td><strong>${d.nome}</strong></td>
-      <td class="num">${d.total}</td>
-      <td class="num acima">${d.acima}</td>
-      <td class="num">${d.pctAcima}%</td>
-      <td class="num abaixo">${d.abaixo}</td>
-      <td class="num">${d.pctAbaixo}%</td>
-    </tr>
-  `).join('');
+
+  const grupos = {};
+  linhas.forEach(l => {
+    const chave = l[groupKey];
+    if (!grupos[chave]) grupos[chave] = [];
+    grupos[chave].push(l);
+  });
+
+  const chaves = Object.keys(grupos).sort((a, b) => a.localeCompare(b));
+  const subKey = groupKey === 'disciplina' ? 'turma' : 'disciplina';
+  let html = '';
+  let totalGeral = 0, acimaGeral = 0;
+
+  chaves.forEach(chave => {
+    const items = grupos[chave].sort((a, b) => {
+      const s = a[subKey].localeCompare(b[subKey]);
+      if (s) return s;
+      return a.aluno.localeCompare(b.aluno);
+    });
+    const acima = items.filter(i => i.situacao === 'Acima').length;
+    const abaixo = items.length - acima;
+    totalGeral += items.length;
+    acimaGeral += acima;
+
+    html += `<tr class="group-header"><td colspan="6"><strong>${chave}</strong> — ${items.length} alunos (${acima} acima / ${abaixo} abaixo da média)</td></tr>`;
+
+    items.forEach(i => {
+      const isAcima = i.situacao === 'Acima';
+      html += `<tr>
+        <td>${i.disciplina}</td>
+        <td>${i.turma}</td>
+        <td><strong>${i.aluno}</strong></td>
+        <td class="num">${i.matricula}</td>
+        <td class="num ${isAcima ? 'acima' : 'abaixo'}">${i.media_final.toFixed(1)}</td>
+        <td class="num"><span class="media-badge ${isAcima ? 'acima' : 'abaixo'}">${i.situacao}</span></td>
+      </tr>`;
+    });
+  });
+
+  html += `<tr class="group-header"><td colspan="6"><strong>Resumo Geral</strong> — ${totalGeral} alunos (${acimaGeral} acima / ${totalGeral - acimaGeral} abaixo da média)</td></tr>`;
+  tbody.innerHTML = html;
 }
