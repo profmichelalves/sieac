@@ -1,4 +1,5 @@
-import { isAuthenticated, getCurrentUser } from './services/authService.js';
+import { getCurrentUser } from './services/authService.js';
+import { isAuthenticated } from './utils/helpers.js';
 import { showToast } from './utils/helpers.js';
 
 const routes = {
