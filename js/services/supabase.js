@@ -49,12 +49,20 @@ export function buildQuery(table, options = {}) {
   const { select = '*', filters = [], order, limit, range } = options;
   let query = `/rest/v1/${table}?select=${select}`;
   filters.forEach(f => {
-    if (f.col && f.val !== undefined && f.val !== null && f.val !== '') {
+    if (!f.col || f.val === undefined || f.val === null || f.val === '') return;
+    const op = f.op || 'eq';
+    if (op === 'in' && Array.isArray(f.val) && f.val.length) {
+      const encoded = f.val.map(v => encodeURIComponent(v)).join(',');
+      query += `&${f.col}=in.(${encoded})`;
+    } else if (['gte', 'lte', 'gt', 'lt', 'neq'].includes(op)) {
+      query += `&${f.col}=${op}.${encodeURIComponent(f.val)}`;
+    } else {
       query += `&${f.col}=eq.${encodeURIComponent(f.val)}`;
     }
   });
   if (order) query += `&order=${order}`;
   if (limit) query += `&limit=${limit}`;
+  if (range) query += `&range=${range}`;
   return query;
 }
 
