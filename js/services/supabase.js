@@ -70,7 +70,7 @@ export async function supabaseUpsert(table, rows, onConflict) {
     const headers = buildHeaders(client);
     let url = `${client.url}/rest/v1/${table}`;
     if (onConflict) {
-      headers['Prefer'] = `resolution=merge-duplicates&return=minimal`;
+      headers['Prefer'] = ['resolution=merge-duplicates', 'return=minimal'];
       url += `?on_conflict=${onConflict}`;
     }
     const res = await fetch(url, {

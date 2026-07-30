@@ -16,7 +16,6 @@ export async function importarNotas(file, onProgress) {
   const col = {};
   headers.forEach((h, i) => col[h] = i);
 
-  // Coletar entidades únicas por ID natural
   const escolas = new Map();
   const etapas = new Map();
   const seriesList = new Map();
@@ -32,7 +31,7 @@ export async function importarNotas(file, onProgress) {
     const turmaNome = row[col['TURMA']];
     if (!estudanteNome || !turmaNome) { erros++; continue; }
 
-    const add = (map, id, val) => { if (id && !map.has(String(id))) map.set(String(id), val); };
+    const add = (map, id, val) => { if (id != null && id !== '' && !map.has(String(id))) map.set(String(id), val); };
 
     add(escolas, row[col['ID ESCOLA']], {
       id_escola: parseInt(row[col['ID ESCOLA']]),
@@ -118,32 +117,33 @@ export async function importarNotas(file, onProgress) {
     }
   }
 
+  // Fase 1: inserir referências (apenas as que ainda não existem)
   onProgress(5, 'Inserindo escolas...');
-  await batchUpsert('escolas', [...escolas.values()], 'id_escola');
+  await inserirNovos('escolas', [...escolas.values()], 'id_escola');
 
   onProgress(10, 'Inserindo etapas de ensino...');
-  await batchUpsert('etapas_ensino', [...etapas.values()], 'id_etapa');
+  await inserirNovos('etapas_ensino', [...etapas.values()], 'id_etapa');
 
   onProgress(15, 'Inserindo séries...');
-  await batchUpsert('series', [...seriesList.values()], 'id_serie');
+  await inserirNovos('series', [...seriesList.values()], 'id_serie');
 
   onProgress(20, 'Inserindo turmas...');
-  await batchUpsert('turmas', [...turmasList.values()], 'id_turma');
+  await inserirNovos('turmas', [...turmasList.values()], 'id_turma');
 
   onProgress(25, 'Inserindo professores...');
-  await batchUpsert('professores', [...professoresList.values()], 'id_pessoa');
+  await inserirNovos('professores', [...professoresList.values()], 'id_pessoa');
 
   onProgress(30, 'Inserindo componentes curriculares...');
-  await batchUpsert('componentes_curriculares', [...componentesList.values()], 'id_componente');
+  await inserirNovos('componentes_curriculares', [...componentesList.values()], 'id_componente');
 
   onProgress(35, 'Inserindo estudantes...');
-  await batchUpsert('estudantes', [...estudantesList.values()], 'id_pessoa');
+  await inserirNovos('estudantes', [...estudantesList.values()], 'id_pessoa');
 
   // Fase 2: carregar IDs do Supabase
   onProgress(40, 'Mapeando IDs...');
   const map = await carregarMapas();
 
-  // Fase 3: upsert alocações com Supabase IDs
+  // Fase 3: inserir alocações com Supabase IDs
   onProgress(45, 'Inserindo alocações...');
   const alocRows = [...alocacoesList.values()].map(a => ({
     professor_id: map.professores[a.professor_natural],
@@ -153,38 +153,35 @@ export async function importarNotas(file, onProgress) {
     data_fim: a.data_fim,
   })).filter(a => a.professor_id && a.turma_id && a.componente_id);
 
-  await batchUpsert('alocacoes', alocRows, null);
+  await inserirNovosAlocacoes(alocRows, map);
 
-  // Fase 4: carregar IDs das alocações e montar lookup por chave natural
+  // Fase 4: carregar IDs das alocações
   onProgress(50, 'Mapeando alocações...');
   const alocLookup = await carregarLookupAlocacoes(map);
 
-  // Fase 5: upsert notas
+  // Fase 5: inserir notas
   onProgress(55, 'Inserindo notas...');
-  const totalNotas = notasList.length;
-  for (let i = 0; i < notasList.length; i += BATCH_SIZE) {
-    const batch = notasList.slice(i, i + BATCH_SIZE);
-    const rows = batch.map(n => ({
-      estudante_id: map.estudantes[n.estudante_id],
-      alocacao_id: alocLookup[`${n.professor_id}_${n.turma_id}_${n.componente_id}`],
-      nota_1bim: n.nota_1bim,
-      nota_2bim: n.nota_2bim,
-      nota_3bim: n.nota_3bim,
-      nota_4bim: n.nota_4bim,
-      media_anual: n.media_anual,
-      exame_final: n.exame_final,
-      av_especial: n.av_especial,
-      media_final: n.media_final,
-      resultado_final: n.resultado_final,
-      aproveitamento: n.aproveitamento,
-    })).filter(n => n.estudante_id && n.alocacao_id);
+  const notasParaInserir = notasList.map(n => ({
+    estudante_id: map.estudantes[n.estudante_id],
+    alocacao_id: alocLookup[`${n.professor_id}_${n.turma_id}_${n.componente_id}`],
+    nota_1bim: n.nota_1bim,
+    nota_2bim: n.nota_2bim,
+    nota_3bim: n.nota_3bim,
+    nota_4bim: n.nota_4bim,
+    media_anual: n.media_anual,
+    exame_final: n.exame_final,
+    av_especial: n.av_especial,
+    media_final: n.media_final,
+    resultado_final: n.resultado_final,
+    aproveitamento: n.aproveitamento,
+  })).filter(n => n.estudante_id && n.alocacao_id);
 
-    if (rows.length) {
-      const res = await batchUpsert('notas', rows, 'estudante_id,alocacao_id');
-      inseridos += rows.length;
-      if (res?.error) erros += rows.length;
-    }
-
+  const totalNotas = notasParaInserir.length;
+  for (let i = 0; i < notasParaInserir.length; i += BATCH_SIZE) {
+    const batch = notasParaInserir.slice(i, i + BATCH_SIZE);
+    const res = await batchInserir('notas', batch);
+    inseridos += res.inseridos;
+    erros += res.erros;
     const pct = Math.min(55 + Math.round((i + BATCH_SIZE) / totalNotas * 40), 95);
     onProgress(pct, `Notas: ${Math.min(i + BATCH_SIZE, totalNotas)}/${totalNotas}`);
   }
@@ -266,9 +263,9 @@ export async function importarFrequencia(file, onProgress) {
     }).filter(r => r);
 
     if (rows.length) {
-      const res = await batchUpsert('frequencias', rows, 'estudante_id,turma_id,mes_referencia');
-      inseridos += rows.length;
-      if (res?.error) erros += rows.length;
+      const res = await batchInserir('frequencias', rows);
+      inseridos += res.inseridos;
+      erros += res.erros;
     }
 
     const pct = Math.min(20 + Math.round((i + BATCH_SIZE) / totalFreq * 75), 95);
@@ -283,14 +280,35 @@ export async function importarFrequencia(file, onProgress) {
   return { success: true, registros: totalFreq, inseridos, atualizados: 0, erros, errosDetalhes: errosDetalhes.slice(0, 10), tempoMs };
 }
 
-async function batchUpsert(table, rows, onConflict, retries = 2) {
+async function inserirNovos(table, rows, idColumn) {
   if (!rows.length) return;
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const result = await supabaseUpsert(table, rows, onConflict);
-    if (!result.error) return result;
-    if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-    else return result;
+  // Buscar IDs existentes
+  const { data: existentes } = await supabaseQuery(table, { select: idColumn });
+  const existentesSet = new Set((existentes || []).map(r => String(r[idColumn])));
+  const novos = rows.filter(r => !existentesSet.has(String(r[idColumn])));
+  if (!novos.length) return;
+  await batchInserir(table, novos);
+}
+
+async function inserirNovosAlocacoes(rows) {
+  if (!rows.length) return;
+  // Buscar alocações existentes pela combinação das FKs
+  const { data: existentes } = await supabaseQuery('alocacoes', { select: 'professor_id,turma_id,componente_id' });
+  const existentesSet = new Set((existentes || []).map(a => `${a.professor_id}_${a.turma_id}_${a.componente_id}`));
+  const novos = rows.filter(a => !existentesSet.has(`${a.professor_id}_${a.turma_id}_${a.componente_id}`));
+  if (!novos.length) return;
+  await batchInserir('alocacoes', novos);
+}
+
+async function batchInserir(table, rows) {
+  let inseridos = 0, erros = 0;
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
+    const { data, error } = await supabaseUpsert(table, batch, null);
+    if (error) { erros += batch.length; }
+    else { inseridos += batch.length; }
   }
+  return { inseridos, erros };
 }
 
 async function carregarMapas() {
@@ -301,10 +319,10 @@ async function carregarMapas() {
     supabaseQuery('estudantes', { select: 'id,id_pessoa' }),
   ]);
 
-  const professores = {};   // id_pessoa → id
-  const turmas = {};        // id_turma → id
-  const componentes = {};   // id_componente → id
-  const estudantes = {};    // id_pessoa → id
+  const professores = {};
+  const turmas = {};
+  const componentes = {};
+  const estudantes = {};
 
   (profRes.data || []).forEach(e => professores[e.id_pessoa] = e.id);
   (turmaRes.data || []).forEach(e => turmas[e.id_turma] = e.id);
@@ -319,7 +337,6 @@ async function carregarLookupAlocacoes(map) {
     select: 'id,professor_id,turma_id,componente_id',
   });
 
-  // Reverse maps: supabase_id → natural_id
   const profRev = {}; Object.entries(map.professores).forEach(([nat, sup]) => profRev[sup] = parseInt(nat));
   const turRev = {};  Object.entries(map.turmas).forEach(([nat, sup]) => turRev[sup] = parseInt(nat));
   const compRev = {}; Object.entries(map.componentes).forEach(([nat, sup]) => compRev[sup] = parseInt(nat));
