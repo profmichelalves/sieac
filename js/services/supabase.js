@@ -71,7 +71,7 @@ export async function supabaseUpsert(table, rows, onConflict) {
     let url = `${client.url}/rest/v1/${table}`;
     if (onConflict) {
       headers['Prefer'] = `resolution=merge-duplicates&return=minimal`;
-      url += `?on_conflict=${encodeURIComponent(onConflict)}`;
+      url += `?on_conflict=${onConflict}`;
     }
     const res = await fetch(url, {
       method: 'POST',

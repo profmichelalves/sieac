@@ -180,7 +180,7 @@ export async function importarNotas(file, onProgress) {
     })).filter(n => n.estudante_id && n.alocacao_id);
 
     if (rows.length) {
-      const res = await batchUpsert('notas', rows, '(estudante_id, alocacao_id)');
+      const res = await batchUpsert('notas', rows, 'estudante_id,alocacao_id');
       inseridos += rows.length;
       if (res?.error) erros += rows.length;
     }
@@ -266,7 +266,7 @@ export async function importarFrequencia(file, onProgress) {
     }).filter(r => r);
 
     if (rows.length) {
-      const res = await batchUpsert('frequencias', rows, '(estudante_id, turma_id, mes_referencia)');
+      const res = await batchUpsert('frequencias', rows, 'estudante_id,turma_id,mes_referencia');
       inseridos += rows.length;
       if (res?.error) erros += rows.length;
     }
