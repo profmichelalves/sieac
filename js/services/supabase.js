@@ -22,11 +22,17 @@ async function request(method, path, body = null) {
     if (body) options.body = JSON.stringify(body);
     const res = await fetch(`${client.url}${path}`, options);
     if (res.status === 204) return { data: null, error: null };
-    const json = await res.json();
-    if (res.status >= 400) {
-      return { data: null, error: json.message || json.error || `Erro ${res.status}` };
+    let json;
+    try {
+      const text = await res.text();
+      json = text ? JSON.parse(text) : null;
+    } catch (e) {
+      json = null;
     }
-    return { data: Array.isArray(json) ? json : json, error: null };
+    if (res.status >= 400) {
+      return { data: null, error: json?.message || json?.error || `Erro ${res.status}` };
+    }
+    return { data: json, error: null };
   } catch (err) {
     return { data: null, error: err.message };
   }
@@ -72,7 +78,13 @@ export async function supabaseUpsert(table, rows, onConflict) {
       const text = await res.text();
       return { error: text };
     }
-    const data = res.status === 201 ? await res.json() : null;
+    let data = null;
+    try {
+      const text = await res.text();
+      data = text ? JSON.parse(text) : null;
+    } catch (e) {
+      data = null;
+    }
     return { data, error: null };
   } catch (err) {
     return { error: err.message };
