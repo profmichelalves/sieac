@@ -37,6 +37,15 @@ export async function login(email, senha) {
 }
 
 export async function register(nome, email, matricula, senha) {
+  const { data: existentes } = await supabaseQuery('usuarios', {
+    select: 'id,email,matricula',
+    filters: [{ col: 'email', val: email }]
+  });
+
+  if (existentes && existentes.length > 0) {
+    return { error: 'Este email já está cadastrado. Faça login ou use outro email.' };
+  }
+
   const { data: perfis } = await supabaseQuery('perfis', {
     select: 'id', filters: [{ col: 'nome', val: 'Professor' }]
   });
