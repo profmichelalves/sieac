@@ -1,6 +1,7 @@
 import { $, showToast, formatNumber, formatPercent } from '../utils/helpers.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
-import { createBarChart, createDoughnutChart, destroyAllCharts } from '../components/Charts.js';
+import { createBarChart, createDoughnutChart, destroyChart } from '../components/Charts.js';
+import { supabaseQuery } from '../services/supabase.js';
 import { getResumoGeral, getMediaPorTurma, getDistribuicaoNotas, getAprovacaoReprovacao } from '../repositories/dashboardRepository.js';
 
 export async function render() {
@@ -121,11 +122,15 @@ async function loadData() {
   createProfessoresChart();
 }
 
-function createProfessoresChart() {
+async function createProfessoresChart() {
   try {
     const canvas = document.getElementById('chart-professores');
     if (!canvas) return;
-    destroyAllCharts();
+    destroyChart('chart-professores');
+
+    const { data: professores } = await supabaseQuery('professores', { select: 'id' });
+    const total = professores?.length || 0;
+
     const ctx = canvas.getContext('2d');
     new window.Chart(ctx, {
       type: 'bar',
@@ -133,7 +138,7 @@ function createProfessoresChart() {
         labels: ['Total'],
         datasets: [{
           label: 'Professores',
-          data: [48],
+          data: [total],
           backgroundColor: ['rgba(26, 26, 78, 0.7)'],
           borderRadius: 8,
         }]
