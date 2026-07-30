@@ -22,7 +22,7 @@ BEGIN
     IF t = ANY(tabelas) THEN
       EXECUTE format('SELECT count(*) FROM %I', t) INTO cnt;
       IF cnt > 0 THEN
-        EXECUTE format('DELETE FROM %I', t);
+        EXECUTE format('DELETE FROM %I WHERE true', t);
       END IF;
       seq := t || '_id_seq';
       BEGIN
