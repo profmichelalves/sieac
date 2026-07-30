@@ -12,16 +12,12 @@ async function getFilterData() {
     professorVinculo = await getProfessorVinculo();
   }
 
-  const turmaFilter = userIsProfessor && professorVinculo
-    ? {} : {};
-
-  const [series, turmas, componentes, professores, etapas, estudantes] = await Promise.all([
+  const [series, turmas, componentes, professores, etapas] = await Promise.all([
     supabaseQuery('series', { select: 'id,nome,etapa_ensino_id', order: 'nome' }),
     supabaseQuery('turmas', { select: 'id,nome,serie_id,turno', order: 'nome' }),
     supabaseQuery('componentes_curriculares', { select: 'id,nome', order: 'nome' }),
     supabaseQuery('professores', { select: 'id,nome', order: 'nome' }),
     supabaseQuery('etapas_ensino', { select: 'id,nome', order: 'nome' }),
-    supabaseQuery('estudantes', { select: 'id,nome,matricula', order: 'nome' }),
   ]);
 
   let turnoOptions = [];
@@ -29,7 +25,7 @@ async function getFilterData() {
   turnoOptions = [...turnos].sort();
 
   let anosLetivos = [];
-  const { data: freqs } = await supabaseQuery('frequencias', { select: 'ano_letivo', limit: 5000 });
+  const { data: freqs } = await supabaseQuery('frequencias', { select: 'ano_letivo', limit: 2000 });
   const anos = new Set((freqs || []).map(f => f.ano_letivo).filter(Boolean));
   anosLetivos = [...anos].sort((a, b) => b - a);
 
@@ -37,7 +33,6 @@ async function getFilterData() {
   let turmasData = turmas.data || [];
   let compData = componentes.data || [];
   let profData = professores.data || [];
-  let estData = estudantes.data || [];
 
   if (userIsProfessor && professorVinculo) {
     seriesData = professorVinculo.series;
@@ -45,16 +40,6 @@ async function getFilterData() {
     const compIdsSet = new Set(professorVinculo.compIds);
     compData = compData.filter(c => compIdsSet.has(c.id));
     profData = profData.filter(p => p.id === professorVinculo.id);
-    const turmaIdsSet = new Set(professorVinculo.turmaIds);
-    const { data: ests } = await supabaseQuery('estudantes', { select: 'id,nome,matricula', limit: 5000 });
-    if (ests) {
-      const { data: notas } = await supabaseQuery('notas', { select: 'estudante_id,alocacao_id', limit: 20000 });
-      const { data: alocacoes } = await supabaseQuery('alocacoes', { select: 'id,turma_id', filters: [{ col: 'professor_id', val: professorVinculo.id }] });
-      const alocTurmaIds = new Set((alocacoes || []).map(a => a.turma_id));
-      const alocIds = new Set((alocacoes || []).map(a => a.id));
-      const estIds = new Set((notas || []).filter(n => alocIds.has(n.alocacao_id)).map(n => n.estudante_id));
-      estData = ests.filter(e => estIds.has(e.id));
-    }
   }
 
   return {
@@ -63,7 +48,6 @@ async function getFilterData() {
     componentes: compData,
     professores: profData,
     etapas: etapas.data || [],
-    estudantes: estData,
     turnos: turnoOptions,
     anosLetivos,
     userIsProfessor,
@@ -129,19 +113,11 @@ export async function renderFilterPanel(containerId, onChange) {
             </select>
           </div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-2">
           <div class="filter-group">
             <label class="filter-label">Professor</label>
             <select class="filter-select" id="filter-professor" ${data.userIsProfessor ? 'disabled' : ''}>
               <option value="">${data.userIsProfessor ? (data.professores[0]?.nome || 'Meus dados') : 'Todos'}</option>
-            </select>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="filter-group">
-            <label class="filter-label">Estudante</label>
-            <select class="filter-select" id="filter-estudante">
-              <option value="">Todos</option>
             </select>
           </div>
         </div>
@@ -171,7 +147,6 @@ export async function renderFilterPanel(containerId, onChange) {
   fillSelect('filter-turno', data.turnos, t => t, t => t);
   fillSelect('filter-disciplina', data.componentes, c => c.nome, c => c.id);
   fillSelect('filter-professor', data.professores, p => p.nome, p => p.id);
-  fillSelect('filter-estudante', data.estudantes, e => `${e.nome}${e.matricula ? ` (${e.matricula})` : ''}`, e => e.id);
 
   if (data.userIsProfessor && data.profId) {
     document.getElementById('filter-professor').value = data.profId;
@@ -185,7 +160,7 @@ export async function renderFilterPanel(containerId, onChange) {
 function bindFilterEvents(data) {
   const selectIds = [
     'filter-ano-letivo', 'filter-etapa', 'filter-serie', 'filter-turma',
-    'filter-turno', 'filter-disciplina', 'filter-professor', 'filter-estudante'
+    'filter-turno', 'filter-disciplina', 'filter-professor'
   ];
   selectIds.forEach(id => {
     const el = document.getElementById(id);
@@ -238,7 +213,6 @@ function applyFilters() {
     'filter-turno': 'turno',
     'filter-disciplina': 'componente_id',
     'filter-professor': 'professor_id',
-    'filter-estudante': 'estudante_id',
   };
 
   for (const [elId, key] of Object.entries(map)) {
@@ -261,7 +235,7 @@ function clearFilters() {
     currentFilters.professor_id = String(professorVinculo.id);
   }
   ['filter-ano-letivo', 'filter-etapa', 'filter-serie', 'filter-turma',
-   'filter-turno', 'filter-disciplina', 'filter-professor', 'filter-estudante'
+   'filter-turno', 'filter-disciplina', 'filter-professor'
   ].forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.disabled) el.value = '';
@@ -281,7 +255,6 @@ function updateBadges() {
     turno: 'Turno',
     componente_id: 'Disciplina',
     professor_id: 'Professor',
-    estudante_id: 'Estudante',
   };
   const mapa = {
     ano_letivo: 'filter-ano-letivo',
@@ -291,7 +264,6 @@ function updateBadges() {
     turno: 'filter-turno',
     componente_id: 'filter-disciplina',
     professor_id: 'filter-professor',
-    estudante_id: 'filter-estudante',
   };
   let html = '';
   for (const [key, val] of Object.entries(currentFilters)) {
