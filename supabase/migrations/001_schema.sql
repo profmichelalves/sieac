@@ -159,18 +159,42 @@ CREATE TABLE importacoes (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- 3. VIEWS PARA DASHBOARDS
-CREATE VIEW vw_resumo_escola AS
-SELECT
-    COUNT(DISTINCT e.id) as total_estudantes,
-    COUNT(DISTINCT t.id) as total_turmas,
-    COUNT(DISTINCT p.id) as total_professores,
-    ROUND(AVG(n.media_final)::numeric, 1) as media_geral,
-    ROUND(AVG(f.percentual_frequencia)::numeric, 1) as frequencia_media,
-    COUNT(DISTINCT CASE WHEN n.resultado_final = 'APROVADO' THEN n.estudante_id END) as aprovados,
-    COUNT(DISTINCT CASE WHEN n.resultado_final = 'REPROVADO' THEN n.estudante_id END) as reprovados
-FROM estudantes e
-LEFT JOIN notas n ON e.id = n.estudante_id
-LEFT JOIN frequencias f ON e.id = f.estudante_id
-LEFT JOIN turmas t ON t.id = f.turma_id
-LEFT JOIN professores p ON p.id IS NOT NULL;
+-- 4. ROW LEVEL SECURITY
+-- Habilita RLS em todas as tabelas
+ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE escolas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE etapas_ensino ENABLE ROW LEVEL SECURITY;
+ALTER TABLE series ENABLE ROW LEVEL SECURITY;
+ALTER TABLE turmas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE professores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE componentes_curriculares ENABLE ROW LEVEL SECURITY;
+ALTER TABLE estudantes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE alocacoes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE frequencias ENABLE ROW LEVEL SECURITY;
+ALTER TABLE importacoes ENABLE ROW LEVEL SECURITY;
+
+-- Políticas para autenticação anônima (registro e login)
+CREATE POLICY "anon_insert_usuarios" ON usuarios FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon_select_usuarios" ON usuarios FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_select_perfis" ON perfis FOR SELECT TO anon USING (true);
+
+-- Políticas para leitura de dados educacionais (qualquer usuário autenticado)
+CREATE POLICY "auth_select_escolas" ON escolas FOR SELECT TO anon USING (true);
+CREATE POLICY "auth_select_etapas" ON etapas_ensino FOR SELECT TO anon USING (true);
+CREATE POLICY "auth_select_series" ON series FOR SELECT TO anon USING (true);
+CREATE POLICY "auth_select_turmas" ON turmas FOR SELECT TO anon USING (true);
+CREATE POLICY "auth_select_professores" ON professores FOR SELECT TO anon USING (true);
+CREATE POLICY "auth_select_componentes" ON componentes_curriculares FOR SELECT TO anon USING (true);
+CREATE POLICY "auth_select_estudantes" ON estudantes FOR SELECT TO anon USING (true);
+CREATE POLICY "auth_select_alocacoes" ON alocacoes FOR SELECT TO anon USING (true);
+CREATE POLICY "auth_select_notas" ON notas FOR SELECT TO anon USING (true);
+CREATE POLICY "auth_select_frequencias" ON frequencias FOR SELECT TO anon USING (true);
+CREATE POLICY "auth_select_importacoes" ON importacoes FOR SELECT TO anon USING (true);
+
+-- Políticas para inserção/atualização de dados (importação)
+CREATE POLICY "auth_insert_notas" ON notas FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "auth_insert_frequencias" ON frequencias FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "auth_insert_importacoes" ON importacoes FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "auth_update_usuarios" ON usuarios FOR UPDATE TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "auth_delete_usuarios" ON usuarios FOR DELETE TO anon USING (true);
