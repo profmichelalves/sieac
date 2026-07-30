@@ -96,7 +96,27 @@ export async function supabaseUpsert(table, rows, onConflict) {
 }
 
 export async function supabaseRpc(functionName, params = {}) {
-  return rest.post(`/rest/v1/rpc/${functionName}`, params);
+  const client = getClient();
+  if (!client) return { error: 'Supabase não configurado' };
+  try {
+    const res = await fetch(`${client.url}/rest/v1/rpc/${functionName}?apikey=${encodeURIComponent(client.key)}`, {
+      method: 'POST',
+      headers: buildHeaders(client),
+      body: JSON.stringify(params),
+    });
+    if (res.status >= 400) {
+      const text = await res.text();
+      return { data: null, error: text };
+    }
+    let data = null;
+    try {
+      const text = await res.text();
+      data = text ? JSON.parse(text) : null;
+    } catch (e) { data = null; }
+    return { data, error: null };
+  } catch (err) {
+    return { error: err.message };
+  }
 }
 
 export async function supabaseDelete(table, col, val) {
