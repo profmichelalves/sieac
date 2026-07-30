@@ -68,8 +68,12 @@ export async function supabaseUpsert(table, rows, onConflict) {
   if (!client) return { error: 'Supabase não configurado' };
   try {
     const headers = buildHeaders(client);
-    if (onConflict) headers['Prefer'] = `resolution=merge-duplicates&return=minimal`;
-    const res = await fetch(`${client.url}/rest/v1/${table}`, {
+    let url = `${client.url}/rest/v1/${table}`;
+    if (onConflict) {
+      headers['Prefer'] = `resolution=merge-duplicates&return=minimal`;
+      url += `?on_conflict=${encodeURIComponent(onConflict)}`;
+    }
+    const res = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(rows)

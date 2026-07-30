@@ -110,8 +110,6 @@ async function processFile(tipo, file) {
 
   progress.style.display = 'block';
   result.style.display = 'none';
-  bar.style.width = '30%';
-  text.textContent = 'Lendo arquivo...';
 
   let importFn;
   let tipoNome;
@@ -124,10 +122,13 @@ async function processFile(tipo, file) {
     tipoNome = 'Frequência';
   }
 
-  bar.style.width = '60%';
-  text.textContent = 'Processando dados...';
+  const onProgress = (pct, msg) => {
+    bar.style.width = `${pct}%`;
+    text.textContent = msg;
+  };
 
-  const res = await importFn(file);
+  onProgress(5, 'Lendo arquivo...');
+  const res = await importFn(file, onProgress);
 
   bar.style.width = '100%';
   text.textContent = 'Finalizado!';
