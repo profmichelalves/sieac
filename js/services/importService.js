@@ -172,20 +172,31 @@ export async function importarNotas(file, onProgress) {
 
   // Fase 5: inserir notas
   onProgress(45, 'Inserindo notas...');
-  const notasParaInserir = notasList.map(n => ({
-    estudante_id: map.estudantes[n.estudante_id],
-    alocacao_id: alocLookup[`${n.professor_id}_${n.turma_id}_${n.componente_id}`],
-    nota_1bim: n.nota_1bim,
-    nota_2bim: n.nota_2bim,
-    nota_3bim: n.nota_3bim,
-    nota_4bim: n.nota_4bim,
-    media_anual: n.media_anual,
-    exame_final: n.exame_final,
-    av_especial: n.av_especial,
-    media_final: n.media_final,
-    resultado_final: n.resultado_final,
-    aproveitamento: n.aproveitamento,
-  })).filter(n => n.estudante_id && n.alocacao_id);
+  const ignoradosNotas = [];
+  const notasParaInserir = notasList.map(n => {
+    const estudante_id = map.estudantes[n.estudante_id];
+    const alocacao_id = alocLookup[`${n.professor_id}_${n.turma_id}_${n.componente_id}`];
+    if (!estudante_id || !alocacao_id) {
+      const causa = !estudante_id && !alocacao_id ? 'estudante e alocação'
+        : !estudante_id ? 'estudante' : 'alocação';
+      ignoradosNotas.push(`Ignorado: ${n.estudante_id || '(sem id)'} — ${n.turma_id || '(sem turma)'} / ${n.componente_id || '(sem componente)'} (${causa} não encontrada/o)`);
+      return null;
+    }
+    return {
+      estudante_id,
+      alocacao_id,
+      nota_1bim: n.nota_1bim,
+      nota_2bim: n.nota_2bim,
+      nota_3bim: n.nota_3bim,
+      nota_4bim: n.nota_4bim,
+      media_anual: n.media_anual,
+      exame_final: n.exame_final,
+      av_especial: n.av_especial,
+      media_final: n.media_final,
+      resultado_final: n.resultado_final,
+      aproveitamento: n.aproveitamento,
+    };
+  }).filter(r => r);
 
   const totalNotas = notasParaInserir.length;
   for (let i = 0; i < notasParaInserir.length; i += BATCH_SIZE) {
@@ -200,7 +211,9 @@ export async function importarNotas(file, onProgress) {
   onProgress(100, 'Importação concluída!');
   const tempoMs = Date.now() - startTime;
 
-  return { success: true, registros: totalNotas, inseridos, atualizados: 0, erros, errosDetalhes: errosDetalhes.slice(0, 10), tempoMs };
+  if (ignoradosNotas.length) errosDetalhes.push(`${ignoradosNotas.length} ignorados (estudante/alocação não encontrados)`);
+
+  return { success: true, registros: notasList.length, inseridos, atualizados: 0, erros, errosDetalhes: errosDetalhes.slice(0, 10), ignorados: ignoradosNotas.slice(0, 500), tempoMs };
 }
 
 export async function importarFrequencia(file, onProgress) {
@@ -251,17 +264,22 @@ export async function importarFrequencia(file, onProgress) {
   const turmaMap = {};
   (turmaRes.data || []).forEach(t => turmaMap[t.nome] = t.id);
 
-  let skipped = 0;
+  const ignorados = [];
   const totalFreq = freqList.length;
 
   onProgress(20, 'Inserindo frequências...');
   for (let i = 0; i < freqList.length; i += BATCH_SIZE) {
     const batch = freqList.slice(i, i + BATCH_SIZE);
-    const rows = batch.map(f => {
+    const rows = [];
+    for (const f of batch) {
       const estId = estMap[f.matricula];
       const turId = turmaMap[f.turma];
-      if (!estId || !turId) { skipped++; return null; }
-      return {
+      if (!estId || !turId) {
+        const causa = !estId && !turId ? 'matrícula e turma' : !estId ? 'matrícula' : 'turma';
+        ignorados.push(`Ignorado: ${f.matricula} - ${f.turma} (${causa} não encontrada${!turId ? '/o' : ''})`);
+        continue;
+      }
+      rows.push({
         estudante_id: estId,
         turma_id: turId,
         mes_referencia: f.mes_referencia,
@@ -270,8 +288,8 @@ export async function importarFrequencia(file, onProgress) {
         aulas_dadas: f.aulas_dadas,
         presencas: f.presencas,
         percentual_frequencia: f.percentual_frequencia,
-      };
-    }).filter(r => r);
+      });
+    }
 
     if (rows.length) {
       const res = await batchInserir('frequencias', rows);
@@ -283,12 +301,12 @@ export async function importarFrequencia(file, onProgress) {
     onProgress(pct, `Frequências: ${Math.min(i + BATCH_SIZE, totalFreq)}/${totalFreq}`);
   }
 
-  if (skipped > 0) errosDetalhes.push(`${skipped} ignorados (estudante/turma não encontrados)`);
+  if (ignorados.length) errosDetalhes.push(`${ignorados.length} ignorados (estudante/turma não encontrados)`);
 
   onProgress(100, 'Importação concluída!');
   const tempoMs = Date.now() - startTime;
 
-  return { success: true, registros: totalFreq, inseridos, atualizados: 0, erros, errosDetalhes: errosDetalhes.slice(0, 10), tempoMs };
+  return { success: true, registros: totalFreq, inseridos, atualizados: 0, erros, errosDetalhes: errosDetalhes.slice(0, 10), ignorados: ignorados.slice(0, 500), tempoMs };
 }
 
 async function inserirNovos(table, rows, idColumn) {

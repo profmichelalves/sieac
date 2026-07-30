@@ -182,6 +182,8 @@ async function processFile(tipo, file) {
   }
 
   result.style.display = 'block';
+
+  const ignoradosCount = (res.ignorados || []).length;
   result.innerHTML = `
     <div class="auth-alert success" style="margin-bottom:16px;">Importação concluída com sucesso!</div>
     <div class="import-stats">
@@ -198,6 +200,10 @@ async function processFile(tipo, file) {
         <div class="import-stat-label">Atualizados</div>
       </div>
       <div class="import-stat">
+        <div class="import-stat-value" style="color:${ignoradosCount > 0 ? 'var(--sieac-warning)' : 'var(--sieac-text)'}">${ignoradosCount}</div>
+        <div class="import-stat-label">Ignorados</div>
+      </div>
+      <div class="import-stat">
         <div class="import-stat-value" style="color:${res.erros > 0 ? 'var(--sieac-danger)' : 'var(--sieac-text)'}">${res.erros}</div>
         <div class="import-stat-label">Erros</div>
       </div>
@@ -212,9 +218,78 @@ async function processFile(tipo, file) {
         ${res.errosDetalhes.slice(0, 5).map(e => `• ${e}`).join('<br>')}
       </div>
     ` : ''}
+    ${ignoradosCount > 0 ? `
+      <div style="margin-top:12px;">
+        <button class="btn btn-outline-primary btn-sm btn-print-ignorados no-print" onclick="window.open('','_blank')">
+          <i class="bi bi-printer"></i> Imprimir Detalhes (${ignoradosCount})
+        </button>
+      </div>
+    ` : ''}
   `;
 
+  if (ignoradosCount > 0) {
+    const btn = result.querySelector('.btn-print-ignorados');
+    if (btn) {
+      btn.onclick = () => imprimirIgnorados(tipoNome, res, file.name);
+    }
+  }
+
   showToast(`${tipoNome}: ${res.registros} registros processados`, 'success');
+}
+
+function imprimirIgnorados(tipoNome, res, fileName) {
+  const w = window.open('', '_blank');
+  if (!w) { alert('Popup bloqueado. Permita popups para imprimir.'); return; }
+  const detalhes = (res.ignorados || []).map(d => `<tr><td>${d}</td></tr>`).join('');
+
+  w.document.write(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<title>Detalhes da Importa\u00e7\u00e3o - ${tipoNome}</title>
+<style>
+  @page { margin:20mm 15mm; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:Georgia,'Times New Roman',serif; font-size:11pt; color:#222; padding:30px; }
+  .header { display:flex; align-items:center; gap:14px; margin-bottom:20px; padding-bottom:14px; border-bottom:2px solid #1a2a3a; }
+  .header h1 { font-size:18pt; margin:0; }
+  .header small { font-size:9pt; color:#666; }
+  .meta { font-size:9pt; color:#555; margin-bottom:18px; }
+  .meta span { display:inline-block; margin-right:20px; }
+  table { width:100%; border-collapse:collapse; margin-top:8px; }
+  th { background:#1a2a3a; color:#fff; padding:7px 10px; font-size:9pt; text-transform:uppercase; letter-spacing:0.4px; text-align:left; border:1px solid #2a3a4a; }
+  td { padding:6px 10px; border:1px solid #ccc; font-size:10pt; }
+  tbody tr:nth-child(even) { background:#f6f8fa; }
+  .footer { margin-top:24px; font-size:8pt; color:#999; text-align:center; border-top:1px solid #ddd; padding-top:10px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>SIEAC — Detalhes da Importa\u00e7\u00e3o</h1>
+    <small>Sistema de Indicadores Educacionais Abel Coelho</small>
+  </div>
+</div>
+<div class="meta">
+  <span><strong>Tipo:</strong> ${tipoNome}</span>
+  <span><strong>Arquivo:</strong> ${fileName}</span>
+  <span><strong>Gerado em:</strong> ${new Date().toLocaleString('pt-BR')}</span>
+</div>
+<div class="meta">
+  <span><strong>Registros no arquivo:</strong> ${res.registros}</span>
+  <span><strong>Inseridos:</strong> ${res.inseridos}</span>
+  <span><strong>Ignorados:</strong> ${detalhes.length}</span>
+</div>
+<table>
+<thead><tr><th>Detalhe do registro ignorado</th></tr></thead>
+<tbody>
+  ${detalhes || '<tr><td style="text-align:center;color:#999;">Nenhum detalhe dispon\u00edvel</td></tr>'}
+</tbody>
+</table>
+<div class="footer">SIEAC — Relat\u00f3rio gerado automaticamente</div>
+<script>window.onload=function(){window.print();window.close();};<\/script>
+</body>
+</html>`);
+  w.document.close();
 }
 
 function setupLimparDados() {

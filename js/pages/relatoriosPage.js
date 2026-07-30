@@ -1,107 +1,120 @@
-import { $, formatNumber } from '../utils/helpers.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
-import { destroyChart } from '../components/Charts.js';
 import { supabaseQuery } from '../services/supabase.js';
 
 const MEDIA_CORTE = 6;
-let chartInst = {};
-
-function criaGraficoBarras(canvasId, labels, acima, abaixo) {
-  destroyChart(canvasId);
-  const canvas = document.getElementById(canvasId);
-  if (!canvas || !labels.length) return;
-  const ctx = canvas.getContext('2d');
-  if (chartInst[canvasId]) { chartInst[canvasId].destroy(); }
-  chartInst[canvasId] = new window.Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Acima da Média', data: acima, backgroundColor: 'rgba(45, 198, 83, 0.7)', borderRadius: 4 },
-        { label: 'Abaixo da Média', data: abaixo, backgroundColor: 'rgba(230, 57, 70, 0.7)', borderRadius: 4 },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: 'var(--sieac-text-muted)' } },
-        tooltip: { backgroundColor: 'var(--sieac-surface)', titleColor: 'var(--sieac-text)', bodyColor: 'var(--sieac-text-secondary)', borderColor: 'var(--sieac-border)', borderWidth: 1, padding: 12, cornerRadius: 8 },
-      },
-      scales: {
-        y: { beginAtZero: true, grid: { color: 'var(--sieac-border)', drawBorder: false }, ticks: { color: 'var(--sieac-text-muted)' } },
-        x: { grid: { display: false }, ticks: { color: 'var(--sieac-text-muted)' } },
-      },
-    },
-  });
-}
 
 export async function render() {
   const main = document.getElementById('main-content');
   main.innerHTML = `
-    <div class="page-title">Relatório de Notas</div>
-    <div class="page-subtitle">Comparativo de notas acima e abaixo da média (nota de corte: ${MEDIA_CORTE}) por disciplina e turma</div>
+    <style>
+      @media print {
+        body, html { background:#fff !important; }
+        #sidebar-wrapper, .navbar, .page-title, .page-subtitle, #filter-container-relatorios,
+        .btn-print, .kpi-card, .no-print { display:none !important; }
+        #main-content { margin-left:0 !important; width:100% !important; }
+        .report-container { box-shadow:none !important; padding:0 !important; }
+        .report-header img { max-width:50px; }
+        table { page-break-inside:auto; border-collapse:collapse; width:100%; }
+        tr { page-break-inside:avoid; page-break-after:auto; }
+        thead { display:table-header-group; }
+        .print-only { display:block !important; }
+      }
+      .print-only { display:none; }
+      .report-container {
+        background:var(--sieac-surface); border-radius:var(--sieac-radius);
+        padding:24px; box-shadow:var(--sieac-shadow); max-width:1100px;
+      }
+      .report-header {
+        display:flex; align-items:center; gap:16px; margin-bottom:24px;
+        padding-bottom:16px; border-bottom:2px solid var(--sieac-primary);
+      }
+      .report-header img { height:56px; }
+      .report-header h2 { margin:0; font-size:1.3rem; color:var(--sieac-text); }
+      .report-header small { color:var(--sieac-text-muted); font-size:0.8rem; }
+      .report-meta { font-size:0.85rem; color:var(--sieac-text-muted); margin-bottom:20px; }
+      .report-meta span { display:inline-block; margin-right:24px; }
+      .report-table { width:100%; border-collapse:collapse; margin-bottom:28px; }
+      .report-table th {
+        background:#1a2a3a; color:#fff; padding:8px 12px;
+        font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;
+        text-align:left; border:1px solid #2a3a4a;
+      }
+      .report-table td {
+        padding:7px 12px; border:1px solid var(--sieac-border);
+        font-size:0.85rem; color:var(--sieac-text);
+      }
+      .report-table tbody tr:nth-child(even) { background:var(--sieac-bg); }
+      .report-table .num { text-align:center; }
+      .report-table .acima { color:var(--sieac-success); font-weight:600; }
+      .report-table .abaixo { color:var(--sieac-danger); font-weight:600; }
+      .report-section-title {
+        font-size:1rem; font-weight:600; color:var(--sieac-text);
+        margin:24px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--sieac-border);
+      }
+    </style>
 
-    <div id="filter-container-relatorios"></div>
-
-    <div class="row g-4" style="margin-top:12px;">
-      <div class="col-6 col-md-3">
-        <div class="kpi-card primary">
-          <div class="kpi-label">Total de Notas</div>
-          <div class="kpi-value"><span id="rel-kpi-total">—</span></div>
-          <div class="kpi-icon"><i class="bi bi-file-text"></i></div>
-        </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <div class="page-title">Relatório de Notas</div>
+        <div class="page-subtitle">Comparativo de notas acima e abaixo da média (nota de corte: ${MEDIA_CORTE}) por disciplina e turma</div>
       </div>
-      <div class="col-6 col-md-3">
-        <div class="kpi-card success">
-          <div class="kpi-label">Acima da Média</div>
-          <div class="kpi-value" style="color:var(--sieac-success)"><span id="rel-kpi-acima">—</span></div>
-          <div class="kpi-icon"><i class="bi bi-arrow-up-circle"></i></div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="kpi-card danger">
-          <div class="kpi-label">Abaixo da Média</div>
-          <div class="kpi-value" style="color:var(--sieac-danger)"><span id="rel-kpi-abaixo">—</span></div>
-          <div class="kpi-icon"><i class="bi bi-arrow-down-circle"></i></div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="kpi-card secondary">
-          <div class="kpi-label">Média Geral</div>
-          <div class="kpi-value"><span id="rel-kpi-media">—</span></div>
-          <div class="kpi-icon"><i class="bi bi-graph-up"></i></div>
-        </div>
-      </div>
+      <button class="btn btn-primary btn-print no-print" onclick="window.print()">
+        <i class="bi bi-printer"></i> Imprimir
+      </button>
     </div>
 
-    <div class="row g-4" style="margin-top:8px;">
-      <div class="col-md-6">
-        <div class="card-sieac">
-          <div class="card-sieac-header">Por Disciplina</div>
-          <div class="card-sieac-body">
-            <div class="chart-container" style="height:280px;"><canvas id="rel-chart-disciplina"></canvas></div>
-            <div style="margin-top:16px;overflow-x:auto;">
-              <table class="table-sieac" id="rel-table-disciplina">
-                <thead><tr><th>Disciplina</th><th>Total</th><th>Acima</th><th>%</th><th>Abaixo</th><th>%</th></tr></thead>
-                <tbody id="rel-tbody-disciplina"><tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Carregando...</td></tr></tbody>
-              </table>
-            </div>
-          </div>
+    <div id="filter-container-relatorios" class="no-print"></div>
+
+    <div class="report-container" id="report-content">
+      <div class="report-header print-only">
+        <img src="assets/img/logo-sieac.png" alt="SIEAC" onerror="this.remove()">
+        <div>
+          <h2>Relatório de Notas — SIEAC</h2>
+          <small>Sistema de Indicadores Educacionais Abel Coelho</small>
         </div>
       </div>
-      <div class="col-md-6">
-        <div class="card-sieac">
-          <div class="card-sieac-header">Por Turma</div>
-          <div class="card-sieac-body">
-            <div class="chart-container" style="height:280px;"><canvas id="rel-chart-turma"></canvas></div>
-            <div style="margin-top:16px;overflow-x:auto;">
-              <table class="table-sieac" id="rel-table-turma">
-                <thead><tr><th>Turma</th><th>Total</th><th>Acima</th><th>%</th><th>Abaixo</th><th>%</th></tr></thead>
-                <tbody id="rel-tbody-turma"><tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Carregando...</td></tr></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+      <div class="report-meta" id="report-meta">
+        <span><strong>Gerado em:</strong> <span id="rel-data-hora">—</span></span>
+        <span><strong>Nota de corte:</strong> ${MEDIA_CORTE}</span>
+        <span id="rel-filtros-info"></span>
+      </div>
+
+      <div class="report-section-title">Por Disciplina</div>
+      <div style="overflow-x:auto;">
+        <table class="report-table" id="rel-table-disciplina">
+          <thead>
+            <tr>
+              <th style="min-width:160px;">Disciplina</th>
+              <th class="num">Total</th>
+              <th class="num">Acima da Média</th>
+              <th class="num">%</th>
+              <th class="num">Abaixo da Média</th>
+              <th class="num">%</th>
+            </tr>
+          </thead>
+          <tbody id="rel-tbody-disciplina">
+            <tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="report-section-title">Por Turma</div>
+      <div style="overflow-x:auto;">
+        <table class="report-table" id="rel-table-turma">
+          <thead>
+            <tr>
+              <th style="min-width:160px;">Turma</th>
+              <th class="num">Total</th>
+              <th class="num">Acima da Média</th>
+              <th class="num">%</th>
+              <th class="num">Abaixo da Média</th>
+              <th class="num">%</th>
+            </tr>
+          </thead>
+          <tbody id="rel-tbody-turma">
+            <tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Carregando...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   `;
@@ -146,6 +159,27 @@ async function loadData() {
   const filters = getFilters();
   const cache = await getCache();
 
+  document.getElementById('rel-data-hora').textContent = new Date().toLocaleString('pt-BR');
+  const filtroInfo = document.getElementById('rel-filtros-info');
+  const filtrosAtivos = [];
+  if (filters.serie_id) {
+    const s = (await supabaseQuery('series', { select: 'nome', id: filters.serie_id })).data;
+    if (s && s[0]) filtrosAtivos.push(`Série: ${s[0].nome}`);
+  }
+  if (filters.turma_id) {
+    const t = cache.turmas.find(x => x.id == filters.turma_id);
+    if (t) filtrosAtivos.push(`Turma: ${t.nome}`);
+  }
+  if (filters.componente_id) {
+    const c = cache.componentes.find(x => x.id == filters.componente_id);
+    if (c) filtrosAtivos.push(`Disciplina: ${c.nome}`);
+  }
+  if (filters.professor_id) {
+    const { data: profs } = await supabaseQuery('professores', { select: 'nome', id: filters.professor_id });
+    if (profs && profs[0]) filtrosAtivos.push(`Professor: ${profs[0].nome}`);
+  }
+  filtroInfo.innerHTML = filtrosAtivos.length ? `<strong>Filtros:</strong> ${filtrosAtivos.join(' | ')}` : '';
+
   const { data: notas } = await supabaseQuery('notas', { select: 'media_final,alocacao_id', limit: 20000 });
   const filtradas = aplicarFiltros(notas || [], filters, cache);
 
@@ -158,16 +192,6 @@ async function loadData() {
     const mf = parseFloat(n.media_final);
     return !isNaN(mf) && mf > 0;
   });
-
-  const total = validas.length;
-  const acima = validas.filter(n => parseFloat(n.media_final) >= MEDIA_CORTE).length;
-  const abaixo = validas.filter(n => parseFloat(n.media_final) < MEDIA_CORTE).length;
-  const mediaGeral = total ? validas.reduce((s, n) => s + parseFloat(n.media_final), 0) / total : 0;
-
-  document.getElementById('rel-kpi-total').textContent = total;
-  document.getElementById('rel-kpi-acima').textContent = acima;
-  document.getElementById('rel-kpi-abaixo').textContent = abaixo;
-  document.getElementById('rel-kpi-media').textContent = mediaGeral.toFixed(1);
 
   // Grupo por disciplina
   const discMap = {};
@@ -185,7 +209,6 @@ async function loadData() {
   })).sort((a, b) => a.nome.localeCompare(b.nome));
 
   renderTable('rel-tbody-disciplina', discData);
-  criaGraficoBarras('rel-chart-disciplina', discData.map(d => d.nome), discData.map(d => d.acima), discData.map(d => d.abaixo));
 
   // Grupo por turma
   const turmaGroup = {};
@@ -203,7 +226,6 @@ async function loadData() {
   })).sort((a, b) => a.nome.localeCompare(b.nome));
 
   renderTable('rel-tbody-turma', turmaData);
-  criaGraficoBarras('rel-chart-turma', turmaData.map(d => d.nome), turmaData.map(d => d.acima), turmaData.map(d => d.abaixo));
 }
 
 function renderTable(tbodyId, data) {
@@ -216,11 +238,11 @@ function renderTable(tbodyId, data) {
   tbody.innerHTML = data.map(d => `
     <tr>
       <td><strong>${d.nome}</strong></td>
-      <td>${d.total}</td>
-      <td style="color:var(--sieac-success);font-weight:600;">${d.acima}</td>
-      <td>${d.pctAcima}%</td>
-      <td style="color:var(--sieac-danger);font-weight:600;">${d.abaixo}</td>
-      <td>${d.pctAbaixo}%</td>
+      <td class="num">${d.total}</td>
+      <td class="num acima">${d.acima}</td>
+      <td class="num">${d.pctAcima}%</td>
+      <td class="num abaixo">${d.abaixo}</td>
+      <td class="num">${d.pctAbaixo}%</td>
     </tr>
   `).join('');
 }
