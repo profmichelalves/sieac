@@ -1,4 +1,4 @@
--- SIEAC - Migration 003: RPC para limpar dados educacionais
+-- SIEAC - Migration 003: RPC para truncar dados educacionais
 -- Chama via: SELECT * FROM limpar_dados(ARRAY['notas','frequencias']);
 
 CREATE OR REPLACE FUNCTION limpar_dados(tabelas TEXT[])
@@ -10,29 +10,21 @@ DECLARE
   t TEXT;
   seq TEXT;
   cnt INTEGER;
-  -- Ordem segura para FKs: filhos antes dos pais
-  ordem TEXT[] := ARRAY[
-    'notas', 'frequencias', 'alocacoes', 'importacoes',
-    'estudantes', 'turmas', 'professores', 'componentes_curriculares',
-    'series', 'etapas_ensino', 'escolas'
-  ];
 BEGIN
-  FOREACH t IN ARRAY ordem
+  FOREACH t IN ARRAY tabelas
   LOOP
-    IF t = ANY(tabelas) THEN
-      EXECUTE format('SELECT count(*) FROM %I', t) INTO cnt;
-      IF cnt > 0 THEN
-        EXECUTE format('DELETE FROM %I WHERE true', t);
-      END IF;
-      seq := t || '_id_seq';
-      BEGIN
-        EXECUTE format('ALTER SEQUENCE %I RESTART WITH 1', seq);
-        sequencia_reset := true;
-      EXCEPTION WHEN undefined_table THEN
-        sequencia_reset := false;
-      END;
-      RETURN QUERY SELECT t, cnt, sequencia_reset;
+    EXECUTE format('SELECT count(*) FROM %I', t) INTO cnt;
+    IF cnt > 0 THEN
+      EXECUTE format('TRUNCATE TABLE %I CASCADE', t);
     END IF;
+    seq := t || '_id_seq';
+    BEGIN
+      EXECUTE format('ALTER SEQUENCE %I RESTART WITH 1', seq);
+      sequencia_reset := true;
+    EXCEPTION WHEN undefined_table THEN
+      sequencia_reset := false;
+    END;
+    RETURN QUERY SELECT t, cnt, sequencia_reset;
   END LOOP;
 END;
 $$;
