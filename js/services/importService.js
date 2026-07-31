@@ -29,6 +29,13 @@ async function carregarMapa(table, naturalColumn) {
   return map;
 }
 
+function calcularMedia(nota) {
+  const bims = [nota.nota_1bim, nota.nota_2bim, nota.nota_3bim, nota.nota_4bim]
+    .filter(v => v != null && !isNaN(v) && v > 0);
+  if (!bims.length) return null;
+  return Math.round((bims.reduce((a, b) => a + b, 0) / bims.length) * 10) / 10;
+}
+
 async function verificarRelacoes() {
   const [sRes, tRes] = await Promise.all([
     supabaseQuery('series', { select: 'id,etapa_ensino_id' }),
@@ -211,6 +218,14 @@ export async function importarNotas(file, onProgress) {
       ignorados.push(`Ignorado: ${n.estudante_id || '(sem id)'} — ${n.turma_id || '(sem turma)'} / ${n.componente_id || '(sem componente)'} (${causa} não encontrada/o)`);
       return null;
     }
+    const media = n.media_final != null && n.media_final > 0 ? n.media_final : calcularMedia(n);
+    const rFinal = String(n.resultado_final || '').trim().toUpperCase();
+    let resultado = n.resultado_final;
+    if (media == null) {
+      resultado = null;
+    } else if (!rFinal || rFinal === 'MATRICULADO') {
+      resultado = media >= 6 ? 'APROVADO' : 'REPROVADO';
+    }
     return {
       estudante_id,
       alocacao_id,
@@ -218,8 +233,8 @@ export async function importarNotas(file, onProgress) {
       nota_2bim: n.nota_2bim,
       nota_3bim: n.nota_3bim,
       nota_4bim: n.nota_4bim,
-      media_final: n.media_final,
-      resultado_final: n.resultado_final,
+      media_final: media,
+      resultado_final: resultado,
     };
   }).filter(r => r);
 

@@ -142,6 +142,8 @@ async function loadData() {
       series.data.map(d => d.media),
       'Média'
     );
+  } else {
+    destroyChart('chart-media-serie');
   }
 }
 

@@ -134,7 +134,7 @@ async function loadData() {
     );
   }
 
-  const baixa = await getEstudantesBaixaFrequencia(75);
+  const baixa = await getEstudantesBaixaFrequencia(75, filters);
   const tbody = document.getElementById('tbody-baixa-freq');
   if (tbody) {
     if (baixa.data && baixa.data.length) {

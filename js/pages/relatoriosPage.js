@@ -66,7 +66,7 @@ export async function render() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div>
         <div class="page-title">Relatório de Notas</div>
-        <div class="page-subtitle">Alunos agrupados por disciplina e por turma — nota de corte ${MEDIA_CORTE}</div>
+        <div class="page-subtitle">Alunos abaixo da média agrupados por disciplina e por turma — nota de corte ${MEDIA_CORTE}</div>
       </div>
       <button class="btn btn-primary btn-print no-print" onclick="window.print()">
         <i class="bi bi-printer"></i> Imprimir
@@ -89,7 +89,7 @@ export async function render() {
         <span id="rel-filtros-info"></span>
       </div>
 
-      <div class="report-section-title">Alunos por Disciplina</div>
+      <div class="report-section-title">Alunos Abaixo da Média por Disciplina</div>
       <div style="overflow-x:auto;">
         <table class="report-table" id="rel-table-disciplina">
           <thead>
@@ -108,7 +108,7 @@ export async function render() {
         </table>
       </div>
 
-      <div class="report-section-title">Alunos por Turma</div>
+      <div class="report-section-title">Alunos Abaixo da Média por Turma</div>
       <div style="overflow-x:auto;">
         <table class="report-table" id="rel-table-turma">
           <thead>
@@ -134,13 +134,15 @@ export async function render() {
 }
 
 async function getCache() {
-  const [t, c, a, e] = await Promise.all([
+  const [s, t, c, a, e] = await Promise.all([
+    supabaseQuery('series', { select: 'id,nome,etapa_ensino_id' }),
     supabaseQuery('turmas', { select: 'id,nome,serie_id,turno' }),
     supabaseQuery('componentes_curriculares', { select: 'id,nome' }),
     supabaseQuery('alocacoes', { select: 'id,turma_id,componente_id,professor_id' }),
     supabaseQuery('estudantes', { select: 'id,nome,matricula' }),
   ]);
   return {
+    series: s.data || [],
     turmas: t.data || [],
     componentes: c.data || [],
     alocacoes: a.data || [],
@@ -151,12 +153,21 @@ async function getCache() {
 function aplicarFiltros(notas, filters, cache) {
   if (!filters || !Object.keys(filters).length) return notas;
   let alocIds = new Set(cache.alocacoes.map(a => a.id));
+  if (filters.etapa_id) {
+    const serieIds = new Set(cache.series.filter(s => s.etapa_ensino_id == filters.etapa_id).map(s => s.id));
+    const tIds = new Set(cache.turmas.filter(t => serieIds.has(t.serie_id)).map(t => t.id));
+    alocIds = new Set([...alocIds].filter(id => cache.alocacoes.some(a => a.id === id && tIds.has(a.turma_id))));
+  }
   if (filters.serie_id) {
     const tIds = new Set(cache.turmas.filter(t => t.serie_id == filters.serie_id).map(t => t.id));
     alocIds = new Set([...alocIds].filter(id => cache.alocacoes.some(a => a.id === id && tIds.has(a.turma_id))));
   }
   if (filters.turma_id) {
     alocIds = new Set([...alocIds].filter(id => cache.alocacoes.some(a => a.id === id && a.turma_id == filters.turma_id)));
+  }
+  if (filters.turno) {
+    const tIds = new Set(cache.turmas.filter(t => t.turno == filters.turno).map(t => t.id));
+    alocIds = new Set([...alocIds].filter(id => cache.alocacoes.some(a => a.id === id && tIds.has(a.turma_id))));
   }
   if (filters.componente_id) {
     alocIds = new Set([...alocIds].filter(id => cache.alocacoes.some(a => a.id === id && a.componente_id == filters.componente_id)));
@@ -174,6 +185,10 @@ async function loadData() {
   document.getElementById('rel-data-hora').textContent = new Date().toLocaleString('pt-BR');
   const filtroInfo = document.getElementById('rel-filtros-info');
   const filtrosAtivos = [];
+  if (filters.etapa_id) {
+    const { data: etapas } = await supabaseQuery('etapas_ensino', { select: 'nome', id: filters.etapa_id });
+    if (etapas && etapas[0]) filtrosAtivos.push(`Etapa: ${etapas[0].nome}`);
+  }
   if (filters.serie_id) {
     const s = (await supabaseQuery('series', { select: 'nome', id: filters.serie_id })).data;
     if (s && s[0]) filtrosAtivos.push(`Série: ${s[0].nome}`);
@@ -182,6 +197,7 @@ async function loadData() {
     const t = cache.turmas.find(x => x.id == filters.turma_id);
     if (t) filtrosAtivos.push(`Turma: ${t.nome}`);
   }
+  if (filters.turno) filtrosAtivos.push(`Turno: ${filters.turno}`);
   if (filters.componente_id) {
     const c = cache.componentes.find(x => x.id == filters.componente_id);
     if (c) filtrosAtivos.push(`Disciplina: ${c.nome}`);
@@ -203,7 +219,7 @@ async function loadData() {
 
   const linhas = filtradas.map(n => {
     const mf = parseFloat(n.media_final);
-    if (isNaN(mf) || mf <= 0) return null;
+    if (isNaN(mf) || mf <= 0 || mf >= MEDIA_CORTE) return null;
     const cId = alocComp[n.alocacao_id];
     const tId = alocTurma[n.alocacao_id];
     const estudante = estMap[n.estudante_id];
@@ -214,7 +230,6 @@ async function loadData() {
       aluno: estudante.nome,
       matricula: estudante.matricula || '-',
       media_final: mf,
-      situacao: mf >= MEDIA_CORTE ? 'Acima' : 'Abaixo',
     };
   }).filter(Boolean);
 
@@ -227,7 +242,7 @@ function renderGrupo(tbodyId, linhas, groupKey) {
   if (!tbody) return;
 
   if (!linhas.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Nenhum registro encontrado</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Nenhum aluno abaixo da média ${MEDIA_CORTE} encontrado para os filtros selecionados</td></tr>`;
     return;
   }
 
@@ -241,7 +256,6 @@ function renderGrupo(tbodyId, linhas, groupKey) {
   const chaves = Object.keys(grupos).sort((a, b) => a.localeCompare(b));
   const subKey = groupKey === 'disciplina' ? 'turma' : 'disciplina';
   let html = '';
-  let totalGeral = 0, acimaGeral = 0;
 
   chaves.forEach(chave => {
     const items = grupos[chave].sort((a, b) => {
@@ -249,26 +263,21 @@ function renderGrupo(tbodyId, linhas, groupKey) {
       if (s) return s;
       return a.aluno.localeCompare(b.aluno);
     });
-    const acima = items.filter(i => i.situacao === 'Acima').length;
-    const abaixo = items.length - acima;
-    totalGeral += items.length;
-    acimaGeral += acima;
 
-    html += `<tr class="group-header"><td colspan="6"><strong>${chave}</strong> — ${items.length} alunos (${acima} acima / ${abaixo} abaixo da média)</td></tr>`;
+    html += `<tr class="group-header"><td colspan="6"><strong>${chave}</strong> — ${items.length} aluno(s) abaixo da média</td></tr>`;
 
     items.forEach(i => {
-      const isAcima = i.situacao === 'Acima';
       html += `<tr>
         <td>${i.disciplina}</td>
         <td>${i.turma}</td>
         <td><strong>${i.aluno}</strong></td>
         <td class="num">${i.matricula}</td>
-        <td class="num ${isAcima ? 'acima' : 'abaixo'}">${i.media_final.toFixed(1)}</td>
-        <td class="num"><span class="media-badge ${isAcima ? 'acima' : 'abaixo'}">${i.situacao}</span></td>
+        <td class="num abaixo">${i.media_final.toFixed(1)}</td>
+        <td class="num"><span class="media-badge abaixo">Abaixo</span></td>
       </tr>`;
     });
   });
 
-  html += `<tr class="group-header"><td colspan="6"><strong>Resumo Geral</strong> — ${totalGeral} alunos (${acimaGeral} acima / ${totalGeral - acimaGeral} abaixo da média)</td></tr>`;
+  html += `<tr class="group-header"><td colspan="6"><strong>Total</strong> — ${linhas.length} aluno(s) abaixo da média</td></tr>`;
   tbody.innerHTML = html;
 }

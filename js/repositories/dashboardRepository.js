@@ -72,7 +72,7 @@ function montarFiltrosNotas(filters) {
   return { alocacao_ids: [...alocIds] };
 }
 
-function montarFiltrosFrequencia(filters) {
+function montarTurmasFiltradas(filters) {
   if (!filters || Object.keys(filters).length === 0) return null;
   const cache = refCache;
   if (!cache) return null;
@@ -81,7 +81,10 @@ function montarFiltrosFrequencia(filters) {
 
   if (filters.etapa_id) {
     const serieIds = new Set((cache.series || []).filter(s => s.etapa_ensino_id == filters.etapa_id).map(s => s.id));
-    turmaIds = new Set([...turmaIds].filter(id => cache.turmas.find(t => t.id === id)?.serie_id && serieIds.has(cache.turmas.find(t => t.id === id).serie_id)));
+    turmaIds = new Set([...turmaIds].filter(id => {
+      const t = cache.turmas.find(t => t.id === id);
+      return t && t.serie_id != null && serieIds.has(t.serie_id);
+    }));
   }
 
   if (filters.serie_id) {
@@ -89,7 +92,7 @@ function montarFiltrosFrequencia(filters) {
   }
 
   if (filters.turma_id) {
-    turmaIds = new Set([filters.turma_id].map(Number));
+    turmaIds = new Set([Number(filters.turma_id)]);
   }
 
   if (filters.turno) {
@@ -101,11 +104,16 @@ function montarFiltrosFrequencia(filters) {
     turmaIds = new Set([...turmaIds].filter(id => turmasProf.has(id)));
   }
 
-  if (filters.estudante_id) {
+  if (turmaIds.size === cache.turmas.length) return null;
+  return turmaIds;
+}
+
+function montarFiltrosFrequencia(filters) {
+  const turmaIds = montarTurmasFiltradas(filters);
+  if (!turmaIds) return null;
+  if (filters && filters.estudante_id) {
     return { estudante_id: filters.estudante_id, turma_ids: [...turmaIds] };
   }
-
-  if (turmaIds.size === cache.turmas.length) return null;
   return { turma_ids: [...turmaIds] };
 }
 
@@ -165,7 +173,6 @@ export async function getResumoGeral(filters = {}) {
   await getRefCache();
   const notas = await queryNotas(filters, 'estudante_id,media_final,resultado_final,alocacao_id');
   const frequencias = await queryFrequencias(filters, 'percentual_frequencia,estudante_id');
-  const turmas = refCache.turmas;
 
   const alunos = {};
   notas.forEach(n => {
@@ -197,9 +204,11 @@ export async function getResumoGeral(filters = {}) {
   });
   freqMedia = freqCount ? somaFreq / freqCount : 0;
 
+  const turmaSet = montarTurmasFiltradas(filters);
+
   return {
     total_estudantes: Object.keys(alunos).length,
-    total_turmas: filters.turma_id ? 1 : turmas.length,
+    total_turmas: turmaSet ? turmaSet.size : refCache.turmas.length,
     media_geral: Math.round(mediaGeral * 10) / 10,
     frequencia_media: Math.round(freqMedia * 10) / 10,
     aprovacao_pct: Math.round(aprovados / total * 100),
