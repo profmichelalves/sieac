@@ -3,6 +3,8 @@ import { supabaseFetchAll, supabaseQuery } from '../services/supabase.js';
 
 const MEDIA_CORTE = 6;
 
+let relLinhas = [];
+
 export async function render() {
   const main = document.getElementById('main-content');
   main.innerHTML = `
@@ -33,6 +35,15 @@ export async function render() {
       .report-header small { color:var(--sieac-text-muted); font-size:0.8rem; }
       .report-meta { font-size:0.85rem; color:var(--sieac-text-muted); margin-bottom:20px; }
       .report-meta span { display:inline-block; margin-right:24px; }
+      .report-toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+      .report-toolbar-label {
+        font-size:0.85rem; color:var(--sieac-text-muted);
+        display:inline-flex; align-items:center; gap:6px;
+      }
+      .sort-btn {
+        border-radius:var(--sieac-radius-pill) !important;
+        font-size:0.8rem !important; padding:4px 16px !important;
+      }
       .report-table { width:100%; border-collapse:collapse; margin-bottom:28px; }
       .report-table th {
         background:#1a2a3a; color:#fff; padding:7px 10px;
@@ -66,7 +77,7 @@ export async function render() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div>
         <div class="page-title">Relatório de Notas</div>
-        <div class="page-subtitle">Alunos abaixo da média agrupados por disciplina e por turma — nota de corte ${MEDIA_CORTE}</div>
+        <div class="page-subtitle">Alunos abaixo da média — nota de corte ${MEDIA_CORTE}</div>
       </div>
       <button class="btn btn-primary btn-print no-print" onclick="window.print()">
         <i class="bi bi-printer"></i> Imprimir
@@ -89,45 +100,45 @@ export async function render() {
         <span id="rel-filtros-info"></span>
       </div>
 
-      <div class="report-section-title">Alunos Abaixo da Média por Disciplina</div>
-      <div style="overflow-x:auto;">
-        <table class="report-table" id="rel-table-disciplina">
-          <thead>
-            <tr>
-              <th style="min-width:120px;">Disciplina</th>
-              <th style="min-width:100px;">Turma</th>
-              <th style="min-width:160px;">Aluno</th>
-              <th class="num" style="min-width:70px;">Matrícula</th>
-              <th class="num" style="min-width:80px;">Média Final</th>
-              <th style="min-width:90px;">Situação</th>
-            </tr>
-          </thead>
-          <tbody id="rel-tbody-disciplina">
-            <tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Carregando...</td></tr>
-          </tbody>
-        </table>
+      <div class="report-toolbar no-print">
+        <span class="report-toolbar-label"><i class="bi bi-sort-down"></i> Ordenar por:</span>
+        <button class="btn btn-sm btn-primary sort-btn" data-sort="disciplina">Disciplina</button>
+        <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="turma">Turma</button>
+        <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="aluno">Aluno</button>
       </div>
 
-      <div class="report-section-title">Alunos Abaixo da Média por Turma</div>
+      <div class="report-section-title">Alunos Abaixo da Média</div>
       <div style="overflow-x:auto;">
-        <table class="report-table" id="rel-table-turma">
+        <table class="report-table" id="rel-table">
           <thead>
             <tr>
-              <th style="min-width:100px;">Turma</th>
               <th style="min-width:120px;">Disciplina</th>
+              <th style="min-width:100px;">Turma</th>
               <th style="min-width:160px;">Aluno</th>
               <th class="num" style="min-width:70px;">Matrícula</th>
               <th class="num" style="min-width:80px;">Média Final</th>
               <th style="min-width:90px;">Situação</th>
             </tr>
           </thead>
-          <tbody id="rel-tbody-turma">
+          <tbody id="rel-tbody">
             <tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Carregando...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
   `;
+
+  document.querySelectorAll('.sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.sort-btn').forEach(b => {
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-outline-secondary');
+      });
+      btn.classList.add('btn-primary');
+      btn.classList.remove('btn-outline-secondary');
+      renderTable(btn.dataset.sort);
+    });
+  });
 
   renderFilterPanel('filter-container-relatorios', () => loadData());
   await loadData();
@@ -233,51 +244,44 @@ async function loadData() {
     };
   }).filter(Boolean);
 
-  renderGrupo('rel-tbody-disciplina', linhas, 'disciplina');
-  renderGrupo('rel-tbody-turma', linhas, 'turma');
+  relLinhas = linhas;
+  renderTable('disciplina');
 }
 
-function renderGrupo(tbodyId, linhas, groupKey) {
-  const tbody = document.getElementById(tbodyId);
+function ordenarLinhas(linhas, sortKey) {
+  const secundarias = {
+    disciplina: ['turma', 'aluno'],
+    turma: ['disciplina', 'aluno'],
+    aluno: ['disciplina', 'turma'],
+  };
+  const chaves = [sortKey, ...(secundarias[sortKey] || [])];
+  return [...linhas].sort((a, b) => {
+    for (const k of chaves) {
+      const c = String(a[k] || '').localeCompare(String(b[k] || ''), 'pt-BR');
+      if (c) return c;
+    }
+    return 0;
+  });
+}
+
+function renderTable(sortKey) {
+  const tbody = document.getElementById('rel-tbody');
   if (!tbody) return;
 
-  if (!linhas.length) {
+  if (!relLinhas.length) {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Nenhum aluno abaixo da média ${MEDIA_CORTE} encontrado para os filtros selecionados</td></tr>`;
     return;
   }
 
-  const grupos = {};
-  linhas.forEach(l => {
-    const chave = l[groupKey];
-    if (!grupos[chave]) grupos[chave] = [];
-    grupos[chave].push(l);
-  });
+  const ordenadas = ordenarLinhas(relLinhas, sortKey);
+  const html = ordenadas.map(i => `<tr>
+    <td>${i.disciplina}</td>
+    <td>${i.turma}</td>
+    <td><strong>${i.aluno}</strong></td>
+    <td class="num">${i.matricula}</td>
+    <td class="num abaixo">${i.media_final.toFixed(1)}</td>
+    <td class="num"><span class="media-badge abaixo">Abaixo</span></td>
+  </tr>`).join('');
 
-  const chaves = Object.keys(grupos).sort((a, b) => a.localeCompare(b));
-  const subKey = groupKey === 'disciplina' ? 'turma' : 'disciplina';
-  let html = '';
-
-  chaves.forEach(chave => {
-    const items = grupos[chave].sort((a, b) => {
-      const s = a[subKey].localeCompare(b[subKey]);
-      if (s) return s;
-      return a.aluno.localeCompare(b.aluno);
-    });
-
-    html += `<tr class="group-header"><td colspan="6"><strong>${chave}</strong> — ${items.length} aluno(s) abaixo da média</td></tr>`;
-
-    items.forEach(i => {
-      html += `<tr>
-        <td>${i.disciplina}</td>
-        <td>${i.turma}</td>
-        <td><strong>${i.aluno}</strong></td>
-        <td class="num">${i.matricula}</td>
-        <td class="num abaixo">${i.media_final.toFixed(1)}</td>
-        <td class="num"><span class="media-badge abaixo">Abaixo</span></td>
-      </tr>`;
-    });
-  });
-
-  html += `<tr class="group-header"><td colspan="6"><strong>Total</strong> — ${linhas.length} aluno(s) abaixo da média</td></tr>`;
-  tbody.innerHTML = html;
+  tbody.innerHTML = html + `<tr class="group-header"><td colspan="6"><strong>Total</strong> — ${relLinhas.length} aluno(s) abaixo da média</td></tr>`;
 }
