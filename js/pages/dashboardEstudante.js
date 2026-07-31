@@ -11,6 +11,12 @@ let studentInfo = {};
 let studentNotas = [];
 let studentFreqs = [];
 
+function situacaoBadge(s) {
+  if (s === 'Aprovado' || s === 'Em Aprovação') return 'badge-sieac-success';
+  if (s === 'Recuperação Final' || s === 'Em Recuperação') return 'badge-sieac-warning';
+  return 'badge-sieac-secondary';
+}
+
 export async function render() {
   const main = document.getElementById('main-content');
   main.innerHTML = `
@@ -92,10 +98,10 @@ export async function render() {
               <div class="table-responsive-custom">
                 <table class="table-sieac" id="table-notas-estudante">
                   <thead>
-                    <tr><th>Disciplina</th><th class="num">1º Bim</th><th class="num">2º Bim</th><th class="num">3º Bim</th><th class="num">4º Bim</th><th class="num">Média</th></tr>
+                    <tr><th>Disciplina</th><th class="num">1º Bim</th><th class="num">2º Bim</th><th class="num">3º Bim</th><th class="num">4º Bim</th><th class="num">Média Acumulada</th><th>Situação</th></tr>
                   </thead>
                   <tbody id="tbody-notas-estudante">
-                    <tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Nenhum dado disponível</td></tr>
+                    <tr><td colspan="7" style="text-align:center;color:var(--sieac-text-muted);">Nenhum dado disponível</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -210,11 +216,12 @@ async function carregarEstudante(id) {
         <td class="num">${n.nota_2bim || '-'}</td>
         <td class="num">${n.nota_3bim || '-'}</td>
         <td class="num">${n.nota_4bim || '-'}</td>
-        <td class="num" style="font-weight:600;color:${parseFloat(n.media_final) >= 6 ? 'var(--sieac-success)' : 'var(--sieac-danger)'}">${n.media_final || '-'}</td>
+        <td class="num" style="font-weight:600;color:${parseFloat(n.media_acumulada) >= 6 ? 'var(--sieac-success)' : 'var(--sieac-danger)'}">${n.media_acumulada || '-'}</td>
+        <td><span class="badge ${situacaoBadge(n.situacao)}">${n.situacao}</span></td>
       </tr>
     `).join('');
   } else {
-    tbodyNotas.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Nenhuma nota encontrada</td></tr>';
+    tbodyNotas.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--sieac-text-muted);">Nenhuma nota encontrada</td></tr>';
   }
 
   const freqs = await getFrequenciaEstudante(id);
@@ -289,9 +296,10 @@ function gerarPdfEstudante() {
     n.nota_2bim || '-',
     n.nota_3bim || '-',
     n.nota_4bim || '-',
-    n.media_final || '-',
+    n.media_acumulada || '-',
+    n.situacao,
   ]);
-  const medias = studentNotas.map(n => parseFloat(n.media_final)).filter(v => !isNaN(v) && v > 0);
+  const medias = studentNotas.map(n => parseFloat(n.media_acumulada)).filter(v => !isNaN(v) && v > 0);
   const mediaGeral = medias.length ? Math.round((medias.reduce((a, b) => a + b, 0) / medias.length) * 10) / 10 : '-';
 
   const freqRows = studentFreqs.map(f => {
@@ -316,9 +324,9 @@ function gerarPdfEstudante() {
     tabelas: [
       {
         titulo: 'Notas por Disciplina',
-        colunas: ['Disciplina', '1º Bim', '2º Bim', '3º Bim', '4º Bim', 'Média'],
+        colunas: ['Disciplina', '1º Bim', '2º Bim', '3º Bim', '4º Bim', 'Média Acumulada', 'Situação'],
         linhas: notaRows,
-        colWidths: { 1: 16, 2: 16, 3: 16, 4: 16, 5: 16 },
+        colWidths: { 0: 38, 1: 16, 2: 16, 3: 16, 4: 16, 5: 18, 6: 22 },
         total: `Média geral: ${mediaGeral}`,
       },
       {

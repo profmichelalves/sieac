@@ -1,5 +1,5 @@
 export const EXPLICACAO_RESULTADO =
-  ' Como a média e o resultado são calculados: a média final (media_final) vem da coluna "MÉDIA FINAL" da planilha; quando zerada ou ausente, é calculada pela média das notas dos 4 bimestres (considerando apenas notas maiores que zero) e arredondada a 1 casa decimal. O resultado final (resultado_final) é o valor da coluna "RESULTADO FINAL"; se vazio ou "MATRICULADO", é derivado da média: APROVADO quando média ≥ 6 e REPROVADO quando média < 6. Sem média válida, o resultado final fica vazio.';
+  ' Como a média e a situação são calculadas: a média acumulada é a média aritmética das notas dos bimestres lançados (considerando apenas notas maiores que zero), arredondada a 1 casa decimal. Durante o ano letivo (com menos de 4 bimestres lançados): média ≥ 6 → Em Aprovação; média < 6 → Em Recuperação. Ao final do ano (com os 4 bimestres lançados): média ≥ 6 → Aprovado; média < 6 → Recuperação Final. A frequência é a média dos percentuais registrados; frequência inferior a 75% resulta em reprovação, independentemente da média.';
 
 function esc(str) {
   return String(str)

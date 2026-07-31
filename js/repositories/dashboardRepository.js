@@ -5,6 +5,24 @@ let refCache = null;
 let estudantesPermitidos = null;
 let permitidosCarregados = false;
 
+function notasPreenchidas(n1, n2, n3, n4) {
+  return [n1, n2, n3, n4].map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+}
+
+function calcularMediaAcumulada(n1, n2, n3, n4) {
+  const notas = notasPreenchidas(n1, n2, n3, n4);
+  if (!notas.length) return null;
+  return Math.round((notas.reduce((a, b) => a + b, 0) / notas.length) * 10) / 10;
+}
+
+function calcularSituacao(n1, n2, n3, n4) {
+  const notas = notasPreenchidas(n1, n2, n3, n4);
+  if (!notas.length) return 'Sem avaliações';
+  const media = notas.reduce((a, b) => a + b, 0) / notas.length;
+  if (notas.length >= 4) return media >= 6 ? 'Aprovado' : 'Recuperação Final';
+  return media >= 6 ? 'Em Aprovação' : 'Em Recuperação';
+}
+
 async function getRefCache() {
   if (refCache) return refCache;
   const [s, t, c, p, e] = await Promise.all([
@@ -359,6 +377,8 @@ export async function getDetalheResultados(filters = {}) {
       nota_3bim: n.nota_3bim,
       nota_4bim: n.nota_4bim,
       media_final: n.media_final,
+      media_acumulada: calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim),
+      situacao: calcularSituacao(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim),
       media_estudante: medias[n.estudante_id] ? medias[n.estudante_id].soma / medias[n.estudante_id].count : null,
       frequencia: frequencia != null ? Math.round(frequencia * 10) / 10 : null,
       resultado_final: n.resultado_final || '-',
@@ -668,6 +688,8 @@ export async function getNotasEstudante(estudanteId) {
     nota_3bim: n.nota_3bim,
     nota_4bim: n.nota_4bim,
     media_final: n.media_final,
+    media_acumulada: calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim),
+    situacao: calcularSituacao(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim),
   }));
   return { data, error: null };
 }

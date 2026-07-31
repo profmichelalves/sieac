@@ -238,7 +238,7 @@ function gerarPdfCard(tipo) {
     meta,
     tabelas: [{
       titulo: `${conf.tabela} — Estudante, Turma, Disciplina e Notas`,
-      colunas: ['Estudante', 'Matrícula', 'Turma', 'Disciplina', '1º Bim', '2º Bim', '3º Bim', '4º Bim', 'Média Final', 'Média Anual', 'Freq. (%)', 'Resultado'],
+      colunas: ['Estudante', 'Matrícula', 'Turma', 'Disciplina', '1º Bim', '2º Bim', '3º Bim', '4º Bim', 'Média Acumulada', 'Freq. (%)', 'Situação'],
       linhas: linhas.map(l => [
         l.estudante,
         l.matricula,
@@ -248,12 +248,11 @@ function gerarPdfCard(tipo) {
         fmtNota(l.nota_2bim),
         fmtNota(l.nota_3bim),
         fmtNota(l.nota_4bim),
-        fmtNota(l.media_final),
-        fmtNota(l.media_estudante),
+        fmtNota(l.media_acumulada),
         fmtNota(l.frequencia),
-        l.resultado_final,
+        l.situacao,
       ]),
-      colWidths: { 0: 30, 1: 14, 2: 12, 3: 32, 4: 6.5, 5: 6.5, 6: 6.5, 7: 6.5, 8: 10, 9: 10, 10: 12, 11: 11 },
+      colWidths: { 0: 30, 1: 14, 2: 12, 3: 32, 4: 6.5, 5: 6.5, 6: 6.5, 7: 6.5, 8: 11, 9: 12, 10: 13 },
       total: `Total — ${linhas.length} registro(s) de ${conf.total}`,
     }],
   });
