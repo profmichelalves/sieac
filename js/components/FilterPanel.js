@@ -165,13 +165,14 @@ function rebuildSelectOptions(valid) {
   if (!filterData) return;
   const { etapas, series, turmas, componentes, professores, turnos } = filterData;
 
+  const has = (arr) => arr?.length ? new Set(arr) : null;
   const config = [
-    { id: 'filter-etapa', items: etapas, text: e => e.nome, val: e => e.id, validSet: valid?.etapaIds ? new Set(valid.etapaIds) : null },
-    { id: 'filter-serie', items: series, text: s => s.nome, val: s => s.id, validSet: valid?.serieIds ? new Set(valid.serieIds) : null },
-    { id: 'filter-turma', items: turmas, text: t => t.nome, val: t => t.id, validSet: valid?.turmaIds ? new Set(valid.turmaIds) : null },
-    { id: 'filter-turno', items: turnos, text: t => t, val: t => t, validSet: valid?.turnos ? new Set(valid.turnos) : null },
-    { id: 'filter-disciplina', items: componentes, text: c => c.nome, val: c => c.id, validSet: valid?.compIds ? new Set(valid.compIds) : null },
-    { id: 'filter-professor', items: professores, text: p => p.nome, val: p => p.id, validSet: valid?.profIds ? new Set(valid.profIds) : null },
+    { id: 'filter-etapa', items: etapas, text: e => e.nome, val: e => e.id, validSet: has(valid?.etapaIds) },
+    { id: 'filter-serie', items: series, text: s => s.nome, val: s => s.id, validSet: has(valid?.serieIds) },
+    { id: 'filter-turma', items: turmas, text: t => t.nome, val: t => t.id, validSet: has(valid?.turmaIds) },
+    { id: 'filter-turno', items: turnos, text: t => t, val: t => t, validSet: has(valid?.turnos) },
+    { id: 'filter-disciplina', items: componentes, text: c => c.nome, val: c => c.id, validSet: has(valid?.compIds) },
+    { id: 'filter-professor', items: professores, text: p => p.nome, val: p => p.id, validSet: has(valid?.profIds) },
   ];
 
   const placeholder = {
