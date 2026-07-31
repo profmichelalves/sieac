@@ -134,8 +134,8 @@ function computeValidOptions(pending) {
   turmV = turmV.filter(t => t.serie_id != null);
 
   const validTurmaIds = new Set(turmV.map(t => t.id));
-  const validSerieIds = new Set(tur mV.map(t => t.serie_id));
-  const validTurnos = new Set(tur mV.map(t => t.turno).filter(Boolean));
+  const validSerieIds = new Set(turmV.map(t => t.serie_id));
+  const validTurnos = new Set(turmV.map(t => t.turno).filter(Boolean));
 
   aloc = aloc.filter(a => validTurmaIds.has(a.turma_id));
   const validProfIds = new Set(aloc.map(a => a.professor_id));
