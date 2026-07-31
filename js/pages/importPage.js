@@ -1,6 +1,8 @@
 import { $, showToast } from '../utils/helpers.js';
 import { importarNotas, importarFrequencia } from '../services/importService.js';
 import { supabaseRpc } from '../services/supabase.js';
+import { clearCache } from '../repositories/dashboardRepository.js';
+import { clearFilterCache } from '../components/FilterPanel.js';
 
 const TABELAS = [
   { id: 'notas', label: 'Notas' },
@@ -13,7 +15,6 @@ const TABELAS = [
   { id: 'componentes_curriculares', label: 'Componentes Curriculares' },
   { id: 'series', label: 'Séries' },
   { id: 'etapas_ensino', label: 'Etapas de Ensino' },
-  { id: 'escolas', label: 'Escolas' },
 ];
 
 export async function render() {
@@ -182,6 +183,9 @@ async function processFile(tipo, file) {
   }
 
   result.style.display = 'block';
+
+  clearCache();
+  clearFilterCache();
 
   const ignoradosCount = (res.ignorados || []).length;
   result.innerHTML = `

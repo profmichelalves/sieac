@@ -2,7 +2,7 @@ import { supabaseQuery } from '../services/supabase.js';
 import { isProfessor, getProfessorVinculo } from '../services/authService.js';
 
 const CACHE_KEY = 'sieac_filter_cache';
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 
 function loadFilterCache() {
   try {
