@@ -14,12 +14,24 @@ export async function render() {
         #sidebar-wrapper, .navbar, .page-title, .page-subtitle, #filter-container-relatorios,
         .btn-print, .kpi-card, .no-print { display:none !important; }
         #main-content { margin-left:0 !important; width:100% !important; }
-        .report-container { box-shadow:none !important; padding:0 !important; }
-        .report-header img { max-width:50px; }
+        .report-container { box-shadow:none !important; padding:8px !important; }
+        .report-header { margin-bottom:8px; padding-bottom:8px; }
+        .report-header img { max-width:36px; height:36px; }
+        .report-header h2 { font-size:1rem; }
+        .report-header small { font-size:0.65rem; }
+        .report-meta { margin-bottom:8px; font-size:0.7rem; }
+        .report-meta span { margin-right:12px; }
+        .report-section-title { margin:10px 0 4px; font-size:0.85rem; }
+        .report-table { margin-bottom:0; }
+        .report-table th { padding:2px 5px; font-size:0.62rem; }
+        .report-table td { padding:1px 5px; font-size:0.68rem; }
+        .report-table .col-situacao { display:none; }
+        .report-table .group-header td { padding:2px 5px; font-size:0.7rem; }
         table { page-break-inside:auto; border-collapse:collapse; width:100%; }
         tr { page-break-inside:avoid; page-break-after:auto; }
         thead { display:table-header-group; }
         .print-only { display:block !important; }
+        @page { margin: 8mm; }
       }
       .print-only { display:none; }
       .report-container {
@@ -117,7 +129,7 @@ export async function render() {
               <th style="min-width:160px;">Aluno</th>
               <th class="num" style="min-width:70px;">Matrícula</th>
               <th class="num" style="min-width:80px;">Média Final</th>
-              <th style="min-width:90px;">Situação</th>
+              <th class="col-situacao" style="min-width:90px;">Situação</th>
             </tr>
           </thead>
           <tbody id="rel-tbody">
@@ -236,6 +248,7 @@ async function loadData() {
     const estudante = estMap[n.estudante_id];
     if (!cId || !tId || !estudante) return null;
     return {
+      estudante_id: n.estudante_id,
       disciplina: compMap[cId] || `Disciplina ${cId}`,
       turma: turmaMap[tId] || `Turma ${tId}`,
       aluno: estudante.nome,
@@ -280,8 +293,9 @@ function renderTable(sortKey) {
     <td><strong>${i.aluno}</strong></td>
     <td class="num">${i.matricula}</td>
     <td class="num abaixo">${i.media_final.toFixed(1)}</td>
-    <td class="num"><span class="media-badge abaixo">Abaixo</span></td>
+    <td class="num col-situacao"><span class="media-badge abaixo">Abaixo</span></td>
   </tr>`).join('');
 
-  tbody.innerHTML = html + `<tr class="group-header"><td colspan="6"><strong>Total</strong> — ${relLinhas.length} aluno(s) abaixo da média</td></tr>`;
+  const totalAlunos = new Set(relLinhas.map(l => l.estudante_id)).size;
+  tbody.innerHTML = html + `<tr class="group-header"><td colspan="6"><strong>Total</strong> — ${totalAlunos} aluno(s) abaixo da média</td></tr>`;
 }
