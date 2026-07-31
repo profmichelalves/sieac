@@ -229,33 +229,63 @@ async function getEstudantesImportados(filters) {
   return ids.size;
 }
 
-export async function getResumoGeral(filters = {}) {
+// Classifica cada estudante pela média anual e frequência média:
+//  - Reprovado:     frequência < 75% (independente da média)
+//  - Aprovado:      média anual ≥ 6,0 e frequência ≥ 75%
+//  - Recuperação:   média anual < 6,0 (com frequência ≥ 75%)
+async function classificarEstudantes(filters) {
   await getRefCache();
-  const [totalEstudantes, notas, frequencias] = await Promise.all([
-    getEstudantesImportados(filters),
-    queryNotas(filters, 'estudante_id,media_final,resultado_final,alocacao_id'),
-    queryFrequencias(filters, 'percentual_frequencia,estudante_id'),
+  const [notas, freqs] = await Promise.all([
+    queryNotas(filters, 'estudante_id,media_final'),
+    queryFrequencias(filters, 'estudante_id,percentual_frequencia'),
   ]);
 
-  const alunos = {};
+  const medias = {};
   notas.forEach(n => {
     const mf = parseFloat(n.media_final);
     if (isNaN(mf) || mf <= 0) return;
-    if (!alunos[n.estudante_id]) alunos[n.estudante_id] = { soma: 0, count: 0, aprovCount: 0, totalCount: 0 };
-    alunos[n.estudante_id].soma += mf;
-    alunos[n.estudante_id].count++;
-    alunos[n.estudante_id].totalCount++;
-    const r = (n.resultado_final || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (r.includes('aprov')) alunos[n.estudante_id].aprovCount++;
+    if (!medias[n.estudante_id]) medias[n.estudante_id] = { soma: 0, count: 0 };
+    medias[n.estudante_id].soma += mf;
+    medias[n.estudante_id].count++;
   });
 
-  const medias = Object.values(alunos).map(a => a.soma / a.count);
-  const mediaGeral = medias.length ? medias.reduce((a, b) => a + b, 0) / medias.length : 0;
+  const freqsPorEstudante = {};
+  freqs.forEach(f => {
+    const p = parseFloat(f.percentual_frequencia);
+    if (isNaN(p)) return;
+    if (!freqsPorEstudante[f.estudante_id]) freqsPorEstudante[f.estudante_id] = { soma: 0, count: 0 };
+    freqsPorEstudante[f.estudante_id].soma += p;
+    freqsPorEstudante[f.estudante_id].count++;
+  });
+
+  const classificacao = {};
+  Object.entries(medias).forEach(([eId, m]) => {
+    const f = freqsPorEstudante[eId];
+    const frequencia = f ? f.soma / f.count : null;
+    if (frequencia != null && frequencia < 75) classificacao[eId] = 'reprovado';
+    else if (m.soma / m.count >= 6) classificacao[eId] = 'aprovado';
+    else classificacao[eId] = 'recuperacao';
+  });
+
+  return { classificacao, medias, frequenciasPorEstudante: freqsPorEstudante, totalNotas: notas.length };
+}
+
+export async function getResumoGeral(filters = {}) {
+  await getRefCache();
+  const [totalEstudantes, dados, frequencias] = await Promise.all([
+    getEstudantesImportados(filters),
+    classificarEstudantes(filters),
+    queryFrequencias(filters, 'percentual_frequencia,estudante_id'),
+  ]);
+  const { classificacao, medias } = dados;
+
+  const valoresMedias = Object.values(medias).map(m => m.soma / m.count);
+  const mediaGeral = valoresMedias.length ? valoresMedias.reduce((a, b) => a + b, 0) / valoresMedias.length : 0;
 
   let aprovados = 0, reprovados = 0, recuperacao = 0;
-  Object.values(alunos).forEach(a => {
-    if (a.aprovCount === a.totalCount) aprovados++;
-    else if (a.aprovCount > 0) recuperacao++;
+  Object.values(classificacao).forEach(c => {
+    if (c === 'aprovado') aprovados++;
+    else if (c === 'recuperacao') recuperacao++;
     else reprovados++;
   });
   const total = aprovados + reprovados + recuperacao || 1;
@@ -278,26 +308,17 @@ export async function getResumoGeral(filters = {}) {
     reprovacao_pct: Math.round(reprovados / total * 100),
     recuperacao_pct: Math.round(recuperacao / total * 100),
     total_recuperacao: recuperacao,
-    total_notas: notas.length,
+    total_notas: dados.totalNotas,
   };
 }
 
 export async function getResultadoFinal(filters = {}) {
-  await getRefCache();
-  const notas = await queryNotas(filters, 'estudante_id,resultado_final,alocacao_id');
-
-  const alunos = {};
-  notas.forEach(n => {
-    if (!alunos[n.estudante_id]) alunos[n.estudante_id] = { aprovCount: 0, totalCount: 0 };
-    alunos[n.estudante_id].totalCount++;
-    const r = (n.resultado_final || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (r.includes('aprov')) alunos[n.estudante_id].aprovCount++;
-  });
+  const { classificacao } = await classificarEstudantes(filters);
 
   let aprov = 0, repr = 0, recup = 0;
-  Object.values(alunos).forEach(a => {
-    if (a.aprovCount === a.totalCount) aprov++;
-    else if (a.aprovCount > 0) recup++;
+  Object.values(classificacao).forEach(c => {
+    if (c === 'aprovado') aprov++;
+    else if (c === 'recuperacao') recup++;
     else repr++;
   });
 
@@ -306,20 +327,11 @@ export async function getResultadoFinal(filters = {}) {
 
 export async function getDetalheResultados(filters = {}) {
   await getRefCache();
-  const notas = await queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,resultado_final');
-
-  const alunos = {};
-  const grupos = {};
-  notas.forEach(n => {
-    const mf = parseFloat(n.media_final);
-    if (isNaN(mf) || mf <= 0) return;
-    if (!alunos[n.estudante_id]) alunos[n.estudante_id] = { aprovCount: 0, totalCount: 0 };
-    alunos[n.estudante_id].totalCount++;
-    const r = (n.resultado_final || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (r.includes('aprov')) alunos[n.estudante_id].aprovCount++;
-    if (!grupos[n.estudante_id]) grupos[n.estudante_id] = [];
-    grupos[n.estudante_id].push(n);
-  });
+  const [notas, dados] = await Promise.all([
+    queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,resultado_final'),
+    classificarEstudantes(filters),
+  ]);
+  const { classificacao, medias, frequenciasPorEstudante } = dados;
 
   const eMap = {}; refCache.estudantes.forEach(e => eMap[e.id] = e);
   const alocTurma = {}; refCache.alocacoes.forEach(a => alocTurma[a.id] = a.turma_id);
@@ -327,26 +339,29 @@ export async function getDetalheResultados(filters = {}) {
   const tMap = {}; refCache.turmas.forEach(t => tMap[t.id] = t.nome);
   const cMap = {}; refCache.componentes.forEach(c => cMap[c.id] = c.nome);
 
+  const catMap = { aprovado: 'aprovados', recuperacao: 'recuperacao', reprovado: 'reprovados' };
   const resultado = { aprovados: [], recuperacao: [], reprovados: [] };
-  Object.entries(alunos).forEach(([eId, a]) => {
-    let cat;
-    if (a.aprovCount === a.totalCount) cat = 'aprovados';
-    else if (a.aprovCount > 0) cat = 'recuperacao';
-    else cat = 'reprovados';
-    const e = eMap[eId];
-    (grupos[eId] || []).forEach(n => {
-      resultado[cat].push({
-        estudante: e?.nome || `ID ${eId}`,
-        matricula: e?.matricula || '-',
-        turma: tMap[alocTurma[n.alocacao_id]] || '-',
-        disciplina: cMap[alocComp[n.alocacao_id]] || 'N/I',
-        nota_1bim: n.nota_1bim,
-        nota_2bim: n.nota_2bim,
-        nota_3bim: n.nota_3bim,
-        nota_4bim: n.nota_4bim,
-        media_final: n.media_final,
-        resultado_final: n.resultado_final || '-',
-      });
+  notas.forEach(n => {
+    const mf = parseFloat(n.media_final);
+    if (isNaN(mf) || mf <= 0) return;
+    const cat = catMap[classificacao[n.estudante_id]];
+    if (!cat) return;
+    const e = eMap[n.estudante_id];
+    const f = frequenciasPorEstudante[n.estudante_id];
+    const frequencia = f ? f.soma / f.count : null;
+    resultado[cat].push({
+      estudante: e?.nome || `ID ${n.estudante_id}`,
+      matricula: e?.matricula || '-',
+      turma: tMap[alocTurma[n.alocacao_id]] || '-',
+      disciplina: cMap[alocComp[n.alocacao_id]] || 'N/I',
+      nota_1bim: n.nota_1bim,
+      nota_2bim: n.nota_2bim,
+      nota_3bim: n.nota_3bim,
+      nota_4bim: n.nota_4bim,
+      media_final: n.media_final,
+      media_estudante: medias[n.estudante_id] ? medias[n.estudante_id].soma / medias[n.estudante_id].count : null,
+      frequencia: frequencia != null ? Math.round(frequencia * 10) / 10 : null,
+      resultado_final: n.resultado_final || '-',
     });
   });
 

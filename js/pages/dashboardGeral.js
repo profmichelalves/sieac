@@ -57,7 +57,7 @@ export async function render() {
           <div class="kpi-label">Aprovação</div>
           <div class="kpi-value" style="color:var(--sieac-success)"><span id="kpi-aprovacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-check-circle"></i></div>
-          ${infoBtn('Aprovação', 'Percentual de estudantes em que todos os resultados finais registrados indicaram aprovação.' + EXPLICACAO_RESULTADO)}
+          ${infoBtn('Aprovação', 'Percentual de estudantes aprovados: média anual ≥ 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% são contados como reprovados.' + EXPLICACAO_RESULTADO)}
           <button class="btn btn-sm btn-outline-success kpi-pdf-btn no-print mt-2" data-tipo="aprovados">
             <i class="bi bi-file-earmark-pdf"></i> PDF
           </button>
@@ -68,7 +68,7 @@ export async function render() {
           <div class="kpi-label">Recuperação</div>
           <div class="kpi-value" style="color:var(--sieac-warning)"><span id="kpi-recuperacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-arrow-repeat"></i></div>
-          ${infoBtn('Recuperação', 'Percentual de estudantes com aprovação parcial: ao menos uma disciplina aprovada e ao menos uma reprovada.' + EXPLICACAO_RESULTADO)}
+          ${infoBtn('Recuperação', 'Percentual de estudantes em recuperação: média anual < 6,0 e frequência ≥ 75%, participando das atividades de recuperação previstas. Frequência < 75% é contada como reprovação.' + EXPLICACAO_RESULTADO)}
           <button class="btn btn-sm btn-outline-warning kpi-pdf-btn no-print mt-2" data-tipo="recuperacao">
             <i class="bi bi-file-earmark-pdf"></i> PDF
           </button>
@@ -79,7 +79,7 @@ export async function render() {
           <div class="kpi-label">Reprovação</div>
           <div class="kpi-value" style="color:var(--sieac-danger)"><span id="kpi-reprovacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-x-circle"></i></div>
-          ${infoBtn('Reprovação', 'Percentual de estudantes sem nenhum resultado de aprovação. Estudantes com aprovação parcial são classificados como Recuperação.' + EXPLICACAO_RESULTADO)}
+          ${infoBtn('Reprovação', 'Percentual de estudantes reprovados: frequência média < 75% ou média anual < 6,0 após recuperação e deliberação do Conselho de Classe.' + EXPLICACAO_RESULTADO)}
           <button class="btn btn-sm btn-outline-danger kpi-pdf-btn no-print mt-2" data-tipo="reprovados">
             <i class="bi bi-file-earmark-pdf"></i> PDF
           </button>
@@ -90,7 +90,7 @@ export async function render() {
     <div class="row g-4">
       <div class="col-md-5">
         <div class="chart-card">
-          <div class="chart-card-title">Distribuição dos Resultados Finais ${infoBtn('Distribuição dos Resultados Finais', 'Conta os estudantes pelo resultado final das notas (Aprovado, Reprovado ou Recuperação). Quando um estudante tem mais de um resultado, só é considerado Aprovado se todos forem de aprovação; aprovação parcial é contada como Recuperação.' + EXPLICACAO_RESULTADO)}</div>
+          <div class="chart-card-title">Distribuição dos Resultados Finais ${infoBtn('Distribuição dos Resultados Finais', 'Classifica os estudantes pela média anual e pela frequência: Aprovado (média ≥ 6,0 e frequência ≥ 75%), Recuperação (média < 6,0 com frequência ≥ 75%) e Reprovado (frequência < 75% ou média insuficiente após recuperação).' + EXPLICACAO_RESULTADO)}</div>
           <div class="chart-container" style="height:320px;">
             <canvas id="chart-resultado-final"></canvas>
           </div>
@@ -238,7 +238,7 @@ function gerarPdfCard(tipo) {
     meta,
     tabelas: [{
       titulo: `${conf.tabela} — Estudante, Turma, Disciplina e Notas`,
-      colunas: ['Estudante', 'Matrícula', 'Turma', 'Disciplina', '1º Bim', '2º Bim', '3º Bim', '4º Bim', 'Média Final', 'Resultado'],
+      colunas: ['Estudante', 'Matrícula', 'Turma', 'Disciplina', '1º Bim', '2º Bim', '3º Bim', '4º Bim', 'Média Final', 'Média Anual', 'Freq. (%)', 'Resultado'],
       linhas: linhas.map(l => [
         l.estudante,
         l.matricula,
@@ -249,9 +249,11 @@ function gerarPdfCard(tipo) {
         fmtNota(l.nota_3bim),
         fmtNota(l.nota_4bim),
         fmtNota(l.media_final),
+        fmtNota(l.media_estudante),
+        fmtNota(l.frequencia),
         l.resultado_final,
       ]),
-      colWidths: { 0: 34, 1: 16, 2: 14, 3: 34, 4: 7.5, 5: 7.5, 6: 7.5, 7: 7.5, 8: 11, 9: 13 },
+      colWidths: { 0: 30, 1: 14, 2: 12, 3: 32, 4: 6.5, 5: 6.5, 6: 6.5, 7: 6.5, 8: 10, 9: 10, 10: 12, 11: 11 },
       total: `Total — ${linhas.length} registro(s) de ${conf.total}`,
     }],
   });
