@@ -1,4 +1,4 @@
-import { getCurrentUser } from './services/authService.js';
+import { getCurrentUser, isAdmin, isGestao } from './services/authService.js';
 import { isAuthenticated } from './utils/helpers.js';
 import { showToast } from './utils/helpers.js';
 
@@ -11,8 +11,8 @@ const routes = {
   'dashboard-comparativo': { page: 'dashboardComparativo', auth: true },
   'dashboard-estudante': { page: 'dashboardEstudante', auth: true },
   'relatorios': { page: 'relatoriosPage', auth: true },
-  'importar': { page: 'importPage', auth: true, perfil: ['Administrador', 'Gestão Escolar'] },
-  'usuarios': { page: 'usuariosPage', auth: true, perfil: ['Administrador'] },
+  'importar': { page: 'importPage', auth: true, can: isGestao },
+  'usuarios': { page: 'usuariosPage', auth: true, can: isAdmin },
 };
 
 let currentPage = null;
@@ -31,10 +31,9 @@ export async function navigate() {
     return navigate();
   }
 
-  if (route.perfil) {
+  if (route.can) {
     const user = getCurrentUser();
-    const perfisPermitidos = Array.isArray(route.perfil) ? route.perfil : [route.perfil];
-    if (!perfisPermitidos.includes(user?.perfil)) {
+    if (!route.can(user)) {
       showToast('Acesso restrito. Você não tem permissão para acessar esta página.', 'warning');
       window.location.hash = 'dashboard-geral';
       return navigate();
