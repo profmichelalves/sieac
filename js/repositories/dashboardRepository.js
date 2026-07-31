@@ -686,8 +686,11 @@ export async function getTurmasEstudante(estudanteId) {
   const alocTurma = {}; refCache.alocacoes.forEach(a => alocTurma[a.id] = a.turma_id);
 
   const turmas = [];
+  const vistas = new Set();
   ids.forEach(aId => {
     const tId = alocTurma[aId];
+    if (tId == null || vistas.has(tId)) return;
+    vistas.add(tId);
     const t = refCache.turmas.find(x => x.id === tId);
     if (t) turmas.push({ nome: t.nome, serie: sMap[t.serie_id] || '', turno: t.turno || '' });
   });
