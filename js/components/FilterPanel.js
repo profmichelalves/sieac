@@ -120,8 +120,6 @@ function computeValidOptions(pending) {
   if (!filterData) return null;
   const { series, turmas, alocacoes } = filterData;
 
-  const toNum = v => v == null ? null : Number(v);
-
   let aloc = alocacoes;
   if (pending.componente_id) aloc = aloc.filter(a => a.componente_id == pending.componente_id);
   if (pending.professor_id) aloc = aloc.filter(a => a.professor_id == pending.professor_id);
@@ -208,6 +206,8 @@ function rebuildSelectOptions(valid) {
     if (cfg.validSet) {
       const stillValid = currentVal && (cfg.validSet.has(Number(currentVal)) || cfg.validSet.has(currentVal));
       sel.value = stillValid ? currentVal : '';
+    } else {
+      sel.value = currentVal;
     }
   }
 }
@@ -321,10 +321,14 @@ function bindFilterEvents() {
     const el = document.getElementById(id);
     if (el && !el.disabled) {
       el.addEventListener('change', () => {
-        rebuildPending();
-        const valid = computeValidOptions(pendingFilters);
-        rebuildSelectOptions(valid);
-        markDirty();
+        try {
+          rebuildPending();
+          const valid = computeValidOptions(pendingFilters);
+          rebuildSelectOptions(valid);
+          markDirty();
+        } catch (e) {
+          console.error('FilterPanel change handler:', e);
+        }
       });
     }
   });
