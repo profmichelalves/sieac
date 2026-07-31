@@ -1,5 +1,5 @@
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
-import { supabaseQuery } from '../services/supabase.js';
+import { supabaseFetchAll, supabaseQuery } from '../services/supabase.js';
 
 const MEDIA_CORTE = 6;
 
@@ -186,11 +186,11 @@ async function loadData() {
   const filtroInfo = document.getElementById('rel-filtros-info');
   const filtrosAtivos = [];
   if (filters.etapa_id) {
-    const { data: etapas } = await supabaseQuery('etapas_ensino', { select: 'nome', id: filters.etapa_id });
+    const { data: etapas } = await supabaseQuery('etapas_ensino', { select: 'nome', filters: [{ col: 'id', val: filters.etapa_id }] });
     if (etapas && etapas[0]) filtrosAtivos.push(`Etapa: ${etapas[0].nome}`);
   }
   if (filters.serie_id) {
-    const s = (await supabaseQuery('series', { select: 'nome', id: filters.serie_id })).data;
+    const { data: s } = await supabaseQuery('series', { select: 'nome', filters: [{ col: 'id', val: filters.serie_id }] });
     if (s && s[0]) filtrosAtivos.push(`Série: ${s[0].nome}`);
   }
   if (filters.turma_id) {
@@ -203,12 +203,12 @@ async function loadData() {
     if (c) filtrosAtivos.push(`Disciplina: ${c.nome}`);
   }
   if (filters.professor_id) {
-    const { data: profs } = await supabaseQuery('professores', { select: 'nome', id: filters.professor_id });
+    const { data: profs } = await supabaseQuery('professores', { select: 'nome', filters: [{ col: 'id', val: filters.professor_id }] });
     if (profs && profs[0]) filtrosAtivos.push(`Professor: ${profs[0].nome}`);
   }
   filtroInfo.innerHTML = filtrosAtivos.length ? `<strong>Filtros:</strong> ${filtrosAtivos.join(' | ')}` : '';
 
-  const { data: notas } = await supabaseQuery('notas', { select: 'estudante_id,media_final,alocacao_id', limit: 20000 });
+  const { data: notas } = await supabaseFetchAll('notas', { select: 'estudante_id,media_final,alocacao_id' });
   const filtradas = aplicarFiltros(notas || [], filters, cache);
 
   const alocComp = {}; cache.alocacoes.forEach(a => alocComp[a.id] = a.componente_id);

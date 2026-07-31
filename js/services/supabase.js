@@ -46,7 +46,7 @@ export const rest = {
 };
 
 export function buildQuery(table, options = {}) {
-  const { select = '*', filters = [], order, limit, range } = options;
+  const { select = '*', filters = [], order, limit, offset, range } = options;
   let query = `/rest/v1/${table}?select=${select}`;
   filters.forEach(f => {
     if (!f.col || f.val === undefined || f.val === null || f.val === '') return;
@@ -62,6 +62,7 @@ export function buildQuery(table, options = {}) {
   });
   if (order) query += `&order=${order}`;
   if (limit) query += `&limit=${limit}`;
+  if (offset) query += `&offset=${offset}`;
   if (range) query += `&range=${range}`;
   return query;
 }
@@ -69,6 +70,23 @@ export function buildQuery(table, options = {}) {
 export async function supabaseQuery(table, options = {}) {
   const path = buildQuery(table, options);
   return rest.get(path);
+}
+
+export async function supabaseFetchAll(table, options = {}) {
+  const PAGE = 1000;
+  const { select = '*', filters = [], order, limit = 30000 } = options;
+  const all = [];
+  let fetched = 0;
+  while (fetched < limit) {
+    const take = Math.min(PAGE, limit - fetched);
+    const path = buildQuery(table, { select, filters, order, limit: take, offset: fetched });
+    const res = await rest.get(path);
+    const data = res.data || [];
+    all.push(...data);
+    if (data.length < take) break;
+    fetched += data.length;
+  }
+  return { data: all, error: null };
 }
 
 export async function supabaseUpsert(table, rows, onConflict) {

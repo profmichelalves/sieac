@@ -1,4 +1,4 @@
-import { supabaseQuery } from '../services/supabase.js';
+import { supabaseQuery, supabaseFetchAll } from '../services/supabase.js';
 
 let refCache = null;
 
@@ -120,14 +120,13 @@ function montarFiltrosFrequencia(filters) {
 async function queryNotas(filters, selectFields) {
   const f = montarFiltrosNotas(filters);
   if (!f) {
-    const res = await supabaseQuery('notas', { select: selectFields, limit: 30000 });
+    const res = await supabaseFetchAll('notas', { select: selectFields });
     return res.data || [];
   }
   if (f.alocacao_ids && f.alocacao_ids.length) {
-    const res = await supabaseQuery('notas', {
+    const res = await supabaseFetchAll('notas', {
       select: selectFields,
       filters: [{ col: 'alocacao_id', val: f.alocacao_ids, op: 'in' }],
-      limit: 30000,
     });
     return res.data || [];
   }
@@ -136,7 +135,7 @@ async function queryNotas(filters, selectFields) {
     if (f.alocacao_ids && f.alocacao_ids.length) {
       fil.push({ col: 'alocacao_id', val: f.alocacao_ids, op: 'in' });
     }
-    const res = await supabaseQuery('notas', { select: selectFields, filters: fil, limit: 30000 });
+    const res = await supabaseFetchAll('notas', { select: selectFields, filters: fil });
     return res.data || [];
   }
   return [];
@@ -145,14 +144,13 @@ async function queryNotas(filters, selectFields) {
 async function queryFrequencias(filters, selectFields) {
   const f = montarFiltrosFrequencia(filters);
   if (!f) {
-    const res = await supabaseQuery('frequencias', { select: selectFields, limit: 30000 });
+    const res = await supabaseFetchAll('frequencias', { select: selectFields });
     return res.data || [];
   }
   if (f.turma_ids && f.turma_ids.length) {
-    const res = await supabaseQuery('frequencias', {
+    const res = await supabaseFetchAll('frequencias', {
       select: selectFields,
       filters: [{ col: 'turma_id', val: f.turma_ids, op: 'in' }],
-      limit: 30000,
     });
     return res.data || [];
   }
@@ -161,7 +159,7 @@ async function queryFrequencias(filters, selectFields) {
     if (f.turma_ids && f.turma_ids.length) {
       fil.push({ col: 'turma_id', val: f.turma_ids, op: 'in' });
     }
-    const res = await supabaseQuery('frequencias', { select: selectFields, filters: fil, limit: 30000 });
+    const res = await supabaseFetchAll('frequencias', { select: selectFields, filters: fil });
     return res.data || [];
   }
   return [];
