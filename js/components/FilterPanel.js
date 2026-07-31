@@ -2,9 +2,11 @@ import { $, showToast } from '../utils/helpers.js';
 import { supabaseQuery } from '../services/supabase.js';
 import { isProfessor, getProfessorVinculo } from '../services/authService.js';
 
-let currentFilters = {};
+let appliedFilters = {};
+let pendingFilters = {};
 let onChangeCallback = null;
 let professorVinculo = null;
+let isDirty = false;
 
 async function getFilterData() {
   const userIsProfessor = isProfessor();
@@ -42,6 +44,14 @@ async function getFilterData() {
     profData = profData.filter(p => p.id === professorVinculo.id);
   }
 
+  const defaultFilters = {};
+  if (userIsProfessor && professorVinculo) {
+    defaultFilters.professor_id = String(professorVinculo.id);
+  }
+  appliedFilters = { ...defaultFilters };
+  pendingFilters = { ...defaultFilters };
+  isDirty = false;
+
   return {
     series: seriesData,
     turmas: turmasData,
@@ -52,6 +62,7 @@ async function getFilterData() {
     anosLetivos,
     userIsProfessor,
     profId: professorVinculo?.id,
+    defaultFilters,
   };
 }
 
@@ -63,6 +74,25 @@ export async function renderFilterPanel(containerId, onChange) {
   const data = await getFilterData();
 
   container.innerHTML = `
+    <style>
+      .filter-bar { position:relative; }
+      .filter-select.filter-dirty {
+        border-color: var(--sieac-warning, #ffd000) !important;
+        box-shadow: 0 0 0 2px rgba(255,208,0,0.25) !important;
+      }
+      .btn-pesquisar {
+        display:none;
+        background:var(--sieac-primary,#1a1a4e);
+        color:#fff; border:none;
+        border-radius:var(--sieac-radius-pill);
+        padding:5px 20px;
+        font-size:0.82rem; font-weight:600;
+        cursor:pointer; transition:opacity 0.2s;
+      }
+      .btn-pesquisar:hover { opacity:0.85; }
+      .btn-pesquisar.visible { display:inline-block; }
+      .filter-bar-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    </style>
     <div class="filter-bar">
       <div class="row g-3">
         <div class="col-6 col-md-2">
@@ -122,11 +152,16 @@ export async function renderFilterPanel(containerId, onChange) {
           </div>
         </div>
         <div class="col-12">
-          <button class="btn btn-sm btn-outline-secondary" id="filter-clear" style="border-radius:var(--sieac-radius-pill);${data.userIsProfessor ? 'display:none;' : ''}">
-            <i class="bi bi-x-circle"></i> Limpar Filtros
-          </button>
-          ${data.userIsProfessor ? '<span style="font-size:0.78rem;color:var(--sieac-text-muted);"><i class="bi bi-person-badge"></i> Visualizando apenas seus dados</span>' : ''}
-          <span id="filter-badges" style="margin-left:12px;"></span>
+          <div class="filter-bar-actions">
+            <button class="btn btn-sm btn-outline-secondary" id="filter-clear" style="border-radius:var(--sieac-radius-pill);${data.userIsProfessor ? 'display:none;' : ''}">
+              <i class="bi bi-x-circle"></i> Limpar Filtros
+            </button>
+            <button class="btn-pesquisar" id="btn-pesquisar">
+              <i class="bi bi-search"></i> Pesquisar
+            </button>
+            ${data.userIsProfessor ? '<span style="font-size:0.78rem;color:var(--sieac-text-muted);"><i class="bi bi-person-badge"></i> Visualizando apenas seus dados</span>' : ''}
+            <span id="filter-badges" style="margin-left:4px;"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -150,11 +185,32 @@ export async function renderFilterPanel(containerId, onChange) {
 
   if (data.userIsProfessor && data.profId) {
     document.getElementById('filter-professor').value = data.profId;
-    currentFilters = { professor_id: String(data.profId) };
   }
 
+  updateBadges();
   window.__filterData = data;
   bindFilterEvents(data);
+}
+
+function marcarDirty(elId) {
+  const el = document.getElementById(elId);
+  if (el && !el.disabled) {
+    el.classList.add('filter-dirty');
+  }
+  if (!isDirty) {
+    isDirty = true;
+    const btn = document.getElementById('btn-pesquisar');
+    if (btn) btn.classList.add('visible');
+  }
+}
+
+function limparDirty() {
+  isDirty = false;
+  document.querySelectorAll('.filter-select.filter-dirty').forEach(el => {
+    el.classList.remove('filter-dirty');
+  });
+  const btn = document.getElementById('btn-pesquisar');
+  if (btn) btn.classList.remove('visible');
 }
 
 function bindFilterEvents(data) {
@@ -162,17 +218,49 @@ function bindFilterEvents(data) {
     'filter-ano-letivo', 'filter-etapa', 'filter-serie', 'filter-turma',
     'filter-turno', 'filter-disciplina', 'filter-professor'
   ];
+
+  // On change: mark dirty + update pending, NO callback
   selectIds.forEach(id => {
     const el = document.getElementById(id);
-    if (el && !el.disabled) el.addEventListener('change', applyFilters);
+    if (el && !el.disabled) {
+      el.addEventListener('change', () => {
+        marcarDirty(id);
+        // rebuild pendingFilters
+        rebuildPending();
+      });
+    }
   });
 
+  // Pesquisar button: apply pending, clear dirty, callback
+  const btnPesquisar = document.getElementById('btn-pesquisar');
+  if (btnPesquisar) {
+    btnPesquisar.addEventListener('click', () => {
+      rebuildPending();
+      appliedFilters = { ...pendingFilters };
+      limparDirty();
+      updateBadges();
+      if (onChangeCallback) onChangeCallback(appliedFilters);
+    });
+  }
+
+  // Clear button: reset all
   const clearBtn = document.getElementById('filter-clear');
-  if (clearBtn) clearBtn.addEventListener('click', () => {
-    if (data.userIsProfessor) return;
-    clearFilters();
-  });
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (data.userIsProfessor) return;
+      selectIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.disabled) el.value = '';
+      });
+      pendingFilters = { ...data.defaultFilters };
+      appliedFilters = { ...data.defaultFilters };
+      limparDirty();
+      updateBadges();
+      if (onChangeCallback) onChangeCallback(appliedFilters);
+    });
+  }
 
+  // Hierarquia: etapa -> serie -> turma
   const etapaSel = document.getElementById('filter-etapa');
   const serieSel = document.getElementById('filter-serie');
   const turmaSel = document.getElementById('filter-turma');
@@ -185,7 +273,10 @@ function bindFilterEvents(data) {
       series.filter(s => !etapaId || s.etapa_ensino_id == etapaId).forEach(s => {
         serieSel.innerHTML += `<option value="${s.id}">${s.nome}</option>`;
       });
-      serieSel.dispatchEvent(new Event('change'));
+      marcarDirty('filter-serie');
+      marcarDirty('filter-turma');
+      turmaSel.innerHTML = '<option value="">Todas as turmas</option>';
+      rebuildPending();
     });
   }
 
@@ -197,14 +288,13 @@ function bindFilterEvents(data) {
       turmas.filter(t => !serieId || t.serie_id == serieId).forEach(t => {
         turmaSel.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
       });
+      marcarDirty('filter-turma');
+      rebuildPending();
     });
   }
 }
 
-function applyFilters() {
-  if (isProfessor() && professorVinculo) {
-    currentFilters.professor_id = String(professorVinculo.id);
-  }
+function rebuildPending() {
   const map = {
     'filter-ano-letivo': 'ano_letivo',
     'filter-etapa': 'etapa_id',
@@ -214,34 +304,18 @@ function applyFilters() {
     'filter-disciplina': 'componente_id',
     'filter-professor': 'professor_id',
   };
-
+  pendingFilters = {};
+  if (isProfessor() && professorVinculo) {
+    pendingFilters.professor_id = String(professorVinculo.id);
+  }
   for (const [elId, key] of Object.entries(map)) {
     if (key === 'professor_id' && isProfessor()) continue;
     const el = document.getElementById(elId);
     if (el && !el.disabled) {
       const val = el.value;
-      if (val) currentFilters[key] = val;
-      else delete currentFilters[key];
+      if (val) pendingFilters[key] = val;
     }
   }
-
-  updateBadges();
-  if (onChangeCallback) onChangeCallback(currentFilters);
-}
-
-function clearFilters() {
-  currentFilters = {};
-  if (isProfessor() && professorVinculo) {
-    currentFilters.professor_id = String(professorVinculo.id);
-  }
-  ['filter-ano-letivo', 'filter-etapa', 'filter-serie', 'filter-turma',
-   'filter-turno', 'filter-disciplina', 'filter-professor'
-  ].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && !el.disabled) el.value = '';
-  });
-  updateBadges();
-  if (onChangeCallback) onChangeCallback(currentFilters);
 }
 
 function updateBadges() {
@@ -266,7 +340,7 @@ function updateBadges() {
     professor_id: 'filter-professor',
   };
   let html = '';
-  for (const [key, val] of Object.entries(currentFilters)) {
+  for (const [key, val] of Object.entries(appliedFilters)) {
     if (!val) continue;
     const sel = document.getElementById(mapa[key]);
     const label = sel?.options[sel.selectedIndex]?.text || val;
@@ -276,5 +350,5 @@ function updateBadges() {
 }
 
 export function getFilters() {
-  return { ...currentFilters };
+  return { ...appliedFilters };
 }
