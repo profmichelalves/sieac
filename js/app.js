@@ -10,6 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     themeIcon.className = theme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
   }
 
+  if (localStorage.getItem('sieac_sidebar_collapsed') === '1') {
+    document.body.classList.add('sidebar-collapsed');
+  }
+
   document.getElementById('theme-toggle')?.addEventListener('click', () => {
     const current = document.documentElement.getAttribute('data-bs-theme');
     const next = current === 'dark' ? 'light' : 'dark';

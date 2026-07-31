@@ -29,6 +29,14 @@ export function initSidebar() {
     });
   }
 
+  const collapseBtn = document.getElementById('sidebar-collapse');
+  if (collapseBtn) {
+    collapseBtn.addEventListener('click', () => {
+      const collapsed = document.body.classList.toggle('sidebar-collapsed');
+      localStorage.setItem('sieac_sidebar_collapsed', collapsed ? '1' : '0');
+    });
+  }
+
   if (backdrop) {
     backdrop.addEventListener('click', () => {
       sidebar.classList.remove('open');

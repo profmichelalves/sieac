@@ -32,6 +32,7 @@
   --sieac-text-inverse: #ffffff;
 
   --sieac-sidebar-width: 260px;
+  --sieac-sidebar-width-collapsed: 78px;
   --sieac-header-height: 64px;
   --sieac-radius-sm: 8px;
   --sieac-radius-md: 12px;

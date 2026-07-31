@@ -17,43 +17,50 @@
     <div id="auth-container"></div>
     <div id="app-shell" style="display:none;">
       <aside class="sidebar" id="sidebar">
+        <button class="sidebar-collapse-btn" id="sidebar-collapse" title="Recolher ou expandir menu" aria-label="Recolher ou expandir menu">
+          <i class="bi bi-chevron-double-left"></i>
+        </button>
         <div class="sidebar-logo">
           <div class="sidebar-logo-icon">S</div>
           <div class="sidebar-logo-text">
-            SIEAC
+            <strong>SIEAC</strong>
+            <span class="sidebar-logo-name">Sistema de Indicadores Educacionais Abel Coelho</span>
             <small>Transformando dados em decisões educacionais</small>
           </div>
         </div>
         <nav class="sidebar-nav" id="sidebar-nav">
           <div class="sidebar-section">Dashboard</div>
           <div class="sidebar-item active" data-route="dashboard-geral">
-            <i class="bi bi-speedometer2"></i> Geral
+            <i class="bi bi-speedometer2"></i><span>Geral</span>
           </div>
           <div class="sidebar-item" data-route="dashboard-desempenho">
-            <i class="bi bi-graph-up-arrow"></i> Desempenho
+            <i class="bi bi-graph-up-arrow"></i><span>Desempenho</span>
           </div>
           <div class="sidebar-item" data-route="dashboard-frequencia">
-            <i class="bi bi-calendar-check"></i> Frequência
+            <i class="bi bi-calendar-check"></i><span>Frequência</span>
           </div>
           <div class="sidebar-item" data-route="dashboard-comparativo">
-            <i class="bi bi-bar-chart-steps"></i> Comparativo
+            <i class="bi bi-bar-chart-steps"></i><span>Comparativo</span>
           </div>
           <div class="sidebar-item" data-route="dashboard-estudante">
-            <i class="bi bi-person-lines-fill"></i> Estudante
+            <i class="bi bi-person-lines-fill"></i><span>Estudante</span>
           </div>
           <div class="sidebar-section">Relatórios</div>
           <div class="sidebar-item" data-route="relatorios">
-            <i class="bi bi-file-earmark-bar-graph"></i> Notas
+            <i class="bi bi-file-earmark-bar-graph"></i><span>Notas</span>
           </div>
           <div class="sidebar-section">Dados</div>
           <div class="sidebar-item" data-route="importar">
-            <i class="bi bi-upload"></i> Importar Dados
+            <i class="bi bi-upload"></i><span>Importar Dados</span>
           </div>
           <div class="sidebar-item" data-route="usuarios" id="menu-usuarios" style="display:none;">
-            <i class="bi bi-people"></i> Usuários
+            <i class="bi bi-people"></i><span>Usuários</span>
           </div>
         </nav>
         <div class="sidebar-footer">
+          <div class="sidebar-abellogo-wrap">
+            <img src="logo.jpg" alt="Colégio Abel Coelho" class="sidebar-abellogo" onerror="this.remove()">
+          </div>
           <div class="sidebar-user">
             <div class="sidebar-user-avatar" id="user-avatar">A</div>
             <div class="sidebar-user-info">

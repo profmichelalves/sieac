@@ -1,3 +1,7 @@
+body.sidebar-collapsed {
+  --sieac-sidebar-width: var(--sieac-sidebar-width-collapsed);
+}
+
 .sidebar {
   position: fixed;
   top: 0;
@@ -9,8 +13,28 @@
   display: flex;
   flex-direction: column;
   z-index: 1040;
-  transition: transform var(--sieac-transition);
+  transition: transform var(--sieac-transition), width var(--sieac-transition);
 }
+
+.sidebar-collapse-btn {
+  position: absolute;
+  top: 50%;
+  right: -14px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--sieac-warning);
+  color: var(--sieac-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  box-shadow: var(--sieac-shadow-md);
+  z-index: 1050;
+}
+
+.sidebar-collapse-btn:hover { background: var(--sieac-warning-dark); }
 
 .sidebar-logo {
   display: flex;
@@ -39,20 +63,42 @@
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.2;
+  min-width: 0;
+}
+
+.sidebar-logo-text strong { display: block; font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
+
+.sidebar-logo-name {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 500;
+  opacity: 0.9;
+  margin-top: 2px;
+  line-height: 1.25;
 }
 
 .sidebar-logo-text small {
   display: block;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 400;
-  opacity: 0.7;
+  opacity: 0.6;
+  margin-top: 2px;
 }
+
+body.sidebar-collapsed .sidebar-logo {
+  justify-content: center;
+  padding: 18px 10px;
+}
+
+body.sidebar-collapsed .sidebar-logo-text { display: none; }
 
 .sidebar-nav {
   flex: 1;
   padding: 16px 12px;
   overflow-y: auto;
 }
+
+body.sidebar-collapsed .sidebar-nav { padding: 16px 8px; }
 
 .sidebar-section {
   font-size: 0.65rem;
@@ -61,6 +107,8 @@
   opacity: 0.5;
   padding: 16px 12px 8px;
 }
+
+body.sidebar-collapsed .sidebar-section { display: none; }
 
 .sidebar-item {
   display: flex;
@@ -74,7 +122,15 @@
   transition: all var(--sieac-transition);
   margin-bottom: 2px;
   cursor: pointer;
+  white-space: nowrap;
 }
+
+body.sidebar-collapsed .sidebar-item {
+  justify-content: center;
+  padding: 12px 8px;
+}
+
+body.sidebar-collapsed .sidebar-item span { display: none; }
 
 .sidebar-item:hover {
   background: rgba(255,255,255,0.1);
@@ -91,12 +147,32 @@
   font-size: 1.1rem;
   width: 22px;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .sidebar-footer {
-  padding: 16px 20px;
+  padding: 14px 20px;
   border-top: 1px solid rgba(255,255,255,0.1);
 }
+
+.sidebar-abellogo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+  background: rgba(255,255,255,0.95);
+  border-radius: var(--sieac-radius-md);
+  padding: 6px 8px;
+}
+
+.sidebar-abellogo {
+  max-height: 44px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+body.sidebar-collapsed .sidebar-abellogo-wrap { display: none; }
+
+body.sidebar-collapsed .sidebar-footer { padding: 14px 8px; }
 
 .sidebar-user {
   display: flex;
@@ -105,6 +181,10 @@
   color: rgba(255,255,255,0.8);
   font-size: 0.8rem;
 }
+
+body.sidebar-collapsed .sidebar-user { justify-content: center; }
+
+body.sidebar-collapsed .sidebar-user-info { display: none; }
 
 .sidebar-user-avatar {
   width: 34px;
@@ -132,6 +212,17 @@
 }
 
 @media (max-width: 768px) {
+  .sidebar-collapse-btn { display: none; }
+  body.sidebar-collapsed { --sieac-sidebar-width: 260px; }
+  body.sidebar-collapsed .sidebar-logo { justify-content: flex-start; padding: 18px 20px; }
+  body.sidebar-collapsed .sidebar-logo-text { display: block; }
+  body.sidebar-collapsed .sidebar-section { display: block; }
+  body.sidebar-collapsed .sidebar-item { justify-content: flex-start; padding: 10px 16px; }
+  body.sidebar-collapsed .sidebar-item span { display: inline; }
+  body.sidebar-collapsed .sidebar-footer { padding: 14px 20px; }
+  body.sidebar-collapsed .sidebar-abellogo-wrap { display: flex; }
+  body.sidebar-collapsed .sidebar-user { justify-content: flex-start; }
+  body.sidebar-collapsed .sidebar-user-info { display: block; }
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
   .main-wrapper { margin-left: 0; }
