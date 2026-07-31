@@ -165,7 +165,7 @@ function fillSelect(id, items, textFn, valueFn) {
   }
 }
 
-function rebuildSelectOptions(valid) {
+function rebuildSelectOptions(valid, skipId) {
   if (!filterData) return;
   const { etapas, series, turmas, componentes, professores, turnos } = filterData;
 
@@ -189,6 +189,7 @@ function rebuildSelectOptions(valid) {
   };
 
   for (const cfg of config) {
+    if (cfg.id === skipId) continue;
     const sel = document.getElementById(cfg.id);
     if (!sel) continue;
     const currentVal = sel.value;
@@ -324,7 +325,7 @@ function bindFilterEvents() {
         try {
           rebuildPending();
           const valid = computeValidOptions(pendingFilters);
-          rebuildSelectOptions(valid);
+          rebuildSelectOptions(valid, id);
           markDirty();
         } catch (e) {
           console.error('FilterPanel change handler:', e);
