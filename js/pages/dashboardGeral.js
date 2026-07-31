@@ -1,5 +1,5 @@
 import { $, showToast, formatNumber, formatPercent } from '../utils/helpers.js';
-import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
+import { infoBtn, EXPLICACAO_RESULTADO, termosSituacao } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createDoughnutChart, destroyChart } from '../components/Charts.js';
 import { getResumoGeral, getMediaPorSerie, getResultadoFinal, getDetalheResultados } from '../repositories/dashboardRepository.js';
@@ -10,6 +10,7 @@ const MEDIA_CORTE = 6;
 
 let detalheResultados = null;
 let relFiltrosAtivos = [];
+let periodoLetivo = 'parcial';
 
 export async function render() {
   const main = document.getElementById('main-content');
@@ -53,8 +54,8 @@ export async function render() {
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="kpi-card success">
-          <div class="kpi-label">Aprovação</div>
+        <div class="kpi-card success" id="kpi-card-aprovacao">
+          <div class="kpi-label" id="kpi-aprovacao-label">Aprovação</div>
           <div class="kpi-value" style="color:var(--sieac-success)"><span id="kpi-aprovacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-check-circle"></i></div>
           ${infoBtn('Aprovação', 'Percentual de estudantes aprovados: média anual ≥ 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% são contados como reprovados.' + EXPLICACAO_RESULTADO)}
@@ -64,8 +65,8 @@ export async function render() {
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="kpi-card warning">
-          <div class="kpi-label">Recuperação</div>
+        <div class="kpi-card warning" id="kpi-card-recuperacao">
+          <div class="kpi-label" id="kpi-recuperacao-label">Recuperação</div>
           <div class="kpi-value" style="color:var(--sieac-warning)"><span id="kpi-recuperacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-arrow-repeat"></i></div>
           ${infoBtn('Recuperação', 'Percentual de estudantes em recuperação: média anual < 6,0 e frequência ≥ 75%, participando das atividades de recuperação previstas. Frequência < 75% é contada como reprovação.' + EXPLICACAO_RESULTADO)}
@@ -75,8 +76,8 @@ export async function render() {
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="kpi-card danger">
-          <div class="kpi-label">Reprovação</div>
+        <div class="kpi-card danger" id="kpi-card-reprovacao">
+          <div class="kpi-label" id="kpi-reprovacao-label">Reprovação</div>
           <div class="kpi-value" style="color:var(--sieac-danger)"><span id="kpi-reprovacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-x-circle"></i></div>
           ${infoBtn('Reprovação', 'Percentual de estudantes reprovados: frequência média < 75% ou média anual < 6,0 após recuperação e deliberação do Conselho de Classe.' + EXPLICACAO_RESULTADO)}
@@ -89,8 +90,8 @@ export async function render() {
 
     <div class="row g-4">
       <div class="col-md-5">
-        <div class="chart-card">
-          <div class="chart-card-title">Distribuição dos Resultados Finais ${infoBtn('Distribuição dos Resultados Finais', 'Classifica os estudantes pela média anual e pela frequência: Aprovado (média ≥ 6,0 e frequência ≥ 75%), Recuperação (média < 6,0 com frequência ≥ 75%) e Reprovado (frequência < 75% ou média insuficiente após recuperação).' + EXPLICACAO_RESULTADO)}</div>
+        <div class="chart-card" id="card-resultado">
+          <div class="chart-card-title"><span id="chart-resultado-titulo">Distribuição dos Resultados Finais</span> ${infoBtn('Distribuição dos Resultados Finais', 'Classifica os estudantes pela média anual e pela frequência: Aprovado (média ≥ 6,0 e frequência ≥ 75%), Recuperação (média < 6,0 com frequência ≥ 75%) e Reprovado (frequência < 75% ou média insuficiente após recuperação).' + EXPLICACAO_RESULTADO)}</div>
           <div class="chart-container" style="height:320px;">
             <canvas id="chart-resultado-final"></canvas>
           </div>
@@ -119,6 +120,9 @@ async function loadData() {
   const [resumo, detalhe] = await Promise.all([getResumoGeral(filters), getDetalheResultados(filters)]);
   detalheResultados = detalhe.data || null;
   relFiltrosAtivos = await montarFiltrosAtivos(filters);
+
+  periodoLetivo = resumo.periodo || 'parcial';
+  atualizarNomenclatura(periodoLetivo);
 
   animateNumber('kpi-estudantes', resumo.total_estudantes);
   animateNumber('kpi-turmas', resumo.total_turmas);
@@ -156,15 +160,16 @@ async function loadData() {
     }
   }
 
-  animateNumber('kpi-aprovacao', resumo.aprovacao_pct + '%');
-  animateNumber('kpi-recuperacao', resumo.recuperacao_pct + '%');
-  animateNumber('kpi-reprovacao', resumo.reprovacao_pct + '%');
+  animateNumber('kpi-aprovacao', formatPercent(resumo.aprovacao_pct));
+  animateNumber('kpi-recuperacao', formatPercent(resumo.recuperacao_pct));
+  animateNumber('kpi-reprovacao', formatPercent(resumo.reprovacao_pct));
 
   const resultado = await getResultadoFinal(filters);
   if (resultado.data) {
     const d = resultado.data;
+    const termos = termosSituacao(periodoLetivo);
     createDoughnutChart('chart-resultado-final',
-      ['Aprovados', 'Reprovados', 'Recuperação'],
+      [termos.label.aprovado, termos.label.reprovado, termos.label.recuperacao],
       [d.aprovados, d.reprovados, d.recuperacao],
       ['#2dc653', '#e63946', '#ffd000']
     );
@@ -185,6 +190,50 @@ async function loadData() {
 function animateNumber(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
+}
+
+function textosKpi(periodo) {
+  if (periodo === 'anual') {
+    return {
+      aprovacao: 'Percentual de estudantes aprovados: média anual ≥ 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% são contados como reprovados.',
+      recuperacao: 'Percentual de estudantes em recuperação: média anual < 6,0 e frequência ≥ 75%, participando das atividades de recuperação previstas. Frequência < 75% é contada como reprovação.',
+      reprovacao: 'Percentual de estudantes reprovados: frequência média < 75% ou média anual < 6,0 após recuperação e deliberação do Conselho de Classe.',
+    };
+  }
+  return {
+    aprovacao: 'Percentual de estudantes em aprovação até o momento: média acumulada ≥ 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% são contados como reprovados.',
+    recuperacao: 'Percentual de estudantes em recuperação até o momento: média acumulada < 6,0 e frequência ≥ 75%, acompanhando os conteúdos ainda em andamento. Frequência < 75% é contada como reprovação.',
+    reprovacao: 'Percentual de estudantes que estão sendo reprovados até o momento: frequência média < 75% ou média acumulada insuficiente.',
+  };
+}
+
+function atualizarNomenclatura(periodo) {
+  const termos = termosSituacao(periodo);
+  const textos = textosKpi(periodo);
+
+  const aplicar = (labelId, cardId, titulo, texto) => {
+    const label = document.getElementById(labelId);
+    if (label) label.textContent = titulo;
+    const card = document.getElementById(cardId);
+    const infoBtnEl = card && card.querySelector('.info-btn');
+    if (infoBtnEl) {
+      infoBtnEl.dataset.infoTitulo = titulo;
+      infoBtnEl.dataset.info = texto + EXPLICACAO_RESULTADO;
+    }
+  };
+
+  aplicar('kpi-aprovacao-label', 'kpi-card-aprovacao', termos.card.aprovado, textos.aprovacao);
+  aplicar('kpi-recuperacao-label', 'kpi-card-recuperacao', termos.card.recuperacao, textos.recuperacao);
+  aplicar('kpi-reprovacao-label', 'kpi-card-reprovacao', termos.card.reprovado, textos.reprovacao);
+
+  const tituloChart = document.getElementById('chart-resultado-titulo');
+  if (tituloChart) tituloChart.textContent = termos.tituloGrafico;
+  const cardChart = document.getElementById('card-resultado');
+  const infoChart = cardChart && cardChart.querySelector('.info-btn');
+  if (infoChart) {
+    infoChart.dataset.infoTitulo = termos.tituloGrafico;
+    infoChart.dataset.info = termos.explicacaoGrafico + EXPLICACAO_RESULTADO;
+  }
 }
 
 async function montarFiltrosAtivos(filters) {
@@ -221,10 +270,23 @@ function fmtNota(v) {
 
 function gerarPdfCard(tipo) {
   if (!detalheResultados) return;
+  const termos = termosSituacao(periodoLetivo);
   const conf = {
-    aprovados: { titulo: 'APROVADOS — SIEAC', tabela: 'Aprovados', total: 'estudante(s) aprovado(s)' },
-    recuperacao: { titulo: 'RECUPERAÇÃO — SIEAC', tabela: 'Em Recuperação', total: 'estudante(s) em recuperação' },
-    reprovados: { titulo: 'REPROVADOS — SIEAC', tabela: 'Reprovados', total: 'estudante(s) reprovado(s)' },
+    aprovados: {
+      titulo: `${termos.card.aprovado.toUpperCase()} — SIEAC`,
+      tabela: termos.label.aprovado,
+      total: periodoLetivo === 'anual' ? 'estudante(s) aprovado(s)' : 'estudante(s) em aprovação',
+    },
+    recuperacao: {
+      titulo: `${termos.card.recuperacao.toUpperCase()} — SIEAC`,
+      tabela: termos.label.recuperacao,
+      total: 'estudante(s) em recuperação',
+    },
+    reprovados: {
+      titulo: `${termos.card.reprovado.toUpperCase()} — SIEAC`,
+      tabela: termos.label.reprovado,
+      total: periodoLetivo === 'anual' ? 'estudante(s) reprovado(s)' : 'estudante(s) em reprovação',
+    },
   }[tipo];
   if (!conf) return;
 

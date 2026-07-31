@@ -7,7 +7,7 @@ export function formatMedia(val) {
 export function formatFrequencia(val) {
   if (val === null || val === undefined) return '-';
   const n = typeof val === 'string' ? parseFloat(val.replace(',', '.')) : val;
-  return isNaN(n) ? '-' : n.toFixed(0) + '%';
+  return isNaN(n) ? '-' : n.toFixed(1) + '%';
 }
 
 export function formatResultado(resultado, mediaFinal) {

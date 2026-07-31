@@ -254,9 +254,14 @@ async function getEstudantesImportados(filters) {
 async function classificarEstudantes(filters) {
   await getRefCache();
   const [notas, freqs] = await Promise.all([
-    queryNotas(filters, 'estudante_id,media_final'),
+    queryNotas(filters, 'estudante_id,media_final,nota_4bim'),
     queryFrequencias(filters, 'estudante_id,percentual_frequencia'),
   ]);
+
+  const periodo = notas.some(n => {
+    const v = parseFloat(n.nota_4bim);
+    return !isNaN(v) && v > 0;
+  }) ? 'anual' : 'parcial';
 
   const medias = {};
   notas.forEach(n => {
@@ -285,7 +290,7 @@ async function classificarEstudantes(filters) {
     else classificacao[eId] = 'recuperacao';
   });
 
-  return { classificacao, medias, frequenciasPorEstudante: freqsPorEstudante, totalNotas: notas.length };
+  return { classificacao, medias, frequenciasPorEstudante: freqsPorEstudante, totalNotas: notas.length, periodo };
 }
 
 export async function getResumoGeral(filters = {}) {
@@ -322,16 +327,17 @@ export async function getResumoGeral(filters = {}) {
     total_turmas: turmaSet ? turmaSet.size : refCache.turmas.length,
     media_geral: Math.round(mediaGeral * 10) / 10,
     frequencia_media: Math.round(freqMedia * 10) / 10,
-    aprovacao_pct: Math.round(aprovados / total * 100),
-    reprovacao_pct: Math.round(reprovados / total * 100),
-    recuperacao_pct: Math.round(recuperacao / total * 100),
+    aprovacao_pct: Math.round(aprovados / total * 1000) / 10,
+    reprovacao_pct: Math.round(reprovados / total * 1000) / 10,
+    recuperacao_pct: Math.round(recuperacao / total * 1000) / 10,
     total_recuperacao: recuperacao,
     total_notas: dados.totalNotas,
+    periodo: dados.periodo,
   };
 }
 
 export async function getResultadoFinal(filters = {}) {
-  const { classificacao } = await classificarEstudantes(filters);
+  const { classificacao, periodo } = await classificarEstudantes(filters);
 
   let aprov = 0, repr = 0, recup = 0;
   Object.values(classificacao).forEach(c => {
@@ -340,7 +346,7 @@ export async function getResultadoFinal(filters = {}) {
     else repr++;
   });
 
-  return { data: { aprovados: aprov, reprovados: repr, recuperacao: recup }, error: null };
+  return { data: { aprovados: aprov, reprovados: repr, recuperacao: recup, periodo }, error: null };
 }
 
 export async function getDetalheResultados(filters = {}) {
@@ -395,6 +401,7 @@ export async function getDetalheResultados(filters = {}) {
       aprovados: ordenar(resultado.aprovados),
       recuperacao: ordenar(resultado.recuperacao),
       reprovados: ordenar(resultado.reprovados),
+      periodo: dados.periodo,
     },
     error: null,
   };

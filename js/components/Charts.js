@@ -153,7 +153,11 @@ export function createDoughnutChart(canvasId, labels, data, colors) {
           padding: 12,
           cornerRadius: 8,
           callbacks: {
-            label: ctx => `${ctx.label}: ${ctx.parsed} (${Math.round(ctx.parsed / ctx.dataset.data.reduce((a,b) => a+b, 0) * 100)}%)`
+            label: ctx => {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct = total ? (ctx.parsed / total * 100).toFixed(1).replace('.', ',') : '0,0';
+              return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+            }
           }
         }
       }
