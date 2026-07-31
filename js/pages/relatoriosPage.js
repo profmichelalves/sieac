@@ -1,5 +1,6 @@
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { supabaseFetchAll, supabaseQuery } from '../services/supabase.js';
+import { gerarPdfRelatorio } from '../utils/pdf.js';
 
 const MEDIA_CORTE = 6;
 
@@ -187,60 +188,19 @@ function gerarPDF() {
   }
   const ordenadas = ordenarLinhas(relLinhas, relSortKey);
   const totalAlunos = new Set(relLinhas.map(l => l.estudante_id)).size;
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 8;
+  const meta = [`Gerado em: ${relDataHora}`, `Nota de corte: ${MEDIA_CORTE}`];
+  if (relFiltros.length) meta.push(`Filtros: ${relFiltros.join(' | ')}`);
 
-  doc.setFillColor(26, 42, 58);
-  doc.rect(0, 0, pageW, 20, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text('RELATÓRIO DE NOTAS — SIEAC', margin, 9);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.text('Sistema de Indicadores Educacionais Abel Coelho', margin, 14);
-
-  const meta = `Gerado em: ${relDataHora}  |  Nota de corte: ${MEDIA_CORTE}` + (relFiltros.length ? `  |  Filtros: ${relFiltros.join(' | ')}` : '');
-  doc.setFontSize(7);
-  doc.setTextColor(90, 90, 90);
-  doc.text(meta, margin, 25);
-
-  doc.autoTable({
-    startY: 29,
-    margin: { left: margin, right: margin, top: 30, bottom: 12 },
-    head: [['Disciplina', 'Turma', 'Aluno', 'Matrícula', 'Média Final']],
-    body: ordenadas.map(l => [l.disciplina, l.turma, l.aluno, l.matricula, l.media_final.toFixed(1)]),
-    styles: { font: 'helvetica', fontSize: 6.5, cellPadding: 1.1, textColor: [40, 40, 40], lineColor: [200, 200, 200], lineWidth: 0.1, overflow: 'linebreak' },
-    headStyles: { fillColor: [26, 42, 58], textColor: [255, 255, 255], fontSize: 6.8, fontStyle: 'bold', cellPadding: 1.6 },
-    alternateRowStyles: { fillColor: [245, 245, 245] },
-    columnStyles: {
-      0: { cellWidth: 40 },
-      1: { cellWidth: 22 },
-      3: { cellWidth: 18, halign: 'center' },
-      4: { cellWidth: 18, halign: 'center' },
-    },
-    showHead: 'everyPage',
-    theme: 'grid',
-    didDrawPage: (data) => {
-      const pageH = doc.internal.pageSize.getHeight();
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.5);
-      doc.setTextColor(130, 130, 130);
-      doc.text(`Página ${doc.internal.getCurrentPageInfo().pageNumber} de ${doc.internal.getNumberOfPages()}`, pageW - margin, pageH - 6, { align: 'right' });
-    },
+  gerarPdfRelatorio({
+    titulo: 'RELATÓRIO DE NOTAS — SIEAC',
+    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    meta,
+    tabelas: [{
+      titulo: 'Alunos Abaixo da Média',
+      colunas: ['Disciplina', 'Turma', 'Aluno', 'Matrícula', 'Média Final'],
+      linhas: ordenadas.map(l => [l.disciplina, l.turma, l.aluno, l.matricula, l.media_final.toFixed(1)]),
+      colWidths: { 0: 40, 1: 22, 3: 18, 4: 18 },
+      total: `Total — ${totalAlunos} aluno(s) abaixo da média`,
+    }],
   });
-
-  const finalY = doc.lastAutoTable.finalY + 4;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(26, 42, 58);
-  doc.text(`Total — ${totalAlunos} aluno(s) abaixo da média`, margin, finalY);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-  doc.setTextColor(120, 120, 120);
-  doc.text(`${ordenadas.length} registro(s)`, pageW - margin, finalY, { align: 'right' });
-
-  doc.save('relatorio-notas.pdf');
 }

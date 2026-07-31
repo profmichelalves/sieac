@@ -54,6 +54,8 @@ export function buildQuery(table, options = {}) {
     if (op === 'in' && Array.isArray(f.val) && f.val.length) {
       const encoded = f.val.map(v => encodeURIComponent(v)).join(',');
       query += `&${f.col}=in.(${encoded})`;
+    } else if (op === 'ilike' || op === 'like') {
+      query += `&${f.col}=${op}.${encodeURIComponent(f.val)}`;
     } else if (['gte', 'lte', 'gt', 'lt', 'neq'].includes(op)) {
       query += `&${f.col}=${op}.${encodeURIComponent(f.val)}`;
     } else {

@@ -16,6 +16,8 @@ function criarGraficoBarraHorizontal(canvasId, labels, data, label) {
   destroyCanvas(canvasId);
   const canvas = document.getElementById(canvasId);
   if (!canvas || !labels.length) return;
+  const container = canvas.closest('.chart-container');
+  if (container) container.style.height = Math.max(380, labels.length * 28) + 'px';
   const colors = ['#1a1a4e', '#00b4d8', '#2dc653', '#e63946', '#ffd000', '#6f42c1', '#fd7e14', '#20c997'];
   chartInst[canvasId] = new window.Chart(canvas, {
     type: 'bar',
@@ -33,7 +35,7 @@ function criarGraficoBarraHorizontal(canvasId, labels, data, label) {
       },
       scales: {
         x: { beginAtZero: true, max: 10, grid: { color: 'var(--sieac-border)', drawBorder: false }, ticks: { color: 'var(--sieac-text-muted)' } },
-        y: { grid: { display: false }, ticks: { color: 'var(--sieac-text-muted)' } }
+        y: { grid: { display: false }, ticks: { color: 'var(--sieac-text-muted)', autoSkip: false, font: { size: 10 } } }
       }
     }
   });

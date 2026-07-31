@@ -2,6 +2,10 @@ import { $, formatNumber, formatPercent } from '../utils/helpers.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createLineChart, destroyAllCharts } from '../components/Charts.js';
 import { getFrequenciaPorTurma, getFrequenciaPorMes, getFrequenciaPorSerie, getEstudantesBaixaFrequencia } from '../repositories/dashboardRepository.js';
+import { gerarPdfRelatorio } from '../utils/pdf.js';
+
+let freqTurmaData = [];
+let baixaFreqData = [];
 
 export async function render() {
   const main = document.getElementById('main-content');
@@ -46,7 +50,12 @@ export async function render() {
     <div class="row g-4">
       <div class="col-md-6">
         <div class="chart-card">
-          <div class="chart-card-title">Frequência por Turma</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="chart-card-title" style="margin-bottom:0;">Frequência por Turma</div>
+            <button class="btn btn-sm btn-outline-primary no-print" id="btn-pdf-freq-turma">
+              <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
+            </button>
+          </div>
           <div class="chart-container" style="height:300px;"><canvas id="chart-freq-turma"></canvas></div>
         </div>
       </div>
@@ -64,7 +73,12 @@ export async function render() {
       </div>
       <div class="col-md-6">
         <div class="chart-card">
-          <div class="chart-card-title">Estudantes com Baixa Frequência (&lt; 75%)</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="chart-card-title" style="margin-bottom:0;">Estudantes com Baixa Frequência (&lt; 75%)</div>
+            <button class="btn btn-sm btn-outline-danger no-print" id="btn-pdf-baixa-freq">
+              <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
+            </button>
+          </div>
           <div class="table-responsive-custom" style="max-height:300px;overflow-y:auto;">
             <table class="table-sieac" id="table-baixa-freq">
               <thead>
@@ -81,6 +95,8 @@ export async function render() {
   `;
 
   renderFilterPanel('filter-container-frequencia', () => loadData());
+  document.getElementById('btn-pdf-freq-turma').addEventListener('click', gerarPdfFrequenciaTurma);
+  document.getElementById('btn-pdf-baixa-freq').addEventListener('click', gerarPdfBaixaFrequencia);
   await loadData();
 }
 
@@ -89,6 +105,7 @@ async function loadData() {
 
   const freqTurma = await getFrequenciaPorTurma(filters);
   if (freqTurma.data && freqTurma.data.length) {
+    freqTurmaData = freqTurma.data;
     const medias = freqTurma.data;
     const mediaGeral = medias.reduce((s, d) => s + d.freq, 0) / medias.length;
     const total = medias.length;
@@ -135,10 +152,11 @@ async function loadData() {
   }
 
   const baixa = await getEstudantesBaixaFrequencia(75, filters);
+  baixaFreqData = baixa.data || [];
   const tbody = document.getElementById('tbody-baixa-freq');
   if (tbody) {
-    if (baixa.data && baixa.data.length) {
-      tbody.innerHTML = baixa.data.slice(0, 20).map(e => `
+    if (baixaFreqData.length) {
+      tbody.innerHTML = baixaFreqData.slice(0, 20).map(e => `
         <tr>
           <td><strong>${e.nome}</strong></td>
           <td>${e.turma}</td>
@@ -150,4 +168,36 @@ async function loadData() {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--sieac-text-muted);">Nenhum estudante com baixa frequência</td></tr>';
     }
   }
+}
+
+function gerarPdfFrequenciaTurma() {
+  const meta = [`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 'Corte de alerta: < 75%'];
+  gerarPdfRelatorio({
+    titulo: 'FREQUÊNCIA POR TURMA — SIEAC',
+    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    meta,
+    tabelas: [{
+      titulo: 'Frequência média por Turma',
+      colunas: ['Turma', 'Frequência (%)'],
+      linhas: freqTurmaData.map(d => [d.turma, String(d.freq).replace('.', ',')]),
+      colWidths: { 0: 100 },
+      total: `Total — ${freqTurmaData.length} turma(s)`,
+    }],
+  });
+}
+
+function gerarPdfBaixaFrequencia() {
+  const meta = [`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 'Critério: frequência média < 75%'];
+  gerarPdfRelatorio({
+    titulo: 'ESTUDANTES COM BAIXA FREQUÊNCIA — SIEAC',
+    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    meta,
+    tabelas: [{
+      titulo: `Estudantes com frequência < 75%`,
+      colunas: ['Estudante', 'Matrícula', 'Turma', 'Frequência (%)'],
+      linhas: baixaFreqData.map(e => [e.nome, e.matricula, e.turma, String(e.percentual_frequencia).replace('.', ',')]),
+      colWidths: { 1: 25, 2: 30, 3: 22 },
+      total: `Total — ${baixaFreqData.length} estudante(s) com baixa frequência`,
+    }],
+  });
 }

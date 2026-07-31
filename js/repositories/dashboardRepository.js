@@ -482,7 +482,7 @@ export async function getScatterFreqNota(filters = {}) {
     notasPorAluno[n.estudante_id].count++;
   });
 
-  const eMap = {}; refCache.estudantes.forEach(e => eMap[e.id] = e.nome);
+  const eMap = {}; refCache.estudantes.forEach(e => eMap[e.id] = e);
 
   const pontos = [];
   Object.keys(notasPorAluno).forEach(eId => {
@@ -494,7 +494,8 @@ export async function getScatterFreqNota(filters = {}) {
     if (mediaNota > 0) {
       pontos.push({
         estudante_id: eId,
-        nome: eMap[eId] || `ID ${eId}`,
+        nome: eMap[eId]?.nome || `ID ${eId}`,
+        matricula: eMap[eId]?.matricula || '-',
         media: Math.round(mediaNota * 10) / 10,
         frequencia: Math.round(mediaFreq * 10) / 10,
       });
@@ -559,4 +560,52 @@ export async function getTurmasEstudante(estudanteId) {
     if (t) turmas.push({ nome: t.nome, serie: sMap[t.serie_id] || '', turno: t.turno || '' });
   });
   return turmas;
+}
+
+export async function buscarEstudantes(termo) {
+  const q = (termo || '').trim();
+  if (!q) return [];
+  await getRefCache();
+
+  const ids = new Set();
+  const { data: porNome } = await supabaseQuery('estudantes', { select: 'id,nome,matricula', filters: [{ col: 'nome', val: `%${q}%`, op: 'ilike' }], order: 'nome', limit: 100 });
+  (porNome || []).forEach(e => ids.add(e.id));
+  const { data: porMatricula } = await supabaseQuery('estudantes', { select: 'id,nome,matricula', filters: [{ col: 'matricula', val: `%${q}%`, op: 'ilike' }], limit: 100 });
+  (porMatricula || []).forEach(e => ids.add(e.id));
+
+  const { data: turmas } = await supabaseQuery('turmas', { select: 'id', filters: [{ col: 'nome', val: `%${q}%`, op: 'ilike' }] });
+  if (turmas && turmas.length) {
+    const tIds = turmas.map(t => t.id);
+    const { data: alocs } = await supabaseQuery('alocacoes', { select: 'id', filters: [{ col: 'turma_id', val: tIds, op: 'in' }], limit: 1000 });
+    const aIds = [...new Set((alocs || []).map(a => a.id))];
+    if (aIds.length) {
+      const { data: notas } = await supabaseFetchAll('notas', { select: 'estudante_id', filters: [{ col: 'alocacao_id', val: aIds, op: 'in' }], limit: 30000 });
+      (notas || []).forEach(n => ids.add(n.estudante_id));
+    }
+  }
+
+  const idList = [...ids];
+  if (!idList.length) return [];
+
+  const estMap = new Map();
+  const turmaSet = new Map();
+  for (let i = 0; i < idList.length; i += 100) {
+    const chunk = idList.slice(i, i + 100);
+    const { data: ests } = await supabaseQuery('estudantes', { select: 'id,nome,matricula', filters: [{ col: 'id', val: chunk, op: 'in' }], limit: 100 });
+    (ests || []).forEach(e => estMap.set(e.id, e));
+    const { data: notas } = await supabaseFetchAll('notas', { select: 'estudante_id,alocacao_id', filters: [{ col: 'estudante_id', val: chunk, op: 'in' }], limit: 30000 });
+    (notas || []).forEach(n => {
+      if (!turmaSet.has(n.estudante_id)) turmaSet.set(n.estudante_id, new Set());
+      const a = refCache.alocacoes.find(x => x.id === n.alocacao_id);
+      const t = refCache.turmas.find(x => x.id === a?.turma_id);
+      if (t) turmaSet.get(n.estudante_id).add(t.nome);
+    });
+  }
+
+  return idList.map(id => ({
+    id,
+    nome: estMap.get(id)?.nome || `ID ${id}`,
+    matricula: estMap.get(id)?.matricula || '-',
+    turma: [...(turmaSet.get(id) || [])].join(', ') || '-',
+  })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }

@@ -1,16 +1,32 @@
-import { $, showToast } from '../utils/helpers.js';
+import { showToast } from '../utils/helpers.js';
 import { supabaseQuery } from '../services/supabase.js';
-import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante } from '../repositories/dashboardRepository.js';
+import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, buscarEstudantes } from '../repositories/dashboardRepository.js';
 import { destroyChart } from '../components/Charts.js';
+import { gerarPdfRelatorio } from '../utils/pdf.js';
 
 let evolChart = null;
 let currentStudentId = null;
+let studentInfo = {};
+let studentNotas = [];
+let studentFreqs = [];
 
 export async function render() {
   const main = document.getElementById('main-content');
   main.innerHTML = `
     <style>
-      .student-search { max-width:500px; }
+      .student-search { max-width:560px; }
+      .student-input {
+        width:100%; padding:8px 12px;
+        border:1px solid var(--sieac-border);
+        border-radius:var(--sieac-radius-sm);
+        background:var(--sieac-bg); color:var(--sieac-text);
+        font-size:0.85rem;
+        transition:border-color var(--sieac-transition);
+      }
+      .student-input:focus {
+        outline:none; border-color:var(--sieac-secondary);
+        box-shadow:0 0 0 3px rgba(var(--sieac-secondary-rgb), 0.15);
+      }
       .student-info-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
       .student-info-item { background:var(--sieac-bg); border-radius:var(--sieac-radius); padding:12px 16px; }
       .student-info-item label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--sieac-text-muted); display:block; margin-bottom:2px; }
@@ -22,16 +38,41 @@ export async function render() {
 
     <div class="student-search mb-4">
       <div class="filter-group">
-        <label class="filter-label">Selecione o Estudante</label>
-        <select class="filter-select" id="select-estudante">
-          <option value="">— Selecione um estudante —</option>
-        </select>
+        <label class="filter-label">Buscar por nome, matrícula ou turma</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="student-input" id="input-buscar-estudante" placeholder="Ex.: Maria, 2023.0051 ou 6º A" style="flex:1;">
+          <button class="btn btn-primary" id="btn-buscar-estudante"><i class="bi bi-search"></i> Buscar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="resultados-estudantes" style="display:none;" class="mb-4">
+      <div class="card-sieac">
+        <div class="card-sieac-header">Resultados da busca</div>
+        <div class="card-sieac-body">
+          <div class="table-responsive-custom" style="max-height:320px;overflow-y:auto;">
+            <table class="table-sieac">
+              <thead>
+                <tr><th>Nome</th><th>Matrícula</th><th>Turma</th><th style="width:130px;">Ações</th></tr>
+              </thead>
+              <tbody id="tbody-resultados">
+                <tr><td colspan="4" style="text-align:center;color:var(--sieac-text-muted);">Digite um termo e clique em Buscar.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
     <div id="estudante-content" style="display:none;">
       <div class="card-sieac mb-4">
         <div class="card-sieac-body">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <strong style="font-size:1rem;color:var(--sieac-text);">Informações do Estudante</strong>
+            <button class="btn btn-sm btn-primary no-print" id="btn-pdf-estudante">
+              <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
+            </button>
+          </div>
           <div class="student-info-grid" id="estudante-info">
             <div class="student-info-item"><label>Nome</label><span id="e-nome">—</span></div>
             <div class="student-info-item"><label>Matrícula</label><span id="e-matricula">—</span></div>
@@ -92,24 +133,44 @@ export async function render() {
     </div>
   `;
 
-  const { data: estudantes } = await supabaseQuery('estudantes', { select: 'id,nome,matricula', order: 'nome' });
-  const sel = document.getElementById('select-estudante');
-  (estudantes || []).forEach(e => {
-    sel.innerHTML += `<option value="${e.id}">${e.nome}${e.matricula ? ` (${e.matricula})` : ''}</option>`;
+  document.getElementById('btn-buscar-estudante').addEventListener('click', executarBusca);
+  document.getElementById('input-buscar-estudante').addEventListener('keydown', e => {
+    if (e.key === 'Enter') executarBusca();
   });
-  sel.addEventListener('change', () => {
-    const id = sel.value;
-    if (id) { currentStudentId = id; carregarEstudante(id); }
-    else { document.getElementById('estudante-content').style.display = 'none'; }
-  });
+  document.getElementById('btn-pdf-estudante').addEventListener('click', gerarPdfEstudante);
 }
 
 export function unload() {
   if (evolChart) { evolChart.destroy(); evolChart = null; }
 }
 
+async function executarBusca() {
+  const termo = document.getElementById('input-buscar-estudante').value;
+  if (!termo.trim()) return;
+  const resultados = await buscarEstudantes(termo);
+  const container = document.getElementById('resultados-estudantes');
+  const tbody = document.getElementById('tbody-resultados');
+  container.style.display = 'block';
+  if (!resultados.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--sieac-text-muted);">Nenhum estudante encontrado para a busca.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = resultados.map(r => `
+    <tr>
+      <td><strong>${r.nome}</strong></td>
+      <td>${r.matricula}</td>
+      <td>${r.turma}</td>
+      <td><button class="btn btn-sm btn-primary" data-id="${r.id}"><i class="bi bi-person"></i> Visualizar</button></td>
+    </tr>
+  `).join('');
+  tbody.querySelectorAll('button[data-id]').forEach(btn => {
+    btn.addEventListener('click', () => carregarEstudante(btn.dataset.id));
+  });
+}
+
 async function carregarEstudante(id) {
-  const { data: estudante, error } = await supabaseQuery('estudantes', { select: 'id,nome,matricula', id });
+  currentStudentId = id;
+  const { data: estudante, error } = await supabaseQuery('estudantes', { select: 'id,nome,matricula', filters: [{ col: 'id', val: id }] });
   if (error || !estudante || !estudante.length) {
     showToast('Estudante não encontrado', 'error');
     return;
@@ -119,18 +180,24 @@ async function carregarEstudante(id) {
   document.getElementById('e-matricula').textContent = e.matricula || '-';
 
   const turmas = await getTurmasEstudante(id);
-  if (turmas.length) {
-    document.getElementById('e-turma').textContent = turmas.map(t => t.nome).join(', ');
-    document.getElementById('e-serie').textContent = turmas[0].serie || '-';
-    document.getElementById('e-turno').textContent = turmas[0].turno || '-';
-  }
+  studentInfo = {
+    nome: e.nome,
+    matricula: e.matricula || '-',
+    turma: turmas.map(t => t.nome).join(', ') || '-',
+    serie: turmas[0]?.serie || '-',
+    turno: turmas[0]?.turno || '-',
+  };
+  document.getElementById('e-turma').textContent = studentInfo.turma;
+  document.getElementById('e-serie').textContent = studentInfo.serie;
+  document.getElementById('e-turno').textContent = studentInfo.turno;
 
   document.getElementById('estudante-content').style.display = 'block';
 
   const notas = await getNotasEstudante(id);
+  studentNotas = notas.data || [];
   const tbodyNotas = document.getElementById('tbody-notas-estudante');
-  if (notas.data && notas.data.length) {
-    tbodyNotas.innerHTML = notas.data.map(n => `
+  if (studentNotas.length) {
+    tbodyNotas.innerHTML = studentNotas.map(n => `
       <tr>
         <td><strong>${n.disciplina}</strong></td>
         <td class="num">${n.nota_1bim || '-'}</td>
@@ -145,9 +212,10 @@ async function carregarEstudante(id) {
   }
 
   const freqs = await getFrequenciaEstudante(id);
+  studentFreqs = freqs.data || [];
   const tbodyFreq = document.getElementById('tbody-freq-estudante');
-  if (freqs.data && freqs.data.length) {
-    tbodyFreq.innerHTML = freqs.data.map(f => {
+  if (studentFreqs.length) {
+    tbodyFreq.innerHTML = studentFreqs.map(f => {
       const pct = parseFloat(f.frequencia);
       const ok = pct >= 75;
       return `<tr>
@@ -161,13 +229,13 @@ async function carregarEstudante(id) {
   }
 
   // Evolução chart
-  if (notas.data && notas.data.length) {
+  if (studentNotas.length) {
     const canvas = document.getElementById('chart-evolucao-estudante');
     if (canvas && window.Chart) {
       if (evolChart) evolChart.destroy();
       const ctx = canvas.getContext('2d');
       const b1 = [], b2 = [], b3 = [], b4 = [];
-      notas.data.forEach(n => {
+      studentNotas.forEach(n => {
         const v1 = parseFloat(n.nota_1bim); if (!isNaN(v1) && v1 > 0) b1.push(v1);
         const v2 = parseFloat(n.nota_2bim); if (!isNaN(v2) && v2 > 0) b2.push(v2);
         const v3 = parseFloat(n.nota_3bim); if (!isNaN(v3) && v3 > 0) b3.push(v3);
@@ -180,7 +248,7 @@ async function carregarEstudante(id) {
         data: {
           labels: ['1º Bim', '2º Bim', '3º Bim', '4º Bim'],
           datasets: [{
-            label: e.nome,
+            label: studentInfo.nome,
             data: dados,
             borderColor: '#1a1a4e',
             backgroundColor: 'rgba(26,26,78,0.08)',
@@ -204,4 +272,56 @@ async function carregarEstudante(id) {
       });
     }
   }
+}
+
+function gerarPdfEstudante() {
+  if (!currentStudentId) return;
+
+  const notaRows = studentNotas.map(n => [
+    n.disciplina,
+    n.nota_1bim || '-',
+    n.nota_2bim || '-',
+    n.nota_3bim || '-',
+    n.nota_4bim || '-',
+    n.media_final || '-',
+  ]);
+  const medias = studentNotas.map(n => parseFloat(n.media_final)).filter(v => !isNaN(v) && v > 0);
+  const mediaGeral = medias.length ? Math.round((medias.reduce((a, b) => a + b, 0) / medias.length) * 10) / 10 : '-';
+
+  const freqRows = studentFreqs.map(f => {
+    const pct = parseFloat(f.frequencia);
+    const ok = !isNaN(pct) && pct >= 75;
+    return [f.mes, !isNaN(pct) ? pct + '%' : '-', ok ? 'OK' : 'Alerta'];
+  });
+  const freqsVals = studentFreqs.map(f => parseFloat(f.frequencia)).filter(v => !isNaN(v));
+  const freqMedia = freqsVals.length ? Math.round((freqsVals.reduce((a, b) => a + b, 0) / freqsVals.length) * 10) / 10 : '-';
+
+  gerarPdfRelatorio({
+    titulo: 'CONSULTA POR ESTUDANTE — SIEAC',
+    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    meta: [
+      `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
+      `Aluno: ${studentInfo.nome}`,
+      `Matrícula: ${studentInfo.matricula}`,
+      `Turma: ${studentInfo.turma}`,
+      `Série: ${studentInfo.serie}`,
+      `Turno: ${studentInfo.turno}`,
+    ],
+    tabelas: [
+      {
+        titulo: 'Notas por Disciplina',
+        colunas: ['Disciplina', '1º Bim', '2º Bim', '3º Bim', '4º Bim', 'Média'],
+        linhas: notaRows,
+        colWidths: { 1: 16, 2: 16, 3: 16, 4: 16, 5: 16 },
+        total: `Média geral: ${mediaGeral}`,
+      },
+      {
+        titulo: 'Frequência Mensal',
+        colunas: ['Mês', 'Frequência (%)', 'Status'],
+        linhas: freqRows,
+        colWidths: { 0: 60, 1: 30, 2: 30 },
+        total: `Frequência média: ${freqMedia}%`,
+      },
+    ],
+  });
 }

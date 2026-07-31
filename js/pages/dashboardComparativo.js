@@ -2,8 +2,17 @@ import { $, formatNumber } from '../utils/helpers.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { getScatterFreqNota } from '../repositories/dashboardRepository.js';
 import { destroyChart } from '../components/Charts.js';
+import { gerarPdfRelatorio } from '../utils/pdf.js';
 
 let scatterChart = null;
+let scatterData = [];
+
+const QUADRANTES = [
+  { quad: 1, cond: p => p.frequencia >= 75 && p.media >= 6, label: 'Frequência ≥ 75% e Média ≥ 6', desc: 'Situação adequada' },
+  { quad: 2, cond: p => p.frequencia >= 75 && p.media < 6, label: 'Frequência ≥ 75% e Média < 6', desc: 'Dificuldade acadêmica' },
+  { quad: 3, cond: p => p.frequencia < 75 && p.media < 6, label: 'Frequência < 75% e Média < 6', desc: 'Situação crítica' },
+  { quad: 4, cond: p => p.frequencia < 75 && p.media >= 6, label: 'Frequência < 75% e Média ≥ 6', desc: 'Falta sem comprometer nota' },
+];
 
 export async function render() {
   const main = document.getElementById('main-content');
@@ -38,6 +47,9 @@ export async function render() {
                   <div class="kpi-label">Frequência ≥ 75% e Média ≥ 6</div>
                   <div class="kpi-value" style="color:var(--sieac-success);font-size:1.5rem;"><span id="quadrante-1">—</span></div>
                   <div style="font-size:0.7rem;color:var(--sieac-text-muted);">Situação adequada</div>
+                  <button class="btn btn-sm btn-outline-success quadrant-btn no-print mt-2" data-quad="1">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                  </button>
                 </div>
               </div>
               <div class="col-md-3">
@@ -45,6 +57,9 @@ export async function render() {
                   <div class="kpi-label">Frequência ≥ 75% e Média &lt; 6</div>
                   <div class="kpi-value" style="color:var(--sieac-warning);font-size:1.5rem;"><span id="quadrante-2">—</span></div>
                   <div style="font-size:0.7rem;color:var(--sieac-text-muted);">Dificuldade acadêmica</div>
+                  <button class="btn btn-sm btn-outline-warning quadrant-btn no-print mt-2" data-quad="2">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                  </button>
                 </div>
               </div>
               <div class="col-md-3">
@@ -52,6 +67,9 @@ export async function render() {
                   <div class="kpi-label">Frequência &lt; 75% e Média &lt; 6</div>
                   <div class="kpi-value" style="color:var(--sieac-danger);font-size:1.5rem;"><span id="quadrante-3">—</span></div>
                   <div style="font-size:0.7rem;color:var(--sieac-text-muted);">Situação crítica</div>
+                  <button class="btn btn-sm btn-outline-danger quadrant-btn no-print mt-2" data-quad="3">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                  </button>
                 </div>
               </div>
               <div class="col-md-3">
@@ -59,6 +77,9 @@ export async function render() {
                   <div class="kpi-label">Frequência &lt; 75% e Média ≥ 6</div>
                   <div class="kpi-value" style="color:var(--sieac-primary);font-size:1.5rem;"><span id="quadrante-4">—</span></div>
                   <div style="font-size:0.7rem;color:var(--sieac-text-muted);">Falta sem comprometer nota</div>
+                  <button class="btn btn-sm btn-outline-primary quadrant-btn no-print mt-2" data-quad="4">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                  </button>
                 </div>
               </div>
             </div>
@@ -69,6 +90,9 @@ export async function render() {
   `;
 
   renderFilterPanel('filter-container-comparativo', () => loadData());
+  document.querySelectorAll('.quadrant-btn').forEach(btn => {
+    btn.addEventListener('click', () => gerarPdfQuadrante(Number(btn.dataset.quad)));
+  });
   await loadData();
 }
 
@@ -79,11 +103,12 @@ export function unload() {
 async function loadData() {
   const filters = getFilters();
   const scatter = await getScatterFreqNota(filters);
+  scatterData = scatter.data || [];
 
   let q1 = 0, q2 = 0, q3 = 0, q4 = 0;
 
-  if (scatter.data && scatter.data.length) {
-    scatter.data.forEach(p => {
+  if (scatterData.length) {
+    scatterData.forEach(p => {
       if (p.frequencia >= 75 && p.media >= 6) q1++;
       else if (p.frequencia >= 75 && p.media < 6) q2++;
       else if (p.frequencia < 75 && p.media < 6) q3++;
@@ -105,14 +130,14 @@ async function loadData() {
         data: {
           datasets: [{
             label: 'Estudantes',
-            data: scatter.data.map(p => ({ x: p.frequencia, y: p.media, nome: p.nome })),
-            backgroundColor: scatter.data.map(p => {
+            data: scatterData.map(p => ({ x: p.frequencia, y: p.media, nome: p.nome })),
+            backgroundColor: scatterData.map(p => {
               if (p.frequencia >= 75 && p.media >= 6) return 'rgba(45,198,83,0.6)';
               if (p.frequencia >= 75 && p.media < 6) return 'rgba(255,208,0,0.6)';
               if (p.frequencia < 75 && p.media < 6) return 'rgba(230,57,70,0.6)';
               return 'rgba(26,26,78,0.6)';
             }),
-            borderColor: scatter.data.map(p => {
+            borderColor: scatterData.map(p => {
               if (p.frequencia >= 75 && p.media >= 6) return '#2dc653';
               if (p.frequencia >= 75 && p.media < 6) return '#ffd000';
               if (p.frequencia < 75 && p.media < 6) return '#e63946';
@@ -167,4 +192,22 @@ async function loadData() {
     document.getElementById('quadrante-3').textContent = '—';
     document.getElementById('quadrante-4').textContent = '—';
   }
+}
+
+function gerarPdfQuadrante(quad) {
+  const info = QUADRANTES.find(x => x.quad === quad);
+  if (!info) return;
+  const alunos = scatterData.filter(info.cond);
+  gerarPdfRelatorio({
+    titulo: 'QUADRANTE DE ATENÇÃO — SIEAC',
+    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    meta: [`Gerado em: ${new Date().toLocaleString('pt-BR')}`, `Quadrante: ${info.label}`, info.desc],
+    tabelas: [{
+      titulo: info.label,
+      colunas: ['Estudante', 'Matrícula', 'Frequência (%)', 'Média Final'],
+      linhas: alunos.map(a => [a.nome, a.matricula, String(a.frequencia).replace('.', ','), String(a.media).replace('.', ',')]),
+      colWidths: { 1: 25, 2: 25, 3: 25 },
+      total: `Total — ${alunos.length} estudante(s)`,
+    }],
+  });
 }
