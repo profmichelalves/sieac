@@ -1,7 +1,7 @@
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { supabaseFetchAll, supabaseQuery } from '../services/supabase.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
-import { infoBtn } from '../utils/explanation.js';
+import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 
 const MEDIA_CORTE = 6;
 
@@ -27,7 +27,7 @@ export async function render() {
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div>
-        <div class="page-title">Relatório de Notas ${infoBtn('Relatório de Notas', 'Lista os alunos com média final abaixo da nota de corte (6,0). Cada linha representa uma combinação de disciplina/turma/aluno, respeitando os filtros aplicados. Para conferência, compare com o relatório original de acompanhamento de notas da escola.')}</div>
+        <div class="page-title">Relatório de Notas ${infoBtn('Relatório de Notas', 'Lista os alunos com média final abaixo da nota de corte (6,0). Cada linha representa uma combinação de disciplina/turma/aluno, respeitando os filtros aplicados. Para conferência, compare com o relatório original de acompanhamento de notas da escola.' + EXPLICACAO_RESULTADO)}</div>
         <div class="page-subtitle">Alunos abaixo da média — nota de corte ${MEDIA_CORTE}</div>
       </div>
       <button class="btn btn-primary no-print" id="btn-gerar-pdf">

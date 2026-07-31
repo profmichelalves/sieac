@@ -1,3 +1,6 @@
+export const EXPLICACAO_RESULTADO =
+  ' Como a média e o resultado são calculados: a média final (media_final) vem da coluna "MÉDIA FINAL" da planilha; quando zerada ou ausente, é calculada pela média das notas dos 4 bimestres (considerando apenas notas maiores que zero) e arredondada a 1 casa decimal. O resultado final (resultado_final) é o valor da coluna "RESULTADO FINAL"; se vazio ou "MATRICULADO", é derivado da média: APROVADO quando média ≥ 6 e REPROVADO quando média < 6. Sem média válida, o resultado final fica vazio.';
+
 function esc(str) {
   return String(str)
     .replace(/&/g, '&amp;')

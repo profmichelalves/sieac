@@ -1,5 +1,5 @@
 import { $, showToast, formatNumber, formatPercent } from '../utils/helpers.js';
-import { infoBtn } from '../utils/explanation.js';
+import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createDoughnutChart, destroyChart } from '../components/Charts.js';
 import { getResumoGeral, getMediaPorSerie, getResultadoFinal } from '../repositories/dashboardRepository.js';
@@ -52,7 +52,7 @@ export async function render() {
           <div class="kpi-label">Aprovação</div>
           <div class="kpi-value" style="color:var(--sieac-success)"><span id="kpi-aprovacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-check-circle"></i></div>
-          ${infoBtn('Aprovação', 'Percentual de estudantes em que todos os resultados finais registrados indicaram aprovação.')}
+          ${infoBtn('Aprovação', 'Percentual de estudantes em que todos os resultados finais registrados indicaram aprovação.' + EXPLICACAO_RESULTADO)}
         </div>
       </div>
       <div class="col-6 col-md-2">
@@ -60,7 +60,7 @@ export async function render() {
           <div class="kpi-label">Reprovação</div>
           <div class="kpi-value" style="color:var(--sieac-danger)"><span id="kpi-reprovacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-x-circle"></i></div>
-          ${infoBtn('Reprovação', 'Percentual de estudantes sem nenhum resultado de aprovação. Estudantes com aprovação parcial são classificados como Recuperação.')}
+          ${infoBtn('Reprovação', 'Percentual de estudantes sem nenhum resultado de aprovação. Estudantes com aprovação parcial são classificados como Recuperação.' + EXPLICACAO_RESULTADO)}
         </div>
       </div>
     </div>
@@ -68,7 +68,7 @@ export async function render() {
     <div class="row g-4">
       <div class="col-md-5">
         <div class="chart-card">
-          <div class="chart-card-title">Distribuição dos Resultados Finais ${infoBtn('Distribuição dos Resultados Finais', 'Conta os estudantes pelo resultado final das notas (Aprovado, Reprovado ou Recuperação). Quando um estudante tem mais de um resultado, só é considerado Aprovado se todos forem de aprovação; aprovação parcial é contada como Recuperação.')}</div>
+          <div class="chart-card-title">Distribuição dos Resultados Finais ${infoBtn('Distribuição dos Resultados Finais', 'Conta os estudantes pelo resultado final das notas (Aprovado, Reprovado ou Recuperação). Quando um estudante tem mais de um resultado, só é considerado Aprovado se todos forem de aprovação; aprovação parcial é contada como Recuperação.' + EXPLICACAO_RESULTADO)}</div>
           <div class="chart-container" style="height:320px;">
             <canvas id="chart-resultado-final"></canvas>
           </div>

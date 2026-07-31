@@ -1,5 +1,5 @@
 import { showToast } from '../utils/helpers.js';
-import { infoBtn } from '../utils/explanation.js';
+import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { supabaseQuery } from '../services/supabase.js';
 import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, buscarEstudantes, podeVerEstudante } from '../repositories/dashboardRepository.js';
 import { destroyChart } from '../components/Charts.js';
@@ -87,7 +87,7 @@ export async function render() {
       <div class="row g-4">
         <div class="col-md-7">
           <div class="card-sieac">
-            <div class="card-sieac-header">Notas por Disciplina ${infoBtn('Notas por Disciplina', 'Notas de cada bimestre e média final por disciplina, extraídas diretamente do cadastro de notas do estudante.')}</div>
+            <div class="card-sieac-header">Notas por Disciplina ${infoBtn('Notas por Disciplina', 'Notas de cada bimestre e média final por disciplina, extraídas diretamente do cadastro de notas do estudante.' + EXPLICACAO_RESULTADO)}</div>
             <div class="card-sieac-body">
               <div class="table-responsive-custom">
                 <table class="table-sieac" id="table-notas-estudante">
@@ -124,7 +124,7 @@ export async function render() {
       <div class="row g-4 mt-2">
         <div class="col-md-12">
           <div class="chart-card">
-            <div class="chart-card-title">Evolução — Média por Bimestre ${infoBtn('Evolução — Média por Bimestre', 'Média das notas de cada bimestre do estudante, considerando apenas notas maiores que zero.')}</div>
+            <div class="chart-card-title">Evolução — Média por Bimestre ${infoBtn('Evolução — Média por Bimestre', 'Média das notas de cada bimestre do estudante, considerando apenas notas maiores que zero.' + EXPLICACAO_RESULTADO)}</div>
             <div class="chart-container" style="height:280px;">
               <canvas id="chart-evolucao-estudante"></canvas>
             </div>

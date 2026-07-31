@@ -1,5 +1,5 @@
 import { $, formatNumber } from '../utils/helpers.js';
-import { infoBtn } from '../utils/explanation.js';
+import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { getScatterFreqNota } from '../repositories/dashboardRepository.js';
 import { destroyChart } from '../components/Charts.js';
@@ -26,7 +26,7 @@ export async function render() {
     <div class="row g-4">
       <div class="col-12">
         <div class="chart-card">
-          <div class="chart-card-title">Frequência x Média Final ${infoBtn('Frequência x Média Final', 'Cada ponto representa um estudante com média final maior que zero e frequência registrada. Eixo X: média dos percentuais de frequência do estudante; Eixo Y: média das médias finais das suas disciplinas.')}</div>
+          <div class="chart-card-title">Frequência x Média Final ${infoBtn('Frequência x Média Final', 'Cada ponto representa um estudante com média final maior que zero e frequência registrada. Eixo X: média dos percentuais de frequência do estudante; Eixo Y: média das médias finais das suas disciplinas.' + EXPLICACAO_RESULTADO)}</div>
           <div class="chart-container" style="height:500px;">
             <canvas id="chart-scatter"></canvas>
           </div>

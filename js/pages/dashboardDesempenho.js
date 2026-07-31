@@ -1,5 +1,5 @@
 import { $, formatNumber } from '../utils/helpers.js';
-import { infoBtn } from '../utils/explanation.js';
+import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createLineChart, destroyChart } from '../components/Charts.js';
 import {
@@ -99,7 +99,7 @@ export async function render() {
       </div>
       <div class="col-md-6">
         <div class="chart-card">
-          <div class="chart-card-title">Distribuição das Notas ${infoBtn('Distribuição das Notas', 'Histograma das médias finais divididas em faixas: 0–2, 2–4, 4–6, 6–8 e 8–10. Apenas médias finais maiores que zero são consideradas.')}</div>
+          <div class="chart-card-title">Distribuição das Notas ${infoBtn('Distribuição das Notas', 'Histograma das médias finais divididas em faixas: 0–2, 2–4, 4–6, 6–8 e 8–10. Apenas médias finais maiores que zero são consideradas.' + EXPLICACAO_RESULTADO)}</div>
           <div class="chart-container" style="height:350px;"><canvas id="chart-distribuicao"></canvas></div>
         </div>
       </div>
