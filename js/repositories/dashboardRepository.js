@@ -288,14 +288,16 @@ export async function getResultadoFinal(filters = {}) {
 
   const alunos = {};
   notas.forEach(n => {
+    if (!alunos[n.estudante_id]) alunos[n.estudante_id] = { aprovCount: 0, totalCount: 0 };
+    alunos[n.estudante_id].totalCount++;
     const r = (n.resultado_final || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    alunos[n.estudante_id] = r.includes('aprov') ? 'aprovado' : r.includes('recup') ? 'recuperacao' : 'reprovado';
+    if (r.includes('aprov')) alunos[n.estudante_id].aprovCount++;
   });
 
   let aprov = 0, repr = 0, recup = 0;
-  Object.values(alunos).forEach(v => {
-    if (v === 'aprovado') aprov++;
-    else if (v === 'recuperacao') recup++;
+  Object.values(alunos).forEach(a => {
+    if (a.aprovCount === a.totalCount) aprov++;
+    else if (a.aprovCount > 0) recup++;
     else repr++;
   });
 

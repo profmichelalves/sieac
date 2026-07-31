@@ -68,7 +68,7 @@ export async function render() {
           <div class="kpi-label">Recuperação</div>
           <div class="kpi-value" style="color:var(--sieac-warning)"><span id="kpi-recuperacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-arrow-repeat"></i></div>
-          ${infoBtn('Recuperação', 'Quantidade de estudantes com aprovação parcial: ao menos uma disciplina aprovada e ao menos uma reprovada.' + EXPLICACAO_RESULTADO)}
+          ${infoBtn('Recuperação', 'Percentual de estudantes com aprovação parcial: ao menos uma disciplina aprovada e ao menos uma reprovada.' + EXPLICACAO_RESULTADO)}
           <button class="btn btn-sm btn-outline-warning kpi-pdf-btn no-print mt-2" data-tipo="recuperacao">
             <i class="bi bi-file-earmark-pdf"></i> PDF
           </button>
@@ -157,7 +157,7 @@ async function loadData() {
   }
 
   animateNumber('kpi-aprovacao', resumo.aprovacao_pct + '%');
-  animateNumber('kpi-recuperacao', resumo.total_recuperacao);
+  animateNumber('kpi-recuperacao', resumo.recuperacao_pct + '%');
   animateNumber('kpi-reprovacao', resumo.reprovacao_pct + '%');
 
   const resultado = await getResultadoFinal(filters);
