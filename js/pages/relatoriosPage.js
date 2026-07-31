@@ -4,49 +4,14 @@ import { supabaseFetchAll, supabaseQuery } from '../services/supabase.js';
 const MEDIA_CORTE = 6;
 
 let relLinhas = [];
+let relSortKey = 'disciplina';
+let relDataHora = '';
+let relFiltros = [];
 
 export async function render() {
   const main = document.getElementById('main-content');
   main.innerHTML = `
     <style>
-      @media print {
-        body, html { background:#fff !important; }
-        #sidebar-wrapper, .navbar, .page-title, .page-subtitle, #filter-container-relatorios,
-        .btn-print, .kpi-card, .no-print { display:none !important; }
-        #main-content { margin-left:0 !important; width:100% !important; }
-        .report-container { box-shadow:none !important; padding:8px !important; }
-        .report-header { margin-bottom:8px; padding-bottom:8px; }
-        .report-header img { max-width:36px; height:36px; }
-        .report-header h2 { font-size:1rem; }
-        .report-header small { font-size:0.65rem; }
-        .report-meta { margin-bottom:8px; font-size:0.7rem; }
-        .report-meta span { margin-right:12px; }
-        .report-section-title { margin:10px 0 4px; font-size:0.85rem; }
-        .report-table { margin-bottom:0; }
-        .report-table th { padding:2px 5px; font-size:0.62rem; }
-        .report-table td { padding:1px 5px; font-size:0.68rem; }
-        .report-table .col-situacao { display:none; }
-        .report-table .group-header td { padding:2px 5px; font-size:0.7rem; }
-        table { page-break-inside:auto; border-collapse:collapse; width:100%; }
-        tr { page-break-inside:avoid; page-break-after:auto; }
-        thead { display:table-header-group; }
-        .print-only { display:block !important; }
-        @page { margin: 8mm; }
-      }
-      .print-only { display:none; }
-      .report-container {
-        background:var(--sieac-surface); border-radius:var(--sieac-radius);
-        padding:24px; box-shadow:var(--sieac-shadow); max-width:1100px;
-      }
-      .report-header {
-        display:flex; align-items:center; gap:16px; margin-bottom:24px;
-        padding-bottom:16px; border-bottom:2px solid var(--sieac-primary);
-      }
-      .report-header img { height:56px; }
-      .report-header h2 { margin:0; font-size:1.3rem; color:var(--sieac-text); }
-      .report-header small { color:var(--sieac-text-muted); font-size:0.8rem; }
-      .report-meta { font-size:0.85rem; color:var(--sieac-text-muted); margin-bottom:20px; }
-      .report-meta span { display:inline-block; margin-right:24px; }
       .report-toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
       .report-toolbar-label {
         font-size:0.85rem; color:var(--sieac-text-muted);
@@ -56,34 +21,6 @@ export async function render() {
         border-radius:var(--sieac-radius-pill) !important;
         font-size:0.8rem !important; padding:4px 16px !important;
       }
-      .report-table { width:100%; border-collapse:collapse; margin-bottom:28px; }
-      .report-table th {
-        background:#1a2a3a; color:#fff; padding:7px 10px;
-        font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;
-        text-align:left; border:1px solid #2a3a4a;
-      }
-      .report-table td {
-        padding:6px 10px; border:1px solid var(--sieac-border);
-        font-size:0.82rem; color:var(--sieac-text);
-      }
-      .report-table tbody tr:nth-child(even):not(.group-header) { background:var(--sieac-bg); }
-      .report-table .num { text-align:center; }
-      .report-table .acima { color:var(--sieac-success); font-weight:600; }
-      .report-table .abaixo { color:var(--sieac-danger); font-weight:600; }
-      .report-table .group-header td {
-        background:#1a2a3a; color:#fff; font-weight:700; font-size:0.85rem;
-        padding:8px 10px;
-      }
-      .report-section-title {
-        font-size:1rem; font-weight:600; color:var(--sieac-text);
-        margin:24px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--sieac-border);
-      }
-      .media-badge {
-        display:inline-block; padding:2px 10px; border-radius:12px;
-        font-size:0.78rem; font-weight:600;
-      }
-      .media-badge.acima { background:#d4edda; color:#155724; }
-      .media-badge.abaixo { background:#f8d7da; color:#721c24; }
     </style>
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -91,7 +28,7 @@ export async function render() {
         <div class="page-title">Relatório de Notas</div>
         <div class="page-subtitle">Alunos abaixo da média — nota de corte ${MEDIA_CORTE}</div>
       </div>
-      <button class="btn btn-primary btn-print no-print" onclick="window.print()">
+      <button class="btn btn-primary no-print" id="btn-gerar-pdf">
         <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
       </button>
     </div>
@@ -104,53 +41,21 @@ export async function render() {
       <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="turma">Turma</button>
       <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="aluno">Aluno</button>
     </div>
-
-    <div class="report-container print-only" id="report-content">
-      <div class="report-header print-only">
-        <img src="assets/img/logo-sieac.png" alt="SIEAC" onerror="this.remove()">
-        <div>
-          <h2>Relatório de Notas — SIEAC</h2>
-          <small>Sistema de Indicadores Educacionais Abel Coelho</small>
-        </div>
-      </div>
-      <div class="report-meta" id="report-meta">
-        <span><strong>Gerado em:</strong> <span id="rel-data-hora">—</span></span>
-        <span><strong>Nota de corte:</strong> ${MEDIA_CORTE}</span>
-        <span id="rel-filtros-info"></span>
-      </div>
-
-      <div class="report-section-title">Alunos Abaixo da Média</div>
-      <div style="overflow-x:auto;">
-        <table class="report-table" id="rel-table">
-          <thead>
-            <tr>
-              <th style="min-width:120px;">Disciplina</th>
-              <th style="min-width:100px;">Turma</th>
-              <th style="min-width:160px;">Aluno</th>
-              <th class="num" style="min-width:70px;">Matrícula</th>
-              <th class="num" style="min-width:80px;">Média Final</th>
-              <th class="col-situacao" style="min-width:90px;">Situação</th>
-            </tr>
-          </thead>
-          <tbody id="rel-tbody">
-            <tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Carregando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
   `;
 
   document.querySelectorAll('.sort-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      relSortKey = btn.dataset.sort;
       document.querySelectorAll('.sort-btn').forEach(b => {
         b.classList.remove('btn-primary');
         b.classList.add('btn-outline-secondary');
       });
       btn.classList.add('btn-primary');
       btn.classList.remove('btn-outline-secondary');
-      renderTable(btn.dataset.sort);
     });
   });
+
+  document.getElementById('btn-gerar-pdf').addEventListener('click', gerarPDF);
 
   renderFilterPanel('filter-container-relatorios', () => loadData());
   await loadData();
@@ -205,8 +110,7 @@ async function loadData() {
   const filters = getFilters();
   const cache = await getCache();
 
-  document.getElementById('rel-data-hora').textContent = new Date().toLocaleString('pt-BR');
-  const filtroInfo = document.getElementById('rel-filtros-info');
+  relDataHora = new Date().toLocaleString('pt-BR');
   const filtrosAtivos = [];
   if (filters.etapa_id) {
     const { data: etapas } = await supabaseQuery('etapas_ensino', { select: 'nome', filters: [{ col: 'id', val: filters.etapa_id }] });
@@ -229,7 +133,7 @@ async function loadData() {
     const { data: profs } = await supabaseQuery('professores', { select: 'nome', filters: [{ col: 'id', val: filters.professor_id }] });
     if (profs && profs[0]) filtrosAtivos.push(`Professor: ${profs[0].nome}`);
   }
-  filtroInfo.innerHTML = filtrosAtivos.length ? `<strong>Filtros:</strong> ${filtrosAtivos.join(' | ')}` : '';
+  relFiltros = filtrosAtivos;
 
   const { data: notas } = await supabaseFetchAll('notas', { select: 'estudante_id,media_final,alocacao_id' });
   const filtradas = aplicarFiltros(notas || [], filters, cache);
@@ -258,7 +162,6 @@ async function loadData() {
   }).filter(Boolean);
 
   relLinhas = linhas;
-  renderTable('disciplina');
 }
 
 function ordenarLinhas(linhas, sortKey) {
@@ -277,25 +180,67 @@ function ordenarLinhas(linhas, sortKey) {
   });
 }
 
-function renderTable(sortKey) {
-  const tbody = document.getElementById('rel-tbody');
-  if (!tbody) return;
-
+function gerarPDF() {
   if (!relLinhas.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Nenhum aluno abaixo da média ${MEDIA_CORTE} encontrado para os filtros selecionados</td></tr>`;
+    alert('Nenhum aluno abaixo da média para os filtros selecionados.');
     return;
   }
-
-  const ordenadas = ordenarLinhas(relLinhas, sortKey);
-  const html = ordenadas.map(i => `<tr>
-    <td>${i.disciplina}</td>
-    <td>${i.turma}</td>
-    <td><strong>${i.aluno}</strong></td>
-    <td class="num">${i.matricula}</td>
-    <td class="num abaixo">${i.media_final.toFixed(1)}</td>
-    <td class="num col-situacao"><span class="media-badge abaixo">Abaixo</span></td>
-  </tr>`).join('');
-
+  const ordenadas = ordenarLinhas(relLinhas, relSortKey);
   const totalAlunos = new Set(relLinhas.map(l => l.estudante_id)).size;
-  tbody.innerHTML = html + `<tr class="group-header"><td colspan="6"><strong>Total</strong> — ${totalAlunos} aluno(s) abaixo da média</td></tr>`;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 8;
+
+  doc.setFillColor(26, 42, 58);
+  doc.rect(0, 0, pageW, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('RELATÓRIO DE NOTAS — SIEAC', margin, 9);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text('Sistema de Indicadores Educacionais Abel Coelho', margin, 14);
+
+  const meta = `Gerado em: ${relDataHora}  |  Nota de corte: ${MEDIA_CORTE}` + (relFiltros.length ? `  |  Filtros: ${relFiltros.join(' | ')}` : '');
+  doc.setFontSize(7);
+  doc.setTextColor(90, 90, 90);
+  doc.text(meta, margin, 25);
+
+  doc.autoTable({
+    startY: 29,
+    margin: { left: margin, right: margin, top: 30, bottom: 12 },
+    head: [['Disciplina', 'Turma', 'Aluno', 'Matrícula', 'Média Final']],
+    body: ordenadas.map(l => [l.disciplina, l.turma, l.aluno, l.matricula, l.media_final.toFixed(1)]),
+    styles: { font: 'helvetica', fontSize: 6.5, cellPadding: 1.1, textColor: [40, 40, 40], lineColor: [200, 200, 200], lineWidth: 0.1, overflow: 'linebreak' },
+    headStyles: { fillColor: [26, 42, 58], textColor: [255, 255, 255], fontSize: 6.8, fontStyle: 'bold', cellPadding: 1.6 },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    columnStyles: {
+      0: { cellWidth: 40 },
+      1: { cellWidth: 22 },
+      3: { cellWidth: 18, halign: 'center' },
+      4: { cellWidth: 18, halign: 'center' },
+    },
+    showHead: 'everyPage',
+    theme: 'grid',
+    didDrawPage: (data) => {
+      const pageH = doc.internal.pageSize.getHeight();
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(130, 130, 130);
+      doc.text(`Página ${doc.internal.getCurrentPageInfo().pageNumber} de ${doc.internal.getNumberOfPages()}`, pageW - margin, pageH - 6, { align: 'right' });
+    },
+  });
+
+  const finalY = doc.lastAutoTable.finalY + 4;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(26, 42, 58);
+  doc.text(`Total — ${totalAlunos} aluno(s) abaixo da média`, margin, finalY);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(120, 120, 120);
+  doc.text(`${ordenadas.length} registro(s)`, pageW - margin, finalY, { align: 'right' });
+
+  doc.save('relatorio-notas.pdf');
 }
