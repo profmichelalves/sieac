@@ -15,7 +15,7 @@ async function getRefCache() {
     supabaseQuery('etapas_ensino', { select: 'id,nome' }),
   ]);
   const a = await supabaseQuery('alocacoes', { select: 'id,turma_id,componente_id,professor_id' });
-  const est = await supabaseQuery('estudantes', { select: 'id,nome,matricula' });
+  const est = await supabaseFetchAll('estudantes', { select: 'id,nome,matricula', limit: 30000 });
   refCache = {
     series: s.data || [],
     turmas: t.data || [],
@@ -205,10 +205,37 @@ async function queryFrequencias(filters, selectFields) {
 
 // ---- EXPORTED FUNCTIONS ----
 
+async function getEstudantesImportados(filters) {
+  await getRefCache();
+  let ids = new Set(refCache.estudantes.map(e => e.id));
+  const permitidos = await getEstudantesPermitidos();
+  if (permitidos) ids = new Set([...ids].filter(id => permitidos.has(Number(id))));
+  const f = montarFiltrosNotas(filters);
+  if (f && f.estudante_id) {
+    ids = new Set([...ids].filter(id => Number(id) === Number(f.estudante_id)));
+  } else if (f && f.alocacao_ids && f.alocacao_ids.length) {
+    const idsComNota = new Set();
+    for (let i = 0; i < f.alocacao_ids.length; i += 100) {
+      const chunk = f.alocacao_ids.slice(i, i + 100);
+      const { data: notas } = await supabaseFetchAll('notas', {
+        select: 'estudante_id',
+        filters: [{ col: 'alocacao_id', val: chunk, op: 'in' }],
+        limit: 30000,
+      });
+      (notas || []).forEach(n => idsComNota.add(Number(n.estudante_id)));
+    }
+    ids = new Set([...ids].filter(id => idsComNota.has(id)));
+  }
+  return ids.size;
+}
+
 export async function getResumoGeral(filters = {}) {
   await getRefCache();
-  const notas = await queryNotas(filters, 'estudante_id,media_final,resultado_final,alocacao_id');
-  const frequencias = await queryFrequencias(filters, 'percentual_frequencia,estudante_id');
+  const [totalEstudantes, notas, frequencias] = await Promise.all([
+    getEstudantesImportados(filters),
+    queryNotas(filters, 'estudante_id,media_final,resultado_final,alocacao_id'),
+    queryFrequencias(filters, 'percentual_frequencia,estudante_id'),
+  ]);
 
   const alunos = {};
   notas.forEach(n => {
@@ -243,13 +270,14 @@ export async function getResumoGeral(filters = {}) {
   const turmaSet = montarTurmasFiltradas(filters);
 
   return {
-    total_estudantes: Object.keys(alunos).length,
+    total_estudantes: totalEstudantes,
     total_turmas: turmaSet ? turmaSet.size : refCache.turmas.length,
     media_geral: Math.round(mediaGeral * 10) / 10,
     frequencia_media: Math.round(freqMedia * 10) / 10,
     aprovacao_pct: Math.round(aprovados / total * 100),
     reprovacao_pct: Math.round(reprovados / total * 100),
     recuperacao_pct: Math.round(recuperacao / total * 100),
+    total_recuperacao: recuperacao,
     total_notas: notas.length,
   };
 }
@@ -272,6 +300,67 @@ export async function getResultadoFinal(filters = {}) {
   });
 
   return { data: { aprovados: aprov, reprovados: repr, recuperacao: recup }, error: null };
+}
+
+export async function getDetalheResultados(filters = {}) {
+  await getRefCache();
+  const notas = await queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,resultado_final');
+
+  const alunos = {};
+  const grupos = {};
+  notas.forEach(n => {
+    const mf = parseFloat(n.media_final);
+    if (isNaN(mf) || mf <= 0) return;
+    if (!alunos[n.estudante_id]) alunos[n.estudante_id] = { aprovCount: 0, totalCount: 0 };
+    alunos[n.estudante_id].totalCount++;
+    const r = (n.resultado_final || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (r.includes('aprov')) alunos[n.estudante_id].aprovCount++;
+    if (!grupos[n.estudante_id]) grupos[n.estudante_id] = [];
+    grupos[n.estudante_id].push(n);
+  });
+
+  const eMap = {}; refCache.estudantes.forEach(e => eMap[e.id] = e);
+  const alocTurma = {}; refCache.alocacoes.forEach(a => alocTurma[a.id] = a.turma_id);
+  const alocComp = {}; refCache.alocacoes.forEach(a => alocComp[a.id] = a.componente_id);
+  const tMap = {}; refCache.turmas.forEach(t => tMap[t.id] = t.nome);
+  const cMap = {}; refCache.componentes.forEach(c => cMap[c.id] = c.nome);
+
+  const resultado = { aprovados: [], recuperacao: [], reprovados: [] };
+  Object.entries(alunos).forEach(([eId, a]) => {
+    let cat;
+    if (a.aprovCount === a.totalCount) cat = 'aprovados';
+    else if (a.aprovCount > 0) cat = 'recuperacao';
+    else cat = 'reprovados';
+    const e = eMap[eId];
+    (grupos[eId] || []).forEach(n => {
+      resultado[cat].push({
+        estudante: e?.nome || `ID ${eId}`,
+        matricula: e?.matricula || '-',
+        turma: tMap[alocTurma[n.alocacao_id]] || '-',
+        disciplina: cMap[alocComp[n.alocacao_id]] || 'N/I',
+        nota_1bim: n.nota_1bim,
+        nota_2bim: n.nota_2bim,
+        nota_3bim: n.nota_3bim,
+        nota_4bim: n.nota_4bim,
+        media_final: n.media_final,
+        resultado_final: n.resultado_final || '-',
+      });
+    });
+  });
+
+  const ordenar = arr => arr.sort((a, b) =>
+    a.estudante.localeCompare(b.estudante, 'pt-BR') ||
+    a.disciplina.localeCompare(b.disciplina, 'pt-BR')
+  );
+
+  return {
+    data: {
+      aprovados: ordenar(resultado.aprovados),
+      recuperacao: ordenar(resultado.recuperacao),
+      reprovados: ordenar(resultado.reprovados),
+    },
+    error: null,
+  };
 }
 
 export async function getMediaPorTurma(filters = {}) {
