@@ -88,8 +88,12 @@ export async function atualizarUsuario(id, campos) {
   return { error };
 }
 
-export function logout() {
+export async function logout() {
   clearUser();
+  try {
+    const { clearFilterCache } = await import('../components/FilterPanel.js');
+    clearFilterCache();
+  } catch {}
   window.location.hash = '#login';
   window.location.reload();
 }

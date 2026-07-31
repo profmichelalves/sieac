@@ -1,12 +1,30 @@
 import { supabaseQuery } from '../services/supabase.js';
 import { isProfessor, getProfessorVinculo } from '../services/authService.js';
 
+const CACHE_KEY = 'sieac_filter_cache';
+
 let pendingFilters = {};
 let appliedFilters = {};
 let onChangeCallback = null;
 let isDirty = false;
 let professorVinculo = null;
 let filterData = null;
+
+function loadFilterCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function saveFilterCache(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch {}
+}
+
+export function clearFilterCache() {
+  localStorage.removeItem(CACHE_KEY);
+}
 
 const SELECT_IDS = [
   'filter-etapa', 'filter-serie', 'filter-turma',
@@ -35,23 +53,35 @@ async function getFilterData() {
   const userIsProfessor = isProfessor();
   if (userIsProfessor) professorVinculo = await getProfessorVinculo();
 
-  const [series, turmas, componentes, professores, etapas, alocacoes] = await Promise.all([
-    supabaseQuery('series', { select: 'id,nome,etapa_ensino_id', order: 'nome' }),
-    supabaseQuery('turmas', { select: 'id,nome,serie_id,turno', order: 'nome' }),
-    supabaseQuery('componentes_curriculares', { select: 'id,nome', order: 'nome' }),
-    supabaseQuery('professores', { select: 'id,nome', order: 'nome' }),
-    supabaseQuery('etapas_ensino', { select: 'id,nome', order: 'nome' }),
-    supabaseQuery('alocacoes', { select: 'id,professor_id,turma_id,componente_id' }),
-  ]);
+  let raw = loadFilterCache();
+  if (!raw) {
+    const [series, turmas, componentes, professores, etapas, alocacoes] = await Promise.all([
+      supabaseQuery('series', { select: 'id,nome,etapa_ensino_id', order: 'nome' }),
+      supabaseQuery('turmas', { select: 'id,nome,serie_id,turno', order: 'nome' }),
+      supabaseQuery('componentes_curriculares', { select: 'id,nome', order: 'nome' }),
+      supabaseQuery('professores', { select: 'id,nome', order: 'nome' }),
+      supabaseQuery('etapas_ensino', { select: 'id,nome', order: 'nome' }),
+      supabaseQuery('alocacoes', { select: 'id,professor_id,turma_id,componente_id' }),
+    ]);
+    raw = {
+      series: series.data || [],
+      turmas: turmas.data || [],
+      componentes: componentes.data || [],
+      professores: professores.data || [],
+      etapas: etapas.data || [],
+      alocacoes: alocacoes.data || [],
+    };
+    const turnosSet = new Set(raw.turmas.map(t => t.turno).filter(Boolean));
+    raw.turnoOptions = [...turnosSet].sort();
+    saveFilterCache(raw);
+  }
 
-  let seriesData = series.data || [];
-  let turmasData = turmas.data || [];
-  let compData = componentes.data || [];
-  let profData = professores.data || [];
-  let alocData = alocacoes.data || [];
-
-  const turnosSet = new Set((turmasData || []).map(t => t.turno).filter(Boolean));
-  const turnoOptions = [...turnosSet].sort();
+  let seriesData = raw.series;
+  let turmasData = raw.turmas;
+  let compData = raw.componentes;
+  let profData = raw.professores;
+  let alocData = raw.alocacoes;
+  const turnoOptions = raw.turnoOptions;
 
   if (userIsProfessor && professorVinculo) {
     seriesData = professorVinculo.series;
@@ -73,7 +103,7 @@ async function getFilterData() {
     turmas: turmasData,
     componentes: compData,
     professores: profData,
-    etapas: etapas.data || [],
+    etapas: raw.etapas,
     alocacoes: alocData,
     turnos: turnoOptions,
     userIsProfessor,

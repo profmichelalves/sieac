@@ -1,6 +1,7 @@
 import { $, showToast } from '../utils/helpers.js';
 import { validateLoginFields, validateRegisterFields } from '../utils/validators.js';
 import { login, register } from '../services/authService.js';
+import { clearFilterCache } from '../components/FilterPanel.js';
 
 export function renderLogin() {
   const container = document.getElementById('auth-container');
@@ -63,6 +64,7 @@ export function renderLogin() {
       btn.disabled = false;
       btn.textContent = 'Entrar';
     } else {
+      clearFilterCache();
       showToast('Bem-vindo, ' + result.user.nome + '!', 'success');
       window.location.hash = 'dashboard-geral';
       window.location.reload();
