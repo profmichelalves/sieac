@@ -1,4 +1,5 @@
 import { showToast } from '../utils/helpers.js';
+import { infoBtn } from '../utils/explanation.js';
 import { supabaseQuery } from '../services/supabase.js';
 import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, buscarEstudantes, podeVerEstudante } from '../repositories/dashboardRepository.js';
 import { destroyChart } from '../components/Charts.js';
@@ -48,7 +49,7 @@ export async function render() {
 
     <div id="resultados-estudantes" style="display:none;" class="mb-4">
       <div class="card-sieac">
-        <div class="card-sieac-header">Resultados da busca</div>
+        <div class="card-sieac-header">Resultados da busca ${infoBtn('Resultados da busca', 'Estudantes encontrados por nome, matrícula ou turma. Para o perfil Professor, a busca retorna apenas estudantes das suas turmas.')}</div>
         <div class="card-sieac-body">
           <div class="table-responsive-custom" style="max-height:320px;overflow-y:auto;">
             <table class="table-sieac">
@@ -68,7 +69,7 @@ export async function render() {
       <div class="card-sieac mb-4">
         <div class="card-sieac-body">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <strong style="font-size:1rem;color:var(--sieac-text);">Informações do Estudante</strong>
+            <strong style="font-size:1rem;color:var(--sieac-text);">Informações do Estudante ${infoBtn('Informações do Estudante', 'Dados do estudante (nome, matrícula, turma, série e turno) carregados do cadastro e das notas vinculadas ao aluno.')}</strong>
             <button class="btn btn-sm btn-primary no-print" id="btn-pdf-estudante">
               <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
             </button>
@@ -86,7 +87,7 @@ export async function render() {
       <div class="row g-4">
         <div class="col-md-7">
           <div class="card-sieac">
-            <div class="card-sieac-header">Notas por Disciplina</div>
+            <div class="card-sieac-header">Notas por Disciplina ${infoBtn('Notas por Disciplina', 'Notas de cada bimestre e média final por disciplina, extraídas diretamente do cadastro de notas do estudante.')}</div>
             <div class="card-sieac-body">
               <div class="table-responsive-custom">
                 <table class="table-sieac" id="table-notas-estudante">
@@ -103,7 +104,7 @@ export async function render() {
         </div>
         <div class="col-md-5">
           <div class="card-sieac">
-            <div class="card-sieac-header">Frequência Mensal</div>
+            <div class="card-sieac-header">Frequência Mensal ${infoBtn('Frequência Mensal', 'Percentual de frequência por mês de referência, extraído do cadastro de frequências do estudante. Status OK quando ≥ 75%.')}</div>
             <div class="card-sieac-body">
               <div class="table-responsive-custom">
                 <table class="table-sieac" id="table-freq-estudante">
@@ -123,7 +124,7 @@ export async function render() {
       <div class="row g-4 mt-2">
         <div class="col-md-12">
           <div class="chart-card">
-            <div class="chart-card-title">Evolução — Média por Bimestre</div>
+            <div class="chart-card-title">Evolução — Média por Bimestre ${infoBtn('Evolução — Média por Bimestre', 'Média das notas de cada bimestre do estudante, considerando apenas notas maiores que zero.')}</div>
             <div class="chart-container" style="height:280px;">
               <canvas id="chart-evolucao-estudante"></canvas>
             </div>

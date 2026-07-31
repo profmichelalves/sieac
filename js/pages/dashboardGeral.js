@@ -1,4 +1,5 @@
 import { $, showToast, formatNumber, formatPercent } from '../utils/helpers.js';
+import { infoBtn } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createDoughnutChart, destroyChart } from '../components/Charts.js';
 import { getResumoGeral, getMediaPorSerie, getResultadoFinal } from '../repositories/dashboardRepository.js';
@@ -19,6 +20,7 @@ export async function render() {
           <div class="kpi-label">Estudantes</div>
           <div class="kpi-value"><span id="kpi-estudantes">—</span></div>
           <div class="kpi-icon"><i class="bi bi-people"></i></div>
+          ${infoBtn('Estudantes', 'Quantidade de estudantes que possuem ao menos uma nota com média final maior que zero, considerando os filtros aplicados. Estudantes sem notas não são contabilizados.')}
         </div>
       </div>
       <div class="col-6 col-md-2">
@@ -26,6 +28,7 @@ export async function render() {
           <div class="kpi-label">Turmas</div>
           <div class="kpi-value"><span id="kpi-turmas">—</span></div>
           <div class="kpi-icon"><i class="bi bi-building"></i></div>
+          ${infoBtn('Turmas', 'Quantidade de turmas abrangidas pelos filtros selecionados. Para o perfil Professor, são consideradas apenas as suas turmas.')}
         </div>
       </div>
       <div class="col-6 col-md-2">
@@ -33,6 +36,7 @@ export async function render() {
           <div class="kpi-label">Média Geral</div>
           <div class="kpi-value"><span id="kpi-media">—</span></div>
           <div class="kpi-icon"><i class="bi bi-graph-up"></i></div>
+          ${infoBtn('Média Geral', 'Média aritmética das médias finais de cada estudante: soma das médias finais positivas dividida pelo número de estudantes.')}
         </div>
       </div>
       <div class="col-6 col-md-2">
@@ -40,6 +44,7 @@ export async function render() {
           <div class="kpi-label">Frequência</div>
           <div class="kpi-value"><span id="kpi-frequencia">—</span></div>
           <div class="kpi-icon"><i class="bi bi-calendar-check"></i></div>
+          ${infoBtn('Frequência', 'Média aritmética dos percentuais de frequência registrados nas tabelas de frequência, considerando os filtros aplicados.')}
         </div>
       </div>
       <div class="col-6 col-md-2">
@@ -47,6 +52,7 @@ export async function render() {
           <div class="kpi-label">Aprovação</div>
           <div class="kpi-value" style="color:var(--sieac-success)"><span id="kpi-aprovacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-check-circle"></i></div>
+          ${infoBtn('Aprovação', 'Percentual de estudantes em que todos os resultados finais registrados indicaram aprovação.')}
         </div>
       </div>
       <div class="col-6 col-md-2">
@@ -54,6 +60,7 @@ export async function render() {
           <div class="kpi-label">Reprovação</div>
           <div class="kpi-value" style="color:var(--sieac-danger)"><span id="kpi-reprovacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-x-circle"></i></div>
+          ${infoBtn('Reprovação', 'Percentual de estudantes sem nenhum resultado de aprovação. Estudantes com aprovação parcial são classificados como Recuperação.')}
         </div>
       </div>
     </div>
@@ -61,7 +68,7 @@ export async function render() {
     <div class="row g-4">
       <div class="col-md-5">
         <div class="chart-card">
-          <div class="chart-card-title">Distribuição dos Resultados Finais</div>
+          <div class="chart-card-title">Distribuição dos Resultados Finais ${infoBtn('Distribuição dos Resultados Finais', 'Conta os estudantes pelo resultado final das notas (Aprovado, Reprovado ou Recuperação). Quando um estudante tem mais de um resultado, só é considerado Aprovado se todos forem de aprovação; aprovação parcial é contada como Recuperação.')}</div>
           <div class="chart-container" style="height:320px;">
             <canvas id="chart-resultado-final"></canvas>
           </div>
@@ -69,7 +76,7 @@ export async function render() {
       </div>
       <div class="col-md-7">
         <div class="chart-card">
-          <div class="chart-card-title">Média por Série</div>
+          <div class="chart-card-title">Média por Série ${infoBtn('Média por Série', 'Média aritmética das médias finais das notas, agrupadas pela série da turma de cada disciplina.')}</div>
           <div class="chart-container" style="height:320px;">
             <canvas id="chart-media-serie"></canvas>
           </div>

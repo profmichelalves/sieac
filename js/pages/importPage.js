@@ -1,4 +1,5 @@
 import { $, showToast } from '../utils/helpers.js';
+import { infoBtn } from '../utils/explanation.js';
 import { importarNotas, importarFrequencia } from '../services/importService.js';
 import { supabaseRpc } from '../services/supabase.js';
 import { clearCache } from '../repositories/dashboardRepository.js';
@@ -26,7 +27,7 @@ export async function render() {
     <div class="row g-4">
       <div class="col-md-6">
         <div class="card-sieac">
-          <div class="card-sieac-header">Notas dos Estudantes</div>
+          <div class="card-sieac-header">Notas dos Estudantes ${infoBtn('Notas dos Estudantes', 'Importa o relatório de acompanhamento de notas (.xlsx) associando estudantes, turmas, disciplinas e professores. Registros já existentes são atualizados; o resumo final mostra inseridos, atualizados, ignorados e erros.')}</div>
           <div class="card-sieac-body">
             <p style="font-size:0.85rem;color:var(--sieac-text-muted);margin-bottom:16px;">
               Importe o relatório de acompanhamento de notas dos estudantes (formato .xlsx)
@@ -48,7 +49,7 @@ export async function render() {
 
       <div class="col-md-6">
         <div class="card-sieac">
-          <div class="card-sieac-header">Frequência dos Estudantes</div>
+          <div class="card-sieac-header">Frequência dos Estudantes ${infoBtn('Frequência dos Estudantes', 'Importa o relatório de acompanhamento de frequência (.xlsx) preenchendo o percentual de frequência por estudante e mês de referência. Registros já existentes são atualizados.')}</div>
           <div class="card-sieac-body">
             <p style="font-size:0.85rem;color:var(--sieac-text-muted);margin-bottom:16px;">
               Importe o relatório de acompanhamento de frequência dos estudantes (formato .xlsx)
@@ -80,7 +81,7 @@ export async function render() {
     <div class="row g-4" style="margin-top:20px;">
       <div class="col-12">
         <div class="card-sieac">
-          <div class="card-sieac-header">Histórico de Importações</div>
+          <div class="card-sieac-header">Histórico de Importações ${infoBtn('Histórico de Importações', 'Lista as importações realizadas, com detalhes de processamento de cada arquivo enviado ao sistema.')}</div>
           <div class="card-sieac-body">
             <div id="import-historico">
               <div class="empty-state">

@@ -1,4 +1,5 @@
 import { $, showToast } from '../utils/helpers.js';
+import { infoBtn } from '../utils/explanation.js';
 import { listarUsuarios, atualizarUsuario, getCurrentUser } from '../services/authService.js';
 
 const PERFIS = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor' };
@@ -10,6 +11,7 @@ export async function render() {
     <div class="page-subtitle">Administração de contas de acesso ao sistema</div>
 
     <div class="card-sieac">
+      <div class="card-sieac-header">Usuários cadastrados ${infoBtn('Usuários cadastrados', 'Lista os usuários do sistema com nome, email, matrícula, perfil e status de ativação. O perfil pode ser alterado pelo administrador diretamente na lista; o próprio perfil não pode ser alterado para evitar bloqueio acidental.')}</div>
       <div class="card-sieac-body">
         <div class="table-responsive-custom">
           <table class="table-sieac" id="usuarios-table">

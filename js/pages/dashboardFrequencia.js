@@ -1,4 +1,5 @@
 import { $, formatNumber, formatPercent } from '../utils/helpers.js';
+import { infoBtn } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createLineChart, destroyAllCharts } from '../components/Charts.js';
 import { getFrequenciaPorTurma, getFrequenciaPorMes, getFrequenciaPorSerie, getEstudantesBaixaFrequencia } from '../repositories/dashboardRepository.js';
@@ -22,6 +23,7 @@ export async function render() {
           <div class="kpi-value"><span id="kpi-freq-media">—</span></div>
           <div class="kpi-sub"><span id="kpi-freq-status"></span></div>
           <div class="kpi-icon"><i class="bi bi-calendar-check"></i></div>
+          ${infoBtn('Frequência Média', 'Média aritmética das frequências médias de cada turma (percentuais de frequência registrados), considerando os filtros aplicados.')}
         </div>
       </div>
       <div class="col-6 col-md-3">
@@ -29,6 +31,7 @@ export async function render() {
           <div class="kpi-label">Total Registros</div>
           <div class="kpi-value"><span id="kpi-freq-total">—</span></div>
           <div class="kpi-icon"><i class="bi bi-file-text"></i></div>
+          ${infoBtn('Total Registros', 'Número de turmas consideradas no cálculo da frequência (grupos com registros de frequência dentro dos filtros).')}
         </div>
       </div>
       <div class="col-6 col-md-3">
@@ -36,6 +39,7 @@ export async function render() {
           <div class="kpi-label">Freq. ≥ 75%</div>
           <div class="kpi-value"><span id="kpi-freq-ok">—</span></div>
           <div class="kpi-icon"><i class="bi bi-check-circle"></i></div>
+          ${infoBtn('Freq. ≥ 75%', 'Quantidade de turmas com frequência média igual ou superior a 75%.')}
         </div>
       </div>
       <div class="col-6 col-md-3">
@@ -43,6 +47,7 @@ export async function render() {
           <div class="kpi-label">Freq. &lt; 75%</div>
           <div class="kpi-value"><span id="kpi-freq-alerta">—</span></div>
           <div class="kpi-icon"><i class="bi bi-exclamation-triangle"></i></div>
+          ${infoBtn('Freq. < 75%', 'Quantidade de turmas com frequência média inferior a 75%.')}
         </div>
       </div>
     </div>
@@ -51,7 +56,7 @@ export async function render() {
       <div class="col-md-6">
         <div class="chart-card">
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div class="chart-card-title" style="margin-bottom:0;">Frequência por Turma</div>
+            <div class="chart-card-title" style="margin-bottom:0;">Frequência por Turma ${infoBtn('Frequência por Turma', 'Média dos percentuais de frequência registrados, agrupada por turma.')}</div>
             <button class="btn btn-sm btn-outline-primary no-print" id="btn-pdf-freq-turma">
               <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
             </button>
@@ -61,20 +66,20 @@ export async function render() {
       </div>
       <div class="col-md-6">
         <div class="chart-card">
-          <div class="chart-card-title">Frequência por Série</div>
+          <div class="chart-card-title">Frequência por Série ${infoBtn('Frequência por Série', 'Média dos percentuais de frequência registrados, agrupada pela série das turmas.')}</div>
           <div class="chart-container" style="height:300px;"><canvas id="chart-freq-serie"></canvas></div>
         </div>
       </div>
       <div class="col-md-6">
         <div class="chart-card">
-          <div class="chart-card-title">Evolução Mensal da Frequência</div>
+          <div class="chart-card-title">Evolução Mensal da Frequência ${infoBtn('Evolução Mensal da Frequência', 'Média dos percentuais de frequência por mês de referência (mes_referencia) dos registros de frequência.')}</div>
           <div class="chart-container" style="height:300px;"><canvas id="chart-freq-mes"></canvas></div>
         </div>
       </div>
       <div class="col-md-6">
         <div class="chart-card">
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div class="chart-card-title" style="margin-bottom:0;">Estudantes com Baixa Frequência (&lt; 75%)</div>
+            <div class="chart-card-title" style="margin-bottom:0;">Estudantes com Baixa Frequência (&lt; 75%) ${infoBtn('Estudantes com Baixa Frequência', 'Estudantes cuja média dos percentuais de frequência registrados é inferior a 75%. A tabela exibe até 20 nomes; o PDF inclui a lista completa.')}</div>
             <button class="btn btn-sm btn-outline-danger no-print" id="btn-pdf-baixa-freq">
               <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
             </button>

@@ -15,6 +15,10 @@
   font-weight: 700;
   font-size: 1rem;
   color: var(--sieac-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .card-sieac-body {
@@ -95,3 +99,38 @@
 .kpi-card.success .kpi-icon { color: var(--sieac-success); }
 .kpi-card.danger .kpi-icon { color: var(--sieac-danger); }
 .kpi-card.warning .kpi-icon { color: var(--sieac-warning); }
+
+/* Explanation info button */
+.info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sieac-bg-alt);
+  color: var(--sieac-text-muted);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  transition: all var(--sieac-transition);
+}
+
+.info-btn:hover {
+  background: var(--sieac-secondary);
+  color: #fff;
+}
+
+.kpi-card .info-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  background: var(--sieac-surface);
+  border: 1px solid var(--sieac-border);
+  box-shadow: var(--sieac-shadow-sm);
+}
+
+.kpi-card .info-btn:hover {
+  background: var(--sieac-secondary);
+  border-color: var(--sieac-secondary);
+}

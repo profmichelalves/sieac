@@ -1,4 +1,10 @@
+#auth-container {
+  display: flex;
+  min-height: 100vh;
+}
+
 .auth-page {
+  flex: 1;
   min-height: 100vh;
   display: flex;
   align-items: center;

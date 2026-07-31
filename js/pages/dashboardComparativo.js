@@ -1,4 +1,5 @@
 import { $, formatNumber } from '../utils/helpers.js';
+import { infoBtn } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { getScatterFreqNota } from '../repositories/dashboardRepository.js';
 import { destroyChart } from '../components/Charts.js';
@@ -25,7 +26,7 @@ export async function render() {
     <div class="row g-4">
       <div class="col-12">
         <div class="chart-card">
-          <div class="chart-card-title">Frequência x Média Final</div>
+          <div class="chart-card-title">Frequência x Média Final ${infoBtn('Frequência x Média Final', 'Cada ponto representa um estudante com média final maior que zero e frequência registrada. Eixo X: média dos percentuais de frequência do estudante; Eixo Y: média das médias finais das suas disciplinas.')}</div>
           <div class="chart-container" style="height:500px;">
             <canvas id="chart-scatter"></canvas>
           </div>
@@ -39,7 +40,7 @@ export async function render() {
     <div class="row g-4 mt-2">
       <div class="col-md-12">
         <div class="card-sieac">
-          <div class="card-sieac-header">Quadrantes de Atenção</div>
+          <div class="card-sieac-header">Quadrantes de Atenção ${infoBtn('Quadrantes de Atenção', 'Cada estudante é classificado pelo cruzamento entre frequência e média final: Q1 — frequência ≥ 75% e média ≥ 6 (adequada); Q2 — frequência ≥ 75% e média < 6 (dificuldade acadêmica); Q3 — frequência < 75% e média < 6 (crítica); Q4 — frequência < 75% e média ≥ 6 (falta sem comprometer a nota).')}</div>
           <div class="card-sieac-body">
             <div class="row g-3">
               <div class="col-md-3">
@@ -50,6 +51,7 @@ export async function render() {
                   <button class="btn btn-sm btn-outline-success quadrant-btn no-print mt-2" data-quad="1">
                     <i class="bi bi-file-earmark-pdf"></i> PDF
                   </button>
+                  ${infoBtn('Quadrante 1', 'Estudantes com frequência média ≥ 75% e média final ≥ 6. Situação adequada.')}
                 </div>
               </div>
               <div class="col-md-3">
@@ -60,6 +62,7 @@ export async function render() {
                   <button class="btn btn-sm btn-outline-warning quadrant-btn no-print mt-2" data-quad="2">
                     <i class="bi bi-file-earmark-pdf"></i> PDF
                   </button>
+                  ${infoBtn('Quadrante 2', 'Estudantes com frequência média ≥ 75% e média final < 6. Dificuldade acadêmica.')}
                 </div>
               </div>
               <div class="col-md-3">
@@ -70,6 +73,7 @@ export async function render() {
                   <button class="btn btn-sm btn-outline-danger quadrant-btn no-print mt-2" data-quad="3">
                     <i class="bi bi-file-earmark-pdf"></i> PDF
                   </button>
+                  ${infoBtn('Quadrante 3', 'Estudantes com frequência média < 75% e média final < 6. Situação crítica.')}
                 </div>
               </div>
               <div class="col-md-3">
@@ -80,6 +84,7 @@ export async function render() {
                   <button class="btn btn-sm btn-outline-primary quadrant-btn no-print mt-2" data-quad="4">
                     <i class="bi bi-file-earmark-pdf"></i> PDF
                   </button>
+                  ${infoBtn('Quadrante 4', 'Estudantes com frequência média < 75% e média final ≥ 6. Faltas sem comprometer a nota.')}
                 </div>
               </div>
             </div>

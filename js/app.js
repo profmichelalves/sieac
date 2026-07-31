@@ -1,6 +1,7 @@
 import { initRouter } from './router.js';
 import { initSidebar } from './components/Sidebar.js';
 import { isAuthenticated } from './utils/helpers.js';
+import { initInfoButtons } from './utils/explanation.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const theme = localStorage.getItem('sieac_theme') || 'light';
@@ -27,5 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initSidebar();
   }
 
+  initInfoButtons();
   initRouter();
 });

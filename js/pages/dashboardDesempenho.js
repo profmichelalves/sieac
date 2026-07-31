@@ -1,4 +1,5 @@
 import { $, formatNumber } from '../utils/helpers.js';
+import { infoBtn } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createLineChart, destroyChart } from '../components/Charts.js';
 import {
@@ -80,25 +81,25 @@ export async function render() {
     <div class="row g-4">
       <div class="col-md-6">
         <div class="chart-card">
-          <div class="chart-card-title">Evolução das Notas por Bimestre</div>
+          <div class="chart-card-title">Evolução das Notas por Bimestre ${infoBtn('Evolução das Notas por Bimestre', 'Média aritmética das notas de cada bimestre (1º ao 4º), considerando apenas notas maiores que zero. Reflete a evolução da aprendizagem ao longo do ano.')}</div>
           <div class="chart-container" style="height:300px;"><canvas id="chart-evolucao"></canvas></div>
         </div>
       </div>
       <div class="col-md-6">
         <div class="chart-card">
-          <div class="chart-card-title">Média por Disciplina</div>
+          <div class="chart-card-title">Média por Disciplina ${infoBtn('Média por Disciplina', 'Média aritmética das médias finais das notas, agrupada por disciplina (componente curricular).')}</div>
           <div class="chart-container" style="height:350px;"><canvas id="chart-media-disc"></canvas></div>
         </div>
       </div>
       <div class="col-md-6">
         <div class="chart-card">
-          <div class="chart-card-title">Ranking — Média por Turma</div>
+          <div class="chart-card-title">Ranking — Média por Turma ${infoBtn('Ranking — Média por Turma', 'Média aritmética das médias finais por turma, ordenada da maior para a menor. As três primeiras colocações recebem destaque (ouro, prata e bronze).')}</div>
           <div class="chart-container" style="height:350px;"><canvas id="chart-media-turma"></canvas></div>
         </div>
       </div>
       <div class="col-md-6">
         <div class="chart-card">
-          <div class="chart-card-title">Distribuição das Notas</div>
+          <div class="chart-card-title">Distribuição das Notas ${infoBtn('Distribuição das Notas', 'Histograma das médias finais divididas em faixas: 0–2, 2–4, 4–6, 6–8 e 8–10. Apenas médias finais maiores que zero são consideradas.')}</div>
           <div class="chart-container" style="height:350px;"><canvas id="chart-distribuicao"></canvas></div>
         </div>
       </div>

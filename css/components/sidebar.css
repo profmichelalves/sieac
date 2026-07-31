@@ -206,6 +206,8 @@ body.sidebar-collapsed .sidebar-user-info { display: none; }
 
 /* Main content offset */
 .main-wrapper {
+  flex: 1;
+  min-width: 0;
   margin-left: var(--sieac-sidebar-width);
   min-height: 100vh;
   transition: margin var(--sieac-transition);
