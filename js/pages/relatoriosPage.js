@@ -92,13 +92,20 @@ export async function render() {
         <div class="page-subtitle">Alunos abaixo da média — nota de corte ${MEDIA_CORTE}</div>
       </div>
       <button class="btn btn-primary btn-print no-print" onclick="window.print()">
-        <i class="bi bi-printer"></i> Imprimir
+        <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
       </button>
     </div>
 
     <div id="filter-container-relatorios" class="no-print"></div>
 
-    <div class="report-container" id="report-content">
+    <div class="report-toolbar no-print">
+      <span class="report-toolbar-label"><i class="bi bi-sort-down"></i> Ordenar por:</span>
+      <button class="btn btn-sm btn-primary sort-btn" data-sort="disciplina">Disciplina</button>
+      <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="turma">Turma</button>
+      <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="aluno">Aluno</button>
+    </div>
+
+    <div class="report-container print-only" id="report-content">
       <div class="report-header print-only">
         <img src="assets/img/logo-sieac.png" alt="SIEAC" onerror="this.remove()">
         <div>
@@ -110,13 +117,6 @@ export async function render() {
         <span><strong>Gerado em:</strong> <span id="rel-data-hora">—</span></span>
         <span><strong>Nota de corte:</strong> ${MEDIA_CORTE}</span>
         <span id="rel-filtros-info"></span>
-      </div>
-
-      <div class="report-toolbar no-print">
-        <span class="report-toolbar-label"><i class="bi bi-sort-down"></i> Ordenar por:</span>
-        <button class="btn btn-sm btn-primary sort-btn" data-sort="disciplina">Disciplina</button>
-        <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="turma">Turma</button>
-        <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="aluno">Aluno</button>
       </div>
 
       <div class="report-section-title">Alunos Abaixo da Média</div>
