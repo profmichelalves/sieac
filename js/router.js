@@ -11,8 +11,8 @@ const routes = {
   'dashboard-comparativo': { page: 'dashboardComparativo', auth: true },
   'dashboard-estudante': { page: 'dashboardEstudante', auth: true },
   'relatorios': { page: 'relatoriosPage', auth: true },
-  'importar': { page: 'importPage', auth: true },
-  'usuarios': { page: 'usuariosPage', auth: true, perfil: 'Administrador' },
+  'importar': { page: 'importPage', auth: true, perfil: ['Administrador', 'Gestão Escolar'] },
+  'usuarios': { page: 'usuariosPage', auth: true, perfil: ['Administrador'] },
 };
 
 let currentPage = null;
@@ -33,8 +33,9 @@ export async function navigate() {
 
   if (route.perfil) {
     const user = getCurrentUser();
-    if (user?.perfil !== route.perfil) {
-      showToast('Acesso restrito ao perfil Administrador', 'warning');
+    const perfisPermitidos = Array.isArray(route.perfil) ? route.perfil : [route.perfil];
+    if (!perfisPermitidos.includes(user?.perfil)) {
+      showToast('Acesso restrito. Você não tem permissão para acessar esta página.', 'warning');
       window.location.hash = 'dashboard-geral';
       return navigate();
     }

@@ -1,6 +1,6 @@
 import { showToast } from '../utils/helpers.js';
 import { supabaseQuery } from '../services/supabase.js';
-import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, buscarEstudantes } from '../repositories/dashboardRepository.js';
+import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, buscarEstudantes, podeVerEstudante } from '../repositories/dashboardRepository.js';
 import { destroyChart } from '../components/Charts.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
 
@@ -169,6 +169,11 @@ async function executarBusca() {
 }
 
 async function carregarEstudante(id) {
+  const permitido = await podeVerEstudante(id);
+  if (!permitido) {
+    showToast('Acesso restrito: você só pode visualizar estudantes das suas turmas.', 'warning');
+    return;
+  }
   currentStudentId = id;
   const { data: estudante, error } = await supabaseQuery('estudantes', { select: 'id,nome,matricula', filters: [{ col: 'id', val: id }] });
   if (error || !estudante || !estudante.length) {

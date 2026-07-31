@@ -36,7 +36,13 @@ export async function login(email, senha) {
   return { user: userData, error: null };
 }
 
-export async function register(nome, email, matricula, senha) {
+export async function listarPerfis() {
+  const { data: perfis, error } = await supabaseQuery('perfis', { select: 'id,nome', order: 'id' });
+  if (error) return { data: [], error };
+  return { data: perfis || [], error: null };
+}
+
+export async function register(nome, email, matricula, senha, perfilId) {
   const { data: existentes } = await supabaseQuery('usuarios', {
     select: 'id,email,matricula',
     filters: [{ col: 'email', val: email }]
@@ -47,17 +53,21 @@ export async function register(nome, email, matricula, senha) {
   }
 
   const { data: perfis } = await supabaseQuery('perfis', {
-    select: 'id', filters: [{ col: 'nome', val: 'Professor' }]
+    select: 'id,nome'
   });
+  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const permitidos = new Set(['professor', 'gestao escolar']);
 
-  const perfilProfessor = perfis?.[0]?.id || 3;
+  const escolhido = (perfis || []).find(p => p.id === Number(perfilId));
+  const perfilValido = escolhido && permitidos.has(norm(escolhido.nome)) ? escolhido.id : null;
+  const perfilFinal = perfilValido || (perfis || []).find(p => norm(p.nome) === 'professor')?.id || 3;
 
   const newUser = {
     nome,
     email,
     matricula,
     senha_hash: senha,
-    perfil_id: perfilProfessor,
+    perfil_id: perfilFinal,
     ativo: false
   };
 

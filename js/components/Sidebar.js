@@ -57,6 +57,11 @@ export function initSidebar() {
     if (menuUsuarios) {
       menuUsuarios.style.display = isAdmin() ? 'block' : 'none';
     }
+
+    const menuImportar = document.getElementById('menu-importar');
+    if (menuImportar) {
+      menuImportar.style.display = user.perfil === 'Professor' ? 'none' : 'block';
+    }
   }
 
   const btnLogout = document.getElementById('btn-logout');

@@ -1,6 +1,6 @@
 import { $, showToast } from '../utils/helpers.js';
 import { validateLoginFields, validateRegisterFields } from '../utils/validators.js';
-import { login, register } from '../services/authService.js';
+import { login, register, listarPerfis } from '../services/authService.js';
 import { clearFilterCache } from '../components/FilterPanel.js';
 
 export function renderLogin() {
@@ -106,6 +106,12 @@ export function renderRegister() {
             <input type="text" class="form-control" id="reg-matricula" placeholder="Sua matrícula" required>
           </div>
           <div class="mb-3">
+            <label class="form-label">Tipo de Usuário</label>
+            <select class="form-control" id="reg-perfil">
+              <option value="">Carregando...</option>
+            </select>
+          </div>
+          <div class="mb-3">
             <label class="form-label">Senha</label>
             <input type="password" class="form-control" id="reg-senha" placeholder="Crie uma senha" required>
           </div>
@@ -122,26 +128,27 @@ export function renderRegister() {
     </div>
   `;
 
-  document.getElementById('register-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const nome = document.getElementById('reg-nome').value;
-    const email = document.getElementById('reg-email').value;
-    const matricula = document.getElementById('reg-matricula').value;
-    const senha = document.getElementById('reg-senha').value;
-    const confirm = document.getElementById('reg-confirm').value;
-    const alertEl = document.getElementById('auth-alert');
-    const btn = document.getElementById('register-btn');
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nome = document.getElementById('reg-nome').value;
+      const email = document.getElementById('reg-email').value;
+      const matricula = document.getElementById('reg-matricula').value;
+      const perfilId = document.getElementById('reg-perfil').value;
+      const senha = document.getElementById('reg-senha').value;
+      const confirm = document.getElementById('reg-confirm').value;
+      const alertEl = document.getElementById('auth-alert');
+      const btn = document.getElementById('register-btn');
 
-    const errors = validateRegisterFields(nome, email, matricula, senha, confirm);
-    if (errors.length) {
-      alertEl.innerHTML = `<div class="auth-alert error">${errors.join('<br>')}</div>`;
-      return;
-    }
+      const errors = validateRegisterFields(nome, email, matricula, senha, confirm);
+      if (errors.length) {
+        alertEl.innerHTML = `<div class="auth-alert error">${errors.join('<br>')}</div>`;
+        return;
+      }
 
-    btn.disabled = true;
-    btn.textContent = 'Cadastrando...';
+      btn.disabled = true;
+      btn.textContent = 'Cadastrando...';
 
-    const result = await register(nome, email, matricula, senha);
+      const result = await register(nome, email, matricula, senha, perfilId);
     if (result.error) {
       alertEl.innerHTML = `<div class="auth-alert error">${result.error}</div>`;
       btn.disabled = false;
@@ -155,4 +162,36 @@ export function renderRegister() {
       }, 3000);
     }
   });
+
+  carregarPerfisCadastro();
+}
+
+async function carregarPerfisCadastro() {
+  const sel = document.getElementById('reg-perfil');
+  if (!sel) return;
+
+  const fallback = [
+    { id: 2, nome: 'Gestão Escolar' },
+    { id: 3, nome: 'Professor' },
+  ];
+  const permitidos = new Set(['professor', 'gestao escolar', 'gestao escolar ']);
+
+  let opcoes = fallback;
+  try {
+    const { data: perfis, error } = await listarPerfis();
+    if (!error && perfis && perfis.length) {
+      const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const filtradas = perfis.filter(p => permitidos.has(norm(p.nome)));
+      if (filtradas.length) opcoes = filtradas;
+    }
+  } catch {}
+
+  sel.innerHTML = opcoes.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+  const prof = opcoes.find(p => normEqual(p.nome, 'Professor'));
+  if (prof) sel.value = prof.id;
+}
+
+function normEqual(a, b) {
+  const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return norm(a) === norm(b);
 }

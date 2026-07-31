@@ -1,6 +1,9 @@
 import { supabaseQuery, supabaseFetchAll } from '../services/supabase.js';
+import { isProfessor, getProfessorVinculo } from '../services/authService.js';
 
 let refCache = null;
+let estudantesPermitidos = null;
+let permitidosCarregados = false;
 
 async function getRefCache() {
   if (refCache) return refCache;
@@ -25,7 +28,42 @@ async function getRefCache() {
   return refCache;
 }
 
-export function clearCache() { refCache = null; }
+export function clearCache() { refCache = null; estudantesPermitidos = null; permitidosCarregados = false; }
+
+async function getEstudantesPermitidos() {
+  if (permitidosCarregados) return estudantesPermitidos;
+  permitidosCarregados = true;
+  if (!isProfessor()) {
+    estudantesPermitidos = null;
+    return null;
+  }
+  const vinculo = await getProfessorVinculo();
+  if (!vinculo) {
+    estudantesPermitidos = new Set();
+    return estudantesPermitidos;
+  }
+  await getRefCache();
+  const aIds = refCache.alocacoes.filter(a => vinculo.turmaIds.includes(a.turma_id)).map(a => a.id);
+  const set = new Set();
+  for (let i = 0; i < aIds.length; i += 100) {
+    const chunk = aIds.slice(i, i + 100);
+    if (!chunk.length) continue;
+    const { data: notas } = await supabaseFetchAll('notas', {
+      select: 'estudante_id',
+      filters: [{ col: 'alocacao_id', val: chunk, op: 'in' }],
+      limit: 30000,
+    });
+    (notas || []).forEach(n => set.add(n.estudante_id));
+  }
+  estudantesPermitidos = set;
+  return set;
+}
+
+export async function podeVerEstudante(estudanteId) {
+  const permitidos = await getEstudantesPermitidos();
+  if (permitidos === null) return true;
+  return permitidos.has(Number(estudanteId));
+}
 
 // Monta os filtros SQL para enviar ao servidor
 function montarFiltrosNotas(filters) {
@@ -506,6 +544,7 @@ export async function getScatterFreqNota(filters = {}) {
 }
 
 export async function getNotasEstudante(estudanteId) {
+  if (!(await podeVerEstudante(estudanteId))) return { data: [], error: null };
   const { data: notas } = await supabaseQuery('notas', {
     select: 'nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,alocacao_id',
     filters: [{ col: 'estudante_id', val: estudanteId }],
@@ -528,6 +567,7 @@ export async function getNotasEstudante(estudanteId) {
 }
 
 export async function getFrequenciaEstudante(estudanteId) {
+  if (!(await podeVerEstudante(estudanteId))) return { data: [], error: null };
   const { data: freqs } = await supabaseQuery('frequencias', {
     select: 'percentual_frequencia,mes_referencia',
     filters: [{ col: 'estudante_id', val: estudanteId }],
@@ -542,6 +582,7 @@ export async function getFrequenciaEstudante(estudanteId) {
 }
 
 export async function getTurmasEstudante(estudanteId) {
+  if (!(await podeVerEstudante(estudanteId))) return [];
   const { data: notas } = await supabaseQuery('notas', {
     select: 'alocacao_id',
     filters: [{ col: 'estudante_id', val: estudanteId }],
@@ -584,7 +625,9 @@ export async function buscarEstudantes(termo) {
     }
   }
 
-  const idList = [...ids];
+  let idList = [...ids];
+  const permitidos = await getEstudantesPermitidos();
+  if (permitidos) idList = idList.filter(id => permitidos.has(Number(id)));
   if (!idList.length) return [];
 
   const estMap = new Map();

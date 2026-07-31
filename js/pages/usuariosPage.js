@@ -1,5 +1,7 @@
 import { $, showToast } from '../utils/helpers.js';
-import { listarUsuarios, atualizarUsuario } from '../services/authService.js';
+import { listarUsuarios, atualizarUsuario, getCurrentUser } from '../services/authService.js';
+
+const PERFIS = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor' };
 
 export async function render() {
   const main = document.getElementById('main-content');
@@ -50,29 +52,54 @@ async function carregarUsuarios() {
   }
 
   const perfisMap = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor' };
+  const currentUser = getCurrentUser();
 
-  tbody.innerHTML = usuarios.map(u => `
-    <tr>
-      <td><strong>${u.nome}</strong></td>
-      <td>${u.email}</td>
-      <td>${u.matricula}</td>
-      <td><span class="badge ${getPerfilBadge(u.perfil_id)}">${u.perfil}</span></td>
-      <td>
-        <span class="user-status ${u.ativo ? 'active' : 'inactive'}"></span>
-        ${u.ativo ? 'Ativo' : 'Inativo'}
-      </td>
-      <td>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-sm btn-outline-primary usuario-toggle" data-id="${u.id}" data-ativo="${u.ativo}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
-            ${u.ativo ? 'Desativar' : 'Ativar'}
-          </button>
-          <button class="btn btn-sm btn-outline-danger usuario-delete" data-id="${u.id}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
-            <i class="bi bi-trash"></i>
-          </button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = usuarios.map(u => {
+    const ehProprio = currentUser && String(u.id) === String(currentUser.id);
+    const perfilOptions = Object.entries(perfisMap)
+      .map(([id, nome]) => `<option value="${id}" ${Number(id) === Number(u.perfil_id) ? 'selected' : ''}>${nome}</option>`)
+      .join('');
+    return `
+      <tr>
+        <td><strong>${u.nome}${ehProprio ? ' <small style="color:var(--sieac-text-muted)">(você)</small>' : ''}</strong></td>
+        <td>${u.email}</td>
+        <td>${u.matricula}</td>
+        <td>
+          <select class="perfil-select" data-id="${u.id}" ${ehProprio ? 'disabled title="Não é possível alterar o próprio perfil"' : ''} style="padding:4px 8px;border:1px solid var(--sieac-border);border-radius:var(--sieac-radius-sm);font-size:0.8rem;background:var(--sieac-bg);color:var(--sieac-text);">
+            ${perfilOptions}
+          </select>
+        </td>
+        <td>
+          <span class="user-status ${u.ativo ? 'active' : 'inactive'}"></span>
+          ${u.ativo ? 'Ativo' : 'Inativo'}
+        </td>
+        <td>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm btn-outline-primary usuario-toggle" data-id="${u.id}" data-ativo="${u.ativo}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
+              ${u.ativo ? 'Desativar' : 'Ativar'}
+            </button>
+            <button class="btn btn-sm btn-outline-danger usuario-delete" data-id="${u.id}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  tbody.querySelectorAll('.perfil-select').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      const id = sel.dataset.id;
+      const perfilId = sel.value;
+      const { error } = await atualizarUsuario(id, { perfil_id: Number(perfilId) });
+      if (error) {
+        showToast('Erro ao alterar perfil: ' + error, 'error');
+      } else {
+        showToast(`Perfil do usuário alterado para ${perfisMap[Number(perfilId)]}`, 'success');
+        await carregarUsuarios();
+      }
+    });
+  });
 
   tbody.querySelectorAll('.usuario-toggle').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -101,10 +128,4 @@ async function carregarUsuarios() {
       }
     });
   });
-}
-
-function getPerfilBadge(perfilId) {
-  if (perfilId === 1) return 'badge-sieac-primary';
-  if (perfilId === 2) return 'badge-sieac-secondary';
-  return 'badge-sieac-warning';
 }
