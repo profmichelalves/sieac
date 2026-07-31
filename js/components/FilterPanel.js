@@ -2,24 +2,22 @@ import { supabaseQuery } from '../services/supabase.js';
 import { isProfessor, getProfessorVinculo } from '../services/authService.js';
 
 const CACHE_KEY = 'sieac_filter_cache';
-
-let pendingFilters = {};
-let appliedFilters = {};
-let onChangeCallback = null;
-let isDirty = false;
-let professorVinculo = null;
-let filterData = null;
+const CACHE_VERSION = 2;
 
 function loadFilterCache() {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.v === CACHE_VERSION) return parsed;
+      localStorage.removeItem(CACHE_KEY);
+    }
   } catch {}
   return null;
 }
 
 function saveFilterCache(data) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch {}
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ v: CACHE_VERSION, ...data })); } catch {}
 }
 
 export function clearFilterCache() {
@@ -48,6 +46,13 @@ const KEY_TO_LABEL = {
   componente_id: 'Disciplina',
   professor_id: 'Professor',
 };
+
+let pendingFilters = {};
+let appliedFilters = {};
+let onChangeCallback = null;
+let isDirty = false;
+let professorVinculo = null;
+let filterData = null;
 
 async function getFilterData() {
   const userIsProfessor = isProfessor();
@@ -113,7 +118,9 @@ async function getFilterData() {
 
 function computeValidOptions(pending) {
   if (!filterData) return null;
-  const { etapas, series, turmas, alocacoes, componentes, professores, turnos } = filterData;
+  const { series, turmas, alocacoes } = filterData;
+
+  const toNum = v => v == null ? null : Number(v);
 
   let aloc = alocacoes;
   if (pending.componente_id) aloc = aloc.filter(a => a.componente_id == pending.componente_id);
@@ -135,37 +142,36 @@ function computeValidOptions(pending) {
 
   const validTurmaIds = new Set(turmV.map(t => t.id));
   const validSerieIds = new Set(turmV.map(t => t.serie_id));
-  const validTurnos = new Set(turmV.map(t => t.turno).filter(Boolean));
+  const validTurnos = [...new Set(turmV.map(t => t.turno).filter(Boolean))].sort();
 
   aloc = aloc.filter(a => validTurmaIds.has(a.turma_id));
-  const validProfIds = new Set(aloc.map(a => a.professor_id));
-  const validCompIds = new Set(aloc.map(a => a.componente_id));
-
-  const validEtapaIds = new Set(series.filter(s => validSerieIds.has(s.id)).map(s => s.etapa_ensino_id));
+  const validProfIds = [...new Set(aloc.map(a => a.professor_id))];
+  const validCompIds = [...new Set(aloc.map(a => a.componente_id))];
+  const validEtapaIds = [...new Set(series.filter(s => validSerieIds.has(s.id)).map(s => s.etapa_ensino_id))];
 
   return {
-    etapaIds: [...validEtapaIds],
+    etapaIds: validEtapaIds,
     serieIds: [...validSerieIds],
     turmaIds: [...validTurmaIds],
-    turnos: [...validTurnos],
-    profIds: [...validProfIds],
-    compIds: [...validCompIds],
+    turnos: validTurnos,
+    profIds: validProfIds,
+    compIds: validCompIds,
   };
 }
 
 function fillSelect(id, items, textFn, valueFn) {
   const sel = document.getElementById(id);
-  if (!sel) return;
-  items.forEach(item => {
+  if (!sel || !items) return;
+  for (const item of items) {
     sel.innerHTML += `<option value="${valueFn(item)}">${textFn(item)}</option>`;
-  });
+  }
 }
 
 function rebuildSelectOptions(valid) {
   if (!filterData) return;
   const { etapas, series, turmas, componentes, professores, turnos } = filterData;
 
-  const has = (arr) => arr?.length ? new Set(arr) : null;
+  const has = arr => arr?.length ? new Set(arr) : null;
   const config = [
     { id: 'filter-etapa', items: etapas, text: e => e.nome, val: e => e.id, validSet: has(valid?.etapaIds) },
     { id: 'filter-serie', items: series, text: s => s.nome, val: s => s.id, validSet: has(valid?.serieIds) },
@@ -189,16 +195,18 @@ function rebuildSelectOptions(valid) {
     if (!sel) continue;
     const currentVal = sel.value;
     sel.innerHTML = `<option value="">${placeholder[cfg.id]}</option>`;
-    const filtered = cfg.validSet ? cfg.items.filter(item => {
-      const v = String(cfg.val(item));
-      return cfg.validSet.has(v) || cfg.validSet.has(Number(v));
-    }) : cfg.items;
+    const filtered = cfg.validSet
+      ? cfg.items.filter(item => {
+          const idNum = typeof cfg.val(item) === 'number' ? cfg.val(item) : Number(cfg.val(item));
+          return cfg.validSet.has(idNum) || cfg.validSet.has(String(idNum));
+        })
+      : cfg.items;
     for (const item of filtered) {
       const v = cfg.val(item);
       sel.innerHTML += `<option value="${v}">${cfg.text(item)}</option>`;
     }
     if (cfg.validSet) {
-      const stillValid = currentVal && (cfg.validSet.has(currentVal) || cfg.validSet.has(Number(currentVal)));
+      const stillValid = currentVal && (cfg.validSet.has(Number(currentVal)) || cfg.validSet.has(currentVal));
       sel.value = stillValid ? currentVal : '';
     }
   }
@@ -209,7 +217,15 @@ export async function renderFilterPanel(containerId, onChange) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  filterData = await getFilterData();
+  try {
+    filterData = await getFilterData();
+  } catch (e) {
+    console.error('FilterPanel: getFilterData failed', e);
+    filterData = null;
+    return;
+  }
+
+  if (!filterData) return;
 
   container.innerHTML = `
     <style>
