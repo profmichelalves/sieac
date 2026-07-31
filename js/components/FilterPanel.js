@@ -2,7 +2,7 @@ import { supabaseQuery } from '../services/supabase.js';
 import { isProfessor, getProfessorVinculo } from '../services/authService.js';
 
 const CACHE_KEY = 'sieac_filter_cache';
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 function loadFilterCache() {
   try {
@@ -196,10 +196,14 @@ function rebuildSelectOptions(valid, skipId) {
     sel.innerHTML = `<option value="">${placeholder[cfg.id]}</option>`;
     const filtered = cfg.validSet
       ? cfg.items.filter(item => {
-          const idNum = typeof cfg.val(item) === 'number' ? cfg.val(item) : Number(cfg.val(item));
-          return cfg.validSet.has(idNum) || cfg.validSet.has(String(idNum));
+          const raw = cfg.val(item);
+          const idNum = typeof raw === 'number' ? raw : Number(raw);
+          return cfg.validSet.has(idNum) || cfg.validSet.has(raw);
         })
       : cfg.items;
+    if (cfg.validSet && filtered.length === 0) {
+      console.warn(`[FilterPanel] ${cfg.id}: nenhuma opção válida entre ${cfg.items.length} itens`, JSON.stringify(pendingFilters));
+    }
     for (const item of filtered) {
       const v = cfg.val(item);
       sel.innerHTML += `<option value="${v}">${cfg.text(item)}</option>`;
@@ -227,6 +231,8 @@ export async function renderFilterPanel(containerId, onChange) {
   }
 
   if (!filterData) return;
+
+  logFilterDiagnostics();
 
   container.innerHTML = `
     <style>
@@ -325,6 +331,15 @@ function bindFilterEvents() {
         try {
           rebuildPending();
           const valid = computeValidOptions(pendingFilters);
+          const cnt = valid && {
+            etapa: valid.etapaIds.length,
+            serie: valid.serieIds.length,
+            turma: valid.turmaIds.length,
+            turno: valid.turnos.length,
+            disciplina: valid.compIds.length,
+            professor: valid.profIds.length,
+          };
+          console.log(`[FilterPanel] change em ${id} | pending=${JSON.stringify(pendingFilters)} | válidos=`, cnt);
           rebuildSelectOptions(valid, id);
           markDirty();
         } catch (e) {
@@ -418,4 +433,25 @@ function updateBadges() {
 
 export function getFilters() {
   return { ...(isProfessor() && professorVinculo ? { ...appliedFilters, professor_id: String(professorVinculo.id) } : appliedFilters) };
+}
+
+function logFilterDiagnostics() {
+  if (!filterData) return;
+  const { series, turmas, componentes, professores, etapas, alocacoes, turnos } = filterData;
+  const serieSet = new Set(series.map(s => s.id));
+  const turmaSet = new Set(turmas.map(t => t.id));
+  const withEtapa = series.filter(s => s.etapa_ensino_id != null).length;
+  const withSerie = turmas.filter(t => t.serie_id != null).length;
+  const turmaSerieValida = turmas.filter(t => serieSet.has(t.serie_id)).length;
+  const alocTurmaOk = alocacoes.filter(a => a.turma_id != null).length;
+  const alocCompOk = alocacoes.filter(a => a.componente_id != null).length;
+  const alocProfOk = alocacoes.filter(a => a.professor_id != null).length;
+  const alocTurmaValida = alocacoes.filter(a => turmaSet.has(a.turma_id)).length;
+  console.group('[FilterPanel] diagnóstico de dados');
+  console.log('etapas:', etapas.length, '| series:', series.length, `(com etapa_ensino_id: ${withEtapa}/${series.length})`);
+  console.log('turmas:', turmas.length, `(com serie_id: ${withSerie}/${turmas.length}, série existe: ${turmaSerieValida}/${turmas.length})`);
+  console.log('componentes:', componentes.length, '| professores:', professores.length);
+  console.log('alocacoes:', alocacoes.length, `| turma ok: ${alocTurmaOk}, componente ok: ${alocCompOk}, professor ok: ${alocProfOk}, turma existe: ${alocTurmaValida}`);
+  console.log('turnos:', turnos);
+  console.groupEnd();
 }
