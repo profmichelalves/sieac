@@ -266,6 +266,17 @@ export async function importarNotas(file, onProgress) {
   onProgress(100, 'Importação concluída!');
   const tempoMs = Date.now() - startTime;
 
+  await supabaseUpsert('importacoes', [{
+    tipo: 'notas',
+    arquivo: file?.name || null,
+    registros: notasList.length,
+    inseridos,
+    atualizados: 0,
+    erros,
+    erros_detalhes: JSON.stringify({ errosDetalhes: errosDetalhes.slice(0, 10), ignorados: ignorados.length }),
+    tempo_ms: tempoMs,
+  }]);
+
   return { success: true, registros: notasList.length, inseridos, atualizados: 0, erros, relacoes, errosDetalhes: errosDetalhes.slice(0, 10), ignorados: ignorados.slice(0, 500), tempoMs };
 }
 
@@ -380,6 +391,17 @@ export async function importarFrequencia(file, onProgress) {
 
   onProgress(100, 'Importação concluída!');
   const tempoMs = Date.now() - startTime;
+
+  await supabaseUpsert('importacoes', [{
+    tipo: 'frequencia',
+    arquivo: file?.name || null,
+    registros: totalFreq,
+    inseridos,
+    atualizados: 0,
+    erros,
+    erros_detalhes: JSON.stringify({ errosDetalhes: errosDetalhes.slice(0, 10), ignorados: ignorados.length }),
+    tempo_ms: tempoMs,
+  }]);
 
   return { success: true, registros: totalFreq, inseridos, atualizados: 0, erros, errosDetalhes: errosDetalhes.slice(0, 10), ignorados: ignorados.slice(0, 500), tempoMs };
 }

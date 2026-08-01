@@ -14,6 +14,7 @@ const routes = {
   'relatorio-sem-notas': { page: 'relatoriosSemNotas', auth: true },
   'importar': { page: 'importPage', auth: true, can: isGestao },
   'usuarios': { page: 'usuariosPage', auth: true, can: isAdmin },
+  'logs': { page: 'logsPage', auth: true, can: isAdmin },
 };
 
 let currentPage = null;

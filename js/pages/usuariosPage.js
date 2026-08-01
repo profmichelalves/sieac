@@ -1,6 +1,7 @@
 import { $, showToast } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { listarUsuarios, atualizarUsuario, getCurrentUser } from '../services/authService.js';
+import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
 const PERFIS = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor' };
 
@@ -67,7 +68,7 @@ async function carregarUsuarios() {
         <td>${u.email}</td>
         <td>${u.matricula}</td>
         <td>
-          <select class="perfil-select" data-id="${u.id}" ${ehProprio ? 'disabled title="Não é possível alterar o próprio perfil"' : ''} style="padding:4px 8px;border:1px solid var(--sieac-border);border-radius:var(--sieac-radius-sm);font-size:0.8rem;background:var(--sieac-bg);color:var(--sieac-text);">
+          <select class="perfil-select" data-id="${u.id}" data-nome="${u.nome}" data-perfil="${u.perfil_id}" ${ehProprio ? 'disabled title="Não é possível alterar o próprio perfil"' : ''} style="padding:4px 8px;border:1px solid var(--sieac-border);border-radius:var(--sieac-radius-sm);font-size:0.8rem;background:var(--sieac-bg);color:var(--sieac-text);">
             ${perfilOptions}
           </select>
         </td>
@@ -77,10 +78,10 @@ async function carregarUsuarios() {
         </td>
         <td>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-sm btn-outline-primary usuario-toggle" data-id="${u.id}" data-ativo="${u.ativo}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
+            <button class="btn btn-sm btn-outline-primary usuario-toggle" data-id="${u.id}" data-nome="${u.nome}" data-ativo="${u.ativo}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
               ${u.ativo ? 'Desativar' : 'Ativar'}
             </button>
-            <button class="btn btn-sm btn-outline-danger usuario-delete" data-id="${u.id}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
+            <button class="btn btn-sm btn-outline-danger usuario-delete" data-id="${u.id}" data-nome="${u.nome}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -92,11 +93,14 @@ async function carregarUsuarios() {
   tbody.querySelectorAll('.perfil-select').forEach(sel => {
     sel.addEventListener('change', async () => {
       const id = sel.dataset.id;
+      const nome = sel.dataset.nome;
+      const perfilAntigo = perfisMap[Number(sel.dataset.perfil)] || sel.dataset.perfil;
       const perfilId = sel.value;
       const { error } = await atualizarUsuario(id, { perfil_id: Number(perfilId) });
       if (error) {
         showToast('Erro ao alterar perfil: ' + error, 'error');
       } else {
+        registrarLog(LOG_ACTIONS.ALTERAR_PERFIL, { usuario_id: id, usuario_nome: nome, perfil_antigo: perfilAntigo, perfil_novo: perfisMap[Number(perfilId)] });
         showToast(`Perfil do usuário alterado para ${perfisMap[Number(perfilId)]}`, 'success');
         await carregarUsuarios();
       }
@@ -106,11 +110,13 @@ async function carregarUsuarios() {
   tbody.querySelectorAll('.usuario-toggle').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.id;
+      const nome = btn.dataset.nome;
       const ativo = btn.dataset.ativo === 'true';
       const { error } = await atualizarUsuario(id, { ativo: !ativo });
       if (error) {
         showToast('Erro ao atualizar: ' + error, 'error');
       } else {
+        registrarLog(ativo ? LOG_ACTIONS.DESATIVAR_USUARIO : LOG_ACTIONS.ATIVAR_USUARIO, { usuario_id: id, usuario_nome: nome, novo_status: !ativo ? 'ativo' : 'inativo' });
         showToast(`Usuário ${!ativo ? 'ativado' : 'desativado'} com sucesso!`, 'success');
         await carregarUsuarios();
       }
@@ -125,6 +131,7 @@ async function carregarUsuarios() {
       if (error) {
         showToast('Erro ao excluir: ' + error, 'error');
       } else {
+        registrarLog(LOG_ACTIONS.EXCLUIR_USUARIO, { usuario_id: btn.dataset.id, usuario_nome: btn.dataset.nome });
         showToast('Usuário excluído!', 'success');
         await carregarUsuarios();
       }

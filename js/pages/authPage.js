@@ -153,8 +153,15 @@ export function renderRegister() {
       alertEl.innerHTML = `<div class="auth-alert error">${result.error}</div>`;
       btn.disabled = false;
       btn.textContent = 'Cadastrar';
+    } else if (result.ativadoAutomaticamente) {
+      alertEl.innerHTML = `<div class="auth-alert success">Cadastro realizado e ativado automaticamente! Você já pode fazer login.</div>`;
+      btn.textContent = 'Cadastro ativado';
+      setTimeout(() => {
+        window.location.hash = 'login';
+        window.location.reload();
+      }, 2000);
     } else {
-      alertEl.innerHTML = `<div class="auth-alert success">Cadastro realizado! Aguarde ativação pelo administrador.</div>`;
+      alertEl.innerHTML = `<div class="auth-alert success">Cadastro realizado! Aguarde a liberação pelo administrador.</div>`;
       btn.textContent = 'Cadastro enviado';
       setTimeout(() => {
         window.location.hash = 'login';

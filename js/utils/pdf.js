@@ -1,6 +1,7 @@
+import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
+
 const MARGIN = 8;
 const HEADER_COLOR = [26, 42, 58];
-
 const CORES_BOLA = {
   red: [229, 57, 53],
   orange: [255, 152, 0],
@@ -96,6 +97,7 @@ function adicionarTabela(doc, tabela, startY) {
 }
 
 export function gerarPdfRelatorio({ titulo, subtitulo, meta = [], tabelas = [] }) {
+  registrarLog(LOG_ACTIONS.GERAR_PDF, { titulo, subtitulo, meta });
   const doc = novoDoc();
   let y = desenharCabecalho(doc, titulo, subtitulo, meta);
   tabelas.forEach(tabela => {

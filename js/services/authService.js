@@ -1,5 +1,6 @@
-import { rest, supabaseQuery, supabaseUpsert } from './supabase.js';
+import { rest, supabaseQuery, supabaseFetchAll, supabaseUpsert } from './supabase.js';
 import { setUser, clearUser, showToast } from '../utils/helpers.js';
+import { registrarLog, LOG_ACTIONS } from './logService.js';
 
 export async function login(email, senha) {
   const { data: usuarios, error } = await supabaseQuery('usuarios', {
@@ -7,11 +8,20 @@ export async function login(email, senha) {
     filters: [{ col: 'email', val: email }]
   });
 
-  if (error) return { error: 'Erro ao conectar ao banco' };
-  if (!usuarios || usuarios.length === 0) return { error: 'Usuário não encontrado' };
+  if (error) {
+    registrarLog(LOG_ACTIONS.LOGIN_FALHA, { email, motivo: 'erro de conexão' });
+    return { error: 'Erro ao conectar ao banco' };
+  }
+  if (!usuarios || usuarios.length === 0) {
+    registrarLog(LOG_ACTIONS.LOGIN_FALHA, { email, motivo: 'usuário não encontrado' });
+    return { error: 'Usuário não encontrado' };
+  }
 
   const user = usuarios[0];
-  if (!user.ativo) return { error: 'Usuário aguardando ativação. Contate o administrador.' };
+  if (!user.ativo) {
+    registrarLog(LOG_ACTIONS.LOGIN_FALHA, { email, motivo: 'aguardando ativação' });
+    return { error: 'Usuário aguardando ativação. Contate o administrador.' };
+  }
 
   const { data: perfis } = await supabaseQuery('perfis', {
     select: 'id,nome',
@@ -21,7 +31,10 @@ export async function login(email, senha) {
   const perfilNome = perfis?.[0]?.nome || 'Professor';
 
   const senhaMatch = senha === user.senha_hash;
-  if (!senhaMatch) return { error: 'Senha incorreta' };
+  if (!senhaMatch) {
+    registrarLog(LOG_ACTIONS.LOGIN_FALHA, { email, motivo: 'senha incorreta' });
+    return { error: 'Senha incorreta' };
+  }
 
   const userData = {
     id: user.id,
@@ -33,6 +46,7 @@ export async function login(email, senha) {
   };
 
   setUser(userData);
+  registrarLog(LOG_ACTIONS.LOGIN, { email, perfil: perfilNome });
   return { user: userData, error: null };
 }
 
@@ -43,6 +57,8 @@ export async function listarPerfis() {
 }
 
 export async function register(nome, email, matricula, senha, perfilId) {
+  const normMatricula = s => String(s ?? '').trim().replace(/[^\d]/g, '').replace(/^0+/, '');
+
   const { data: existentes } = await supabaseQuery('usuarios', {
     select: 'id,email,matricula',
     filters: [{ col: 'email', val: email }]
@@ -52,12 +68,11 @@ export async function register(nome, email, matricula, senha, perfilId) {
     return { error: 'Este email já está cadastrado. Faça login ou use outro email.' };
   }
 
-  const { data: usuariosComMatricula } = await supabaseQuery('usuarios', {
-    select: 'id,email,matricula',
-    filters: [{ col: 'matricula', val: matricula }]
-  });
+  const { data: usuariosMatriculas } = await supabaseFetchAll('usuarios', { select: 'id,email,matricula' });
+  const matriculaNormalizada = normMatricula(matricula);
+  const duplicado = (usuariosMatriculas || []).find(u => matriculaNormalizada && normMatricula(u.matricula) === matriculaNormalizada);
 
-  if (usuariosComMatricula && usuariosComMatricula.length > 0) {
+  if (duplicado) {
     return { error: 'Já existe um usuário cadastrado com esta matrícula.' };
   }
 
@@ -72,15 +87,19 @@ export async function register(nome, email, matricula, senha, perfilId) {
   const perfilFinal = perfilValido || (perfis || []).find(p => norm(p.nome) === 'professor')?.id || 3;
 
   const eProfessor = norm((perfis || []).find(p => p.id === perfilFinal)?.nome || '') === 'professor';
+  let professorEncontrado = null;
   if (eProfessor) {
-    const { data: professores } = await supabaseQuery('professores', {
-      select: 'id,matricula,nome',
-      filters: [{ col: 'matricula', val: matricula }]
-    });
-    if (!professores || professores.length === 0) {
+    const { data: professores } = await supabaseFetchAll('professores', { select: 'id,matricula,nome' });
+    professorEncontrado = (professores || []).find(p => matriculaNormalizada && normMatricula(p.matricula) === matriculaNormalizada) || null;
+    if (!professorEncontrado) {
+      registrarLog(LOG_ACTIONS.CADASTRO, { email, matricula, motivo: 'matrícula não encontrada na tabela de professores' });
       return { error: 'Matrícula não encontrada na tabela de professores. Cadastro não permitido.' };
     }
   }
+
+  const normNome = s => norm(String(s || '').trim().replace(/\s+/g, ' '));
+  const nomeConfere = professorEncontrado && normNome(nome) === normNome(professorEncontrado.nome);
+  const ativadoAutomaticamente = eProfessor && nomeConfere;
 
   const newUser = {
     nome,
@@ -88,12 +107,23 @@ export async function register(nome, email, matricula, senha, perfilId) {
     matricula,
     senha_hash: senha,
     perfil_id: perfilFinal,
-    ativo: false
+    ativo: ativadoAutomaticamente
   };
 
   const { data, error } = await supabaseUpsert('usuarios', [newUser]);
-  if (error) return { error: 'Erro ao cadastrar: ' + error };
-  return { success: true, error: null };
+  if (error) {
+    registrarLog(LOG_ACTIONS.CADASTRO, { email, matricula, motivo: 'erro ao inserir' });
+    return { error: 'Erro ao cadastrar: ' + error };
+  }
+  registrarLog(LOG_ACTIONS.CADASTRO, {
+    email,
+    matricula,
+    perfil: norm((perfis || []).find(p => p.id === perfilFinal)?.nome || ''),
+    ativadoAutomaticamente,
+    professorEncontrado: !!professorEncontrado,
+    nomeConfere
+  });
+  return { success: true, ativadoAutomaticamente, error: null };
 }
 
 export async function listarUsuarios() {
@@ -119,6 +149,8 @@ export async function atualizarUsuario(id, campos) {
 }
 
 export async function logout() {
+  const user = getCurrentUser();
+  registrarLog(LOG_ACTIONS.LOGOUT, { email: user?.email });
   clearUser();
   try {
     const { clearFilterCache } = await import('../components/FilterPanel.js');

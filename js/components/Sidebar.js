@@ -58,6 +58,11 @@ export function initSidebar() {
       menuUsuarios.style.display = isAdmin() ? 'block' : 'none';
     }
 
+    const menuLogs = document.getElementById('menu-logs');
+    if (menuLogs) {
+      menuLogs.style.display = isAdmin() ? 'block' : 'none';
+    }
+
     const menuImportar = document.getElementById('menu-importar');
     if (menuImportar) {
       menuImportar.style.display = user.perfil === 'Professor' ? 'none' : 'block';
@@ -89,6 +94,7 @@ export function setActiveRoute(route) {
     'dashboard-estudante': 'Consulta por Estudante',
     'importar': 'Importar Dados',
     'usuarios': 'Gerenciar Usuários',
+    'logs': 'Logs de Atividade',
   };
   const title = document.getElementById('page-title');
   if (title) title.textContent = titles[route] || 'SIEAC';

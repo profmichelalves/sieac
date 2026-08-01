@@ -1,7 +1,8 @@
 import { $, showToast } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { importarNotas, importarFrequencia } from '../services/importService.js';
-import { supabaseRpc } from '../services/supabase.js';
+import { supabaseRpc, supabaseQuery } from '../services/supabase.js';
+import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 import { clearCache } from '../repositories/dashboardRepository.js';
 import { clearFilterCache } from '../components/FilterPanel.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
@@ -136,6 +137,7 @@ export async function render() {
   setupImportArea('notas');
   setupImportArea('freq');
   setupLimparDados();
+  carregarHistorico();
 }
 
 function setupImportArea(tipo) {
@@ -249,6 +251,17 @@ async function processFile(tipo, file) {
     }
   }
 
+  registrarLog(tipo === 'notas' ? LOG_ACTIONS.IMPORTAR_NOTAS : LOG_ACTIONS.IMPORTAR_FREQUENCIA, {
+    arquivo: file.name,
+    registros: res.registros,
+    inseridos: res.inseridos,
+    atualizados: res.atualizados,
+    erros: res.erros,
+    ignorados: (res.ignorados || []).length,
+    tempoMs: res.tempoMs,
+  });
+  carregarHistorico();
+
   showToast(`${tipoNome}: ${res.registros} registros processados`, 'success');
 }
 
@@ -337,6 +350,10 @@ function setupLimparDados() {
         `${r.tabela}: ${r.linhas} linha(s) removida(s)${r.sequencia_reset ? ' (ID resetado)' : ''}`
       ).join('\n');
 
+      registrarLog(LOG_ACTIONS.LIMPAR_DADOS, {
+        tabelas: (res.data || []).map(r => ({ tabela: r.tabela, linhas: r.linhas }))
+      });
+
       showToast(`Dados limpos com sucesso:\n${linhas}`, 'success');
 
       window.location.hash = '#/importar';
@@ -347,4 +364,68 @@ function setupLimparDados() {
       btnConfirmar.innerHTML = '<i class="bi bi-trash3"></i> Limpar Selecionados';
     }
   });
+}
+
+async function carregarHistorico() {
+  const el = document.getElementById('import-historico');
+  if (!el) return;
+
+  const { data, error } = await supabaseQuery('importacoes', {
+    select: 'id,tipo,arquivo,registros,inseridos,atualizados,erros,erros_detalhes,tempo_ms,created_at',
+    order: 'created_at.desc',
+    limit: 50
+  });
+
+  if (error) {
+    el.innerHTML = `<div class="empty-state"><p style="color:var(--sieac-danger);font-size:0.9rem;">Erro ao carregar histórico: ${error}</p></div>`;
+    return;
+  }
+
+  if (!data || !data.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <i class="bi bi-clock-history"></i>
+        <h4>Nenhuma importação realizada</h4>
+        <p>As importações realizadas aparecerão aqui com detalhes de processamento.</p>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="table-responsive-custom">
+      <table class="table-sieac">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Tipo</th>
+            <th>Arquivo</th>
+            <th>Registros</th>
+            <th>Inseridos</th>
+            <th>Erros</th>
+            <th>Ignorados</th>
+            <th>Tempo</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map(i => {
+            let detalhes = {};
+            try { detalhes = JSON.parse(i.erros_detalhes || '{}'); } catch {}
+            const ignorados = detalhes.ignorados ?? '-';
+            return `
+              <tr>
+                <td>${new Date(i.created_at).toLocaleString('pt-BR')}</td>
+                <td>${i.tipo === 'notas' ? 'Notas' : 'Frequência'}</td>
+                <td>${i.arquivo || '-'}</td>
+                <td>${i.registros}</td>
+                <td>${i.inseridos}</td>
+                <td style="color:${i.erros > 0 ? 'var(--sieac-danger)' : 'inherit'}">${i.erros}</td>
+                <td>${ignorados}</td>
+                <td>${(i.tempo_ms / 1000).toFixed(1)}s</td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${data.length >= 50 ? '<div style="margin-top:8px;font-size:0.8rem;color:var(--sieac-text-muted);">Exibindo os 50 registros mais recentes.</div>' : ''}
+  `;
 }
