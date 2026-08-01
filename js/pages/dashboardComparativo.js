@@ -26,7 +26,7 @@ export async function render() {
     <div class="row g-4">
       <div class="col-12">
         <div class="chart-card">
-          <div class="chart-card-title">Frequência x Média Final ${infoBtn('Frequência x Média Final', 'Cada ponto representa um estudante com média final maior que zero e frequência registrada. Eixo X: média dos percentuais de frequência do estudante; Eixo Y: média das médias finais das suas disciplinas.' + EXPLICACAO_RESULTADO)}</div>
+          <div class="chart-card-title">Frequência x Média Final ${infoBtn('Frequência x Média Final', 'Cada ponto representa um estudante com frequência registrada. Eixo X: média dos percentuais de frequência do estudante; Eixo Y: média das médias finais das suas disciplinas. Estudantes sem nenhuma nota lançada em uma disciplina são considerados com média 0.' + EXPLICACAO_RESULTADO)}</div>
           <div class="chart-container" style="height:500px;">
             <canvas id="chart-scatter"></canvas>
           </div>

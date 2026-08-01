@@ -1,5 +1,5 @@
 export const EXPLICACAO_RESULTADO =
-  ' Como a média e a situação são calculadas: a média acumulada é a média aritmética das notas dos bimestres lançados (considerando apenas notas maiores que zero), arredondada a 1 casa decimal. Durante o ano letivo (com menos de 4 bimestres lançados): média ≥ 6 → Em Aprovação; média < 6 → Em Recuperação. Ao final do ano (com os 4 bimestres lançados): média ≥ 6 → Aprovado; média < 6 → Recuperação Final. A frequência é a média dos percentuais registrados; frequência inferior a 75% resulta em reprovação, independentemente da média.';
+  ' Como a média e a situação são calculadas: a média acumulada é a média aritmética das notas dos bimestres lançados, arredondada a 1 casa decimal. Bimestres não lançados não são considerados; quando o estudante não tem nenhuma nota lançada em uma disciplina, a média considerada é 0. Durante o ano letivo (com menos de 4 bimestres lançados): média ≥ 6 → Em Aprovação; média < 6 → Em Recuperação. Ao final do ano (com os 4 bimestres lançados): média ≥ 6 → Aprovado; média < 6 → Recuperação Final. A frequência é a média dos percentuais registrados; frequência inferior a 75% resulta em reprovação, independentemente da média.';
 
 export function termosSituacao(periodo) {
   if (periodo === 'anual') {

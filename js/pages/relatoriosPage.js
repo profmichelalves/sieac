@@ -147,8 +147,8 @@ async function loadData() {
   const estMap = {}; cache.estudantes.forEach(e => estMap[e.id] = e);
 
   const linhas = filtradas.map(n => {
-    const mf = parseFloat(n.media_final);
-    if (isNaN(mf) || mf <= 0 || mf >= MEDIA_CORTE) return null;
+    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
+    if (mf >= MEDIA_CORTE) return null;
     const cId = alocComp[n.alocacao_id];
     const tId = alocTurma[n.alocacao_id];
     const estudante = estMap[n.estudante_id];

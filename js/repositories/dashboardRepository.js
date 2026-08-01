@@ -11,14 +11,13 @@ function notasPreenchidas(n1, n2, n3, n4) {
 
 function calcularMediaAcumulada(n1, n2, n3, n4) {
   const notas = notasPreenchidas(n1, n2, n3, n4);
-  if (!notas.length) return null;
+  if (!notas.length) return 0;
   return Math.round((notas.reduce((a, b) => a + b, 0) / notas.length) * 10) / 10;
 }
 
 function calcularSituacao(n1, n2, n3, n4) {
   const notas = notasPreenchidas(n1, n2, n3, n4);
-  if (!notas.length) return 'Sem avaliações';
-  const media = notas.reduce((a, b) => a + b, 0) / notas.length;
+  const media = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : 0;
   if (notas.length >= 4) return media >= 6 ? 'Aprovado' : 'Recuperação Final';
   return media >= 6 ? 'Em Aprovação' : 'Em Recuperação';
 }
@@ -265,8 +264,7 @@ async function classificarEstudantes(filters) {
 
   const medias = {};
   notas.forEach(n => {
-    const mf = parseFloat(n.media_final);
-    if (isNaN(mf) || mf <= 0) return;
+    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     if (!medias[n.estudante_id]) medias[n.estudante_id] = { soma: 0, count: 0 };
     medias[n.estudante_id].soma += mf;
     medias[n.estudante_id].count++;
@@ -366,8 +364,7 @@ export async function getDetalheResultados(filters = {}) {
   const catMap = { aprovado: 'aprovados', recuperacao: 'recuperacao', reprovado: 'reprovados' };
   const resultado = { aprovados: [], recuperacao: [], reprovados: [] };
   notas.forEach(n => {
-    const mf = parseFloat(n.media_final);
-    if (isNaN(mf) || mf <= 0) return;
+    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     const cat = catMap[classificacao[n.estudante_id]];
     if (!cat) return;
     const e = eMap[n.estudante_id];
@@ -427,11 +424,10 @@ export async function getDetalheSituacao(filters = {}) {
   const porEstudante = {};
   notas.forEach(n => {
     let media = calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim);
-    if (media == null) {
+    if (media === 0) {
       const mf = parseFloat(n.media_final);
-      media = !isNaN(mf) && mf > 0 ? mf : null;
+      if (!isNaN(mf) && mf > 0) media = mf;
     }
-    if (media == null) return;
     if (!porEstudante[n.estudante_id]) porEstudante[n.estudante_id] = { disciplinas: [], turmas: new Set() };
     porEstudante[n.estudante_id].disciplinas.push({ nome: cMap[alocComp[n.alocacao_id]] || 'N/I', media });
     const turmaId = alocTurma[n.alocacao_id];
@@ -517,8 +513,7 @@ export async function getMediaPorTurma(filters = {}) {
 
   const grupos = {};
   notas.forEach(n => {
-    const mf = parseFloat(n.media_final);
-    if (isNaN(mf) || mf <= 0) return;
+    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     const tId = alocTurma[n.alocacao_id];
     const nome = turmaMap[tId] || `Turma ${tId}`;
     if (!grupos[nome]) grupos[nome] = { soma: 0, count: 0 };
@@ -539,8 +534,7 @@ export async function getMediaPorDisciplina(filters = {}) {
 
   const grupos = {};
   notas.forEach(n => {
-    const mf = parseFloat(n.media_final);
-    if (isNaN(mf) || mf <= 0) return;
+    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     const cId = alocComp[n.alocacao_id];
     const nome = compMap[cId] || `Comp ${cId}`;
     if (!grupos[nome]) grupos[nome] = { soma: 0, count: 0 };
@@ -562,8 +556,7 @@ export async function getMediaPorSerie(filters = {}) {
 
   const grupos = {};
   notas.forEach(n => {
-    const mf = parseFloat(n.media_final);
-    if (isNaN(mf) || mf <= 0) return;
+    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     const tId = alocTurma[n.alocacao_id];
     const sId = turmaSerie[tId];
     const nome = serieMap[sId] || `Série ${sId}`;
@@ -598,8 +591,7 @@ export async function getDistribuicaoHistograma(filters = {}) {
 
   const faixas = { '0-2': 0, '2-4': 0, '4-6': 0, '6-8': 0, '8-10': 0 };
   notas.forEach(n => {
-    const mf = parseFloat(n.media_final);
-    if (isNaN(mf) || mf <= 0) return;
+    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     if (mf < 2) faixas['0-2']++;
     else if (mf < 4) faixas['2-4']++;
     else if (mf < 6) faixas['4-6']++;
@@ -709,8 +701,7 @@ export async function getMediaPorProfessor(filters = {}) {
 
   const grupos = {};
   notas.forEach(n => {
-    const mf = parseFloat(n.media_final);
-    if (isNaN(mf) || mf <= 0) return;
+    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     const pId = alocProf[n.alocacao_id];
     const nome = pMap[pId] || `Prof ${pId}`;
     if (!grupos[nome]) grupos[nome] = { soma: 0, count: 0 };
@@ -748,8 +739,7 @@ export async function getScatterFreqNota(filters = {}) {
 
   const notasPorAluno = {};
   notas.forEach(n => {
-    const mf = parseFloat(n.media_final);
-    if (isNaN(mf) || mf <= 0) return;
+    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     if (!notasPorAluno[n.estudante_id]) notasPorAluno[n.estudante_id] = { soma: 0, count: 0 };
     notasPorAluno[n.estudante_id].soma += mf;
     notasPorAluno[n.estudante_id].count++;
@@ -764,15 +754,13 @@ export async function getScatterFreqNota(filters = {}) {
     if (!f) return;
     const mediaNota = n.soma / n.count;
     const mediaFreq = f.soma / f.count;
-    if (mediaNota > 0) {
-      pontos.push({
-        estudante_id: eId,
-        nome: eMap[eId]?.nome || `ID ${eId}`,
-        matricula: eMap[eId]?.matricula || '-',
-        media: Math.round(mediaNota * 10) / 10,
-        frequencia: Math.round(mediaFreq * 10) / 10,
-      });
-    }
+    pontos.push({
+      estudante_id: eId,
+      nome: eMap[eId]?.nome || `ID ${eId}`,
+      matricula: eMap[eId]?.matricula || '-',
+      media: Math.round(mediaNota * 10) / 10,
+      frequencia: Math.round(mediaFreq * 10) / 10,
+    });
   });
 
   return { data: pontos, error: null };

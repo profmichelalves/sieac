@@ -43,7 +43,7 @@ export async function render() {
           <div class="kpi-label">Média Geral</div>
           <div class="kpi-value"><span id="kpi-media">—</span></div>
           <div class="kpi-icon"><i class="bi bi-graph-up"></i></div>
-          ${infoBtn('Média Geral', 'Média aritmética das médias finais de cada estudante: soma das médias finais positivas dividida pelo número de estudantes.' + EXPLICACAO_RESULTADO)}
+          ${infoBtn('Média Geral', 'Média aritmética das médias finais de cada estudante: soma das médias finais dividida pelo número de estudantes. Estudantes sem nenhuma nota lançada em uma disciplina são considerados com média 0.' + EXPLICACAO_RESULTADO)}
         </div>
       </div>
       <div class="col-6 col-md-3">

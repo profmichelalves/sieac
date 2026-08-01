@@ -99,7 +99,7 @@ export async function render() {
       </div>
       <div class="col-md-6">
         <div class="chart-card">
-          <div class="chart-card-title">Distribuição das Notas ${infoBtn('Distribuição das Notas', 'Histograma das médias finais divididas em faixas: 0–2, 2–4, 4–6, 6–8 e 8–10. Apenas médias finais maiores que zero são consideradas.' + EXPLICACAO_RESULTADO)}</div>
+          <div class="chart-card-title">Distribuição das Notas ${infoBtn('Distribuição das Notas', 'Histograma das médias finais divididas em faixas: 0–2, 2–4, 4–6, 6–8 e 8–10. Disciplinas sem nenhuma nota lançada são consideradas com média 0.' + EXPLICACAO_RESULTADO)}</div>
           <div class="chart-container" style="height:350px;"><canvas id="chart-distribuicao"></canvas></div>
         </div>
       </div>

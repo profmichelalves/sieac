@@ -167,7 +167,7 @@ async function carregarEstudante(id) {
         <td class="num">${n.nota_2bim || '-'}</td>
         <td class="num">${n.nota_3bim || '-'}</td>
         <td class="num">${n.nota_4bim || '-'}</td>
-        <td class="num" style="font-weight:600;color:${parseFloat(n.media_acumulada) >= 6 ? 'var(--sieac-success)' : 'var(--sieac-danger)'}">${n.media_acumulada || '-'}</td>
+        <td class="num" style="font-weight:600;color:${parseFloat(n.media_acumulada) >= 6 ? 'var(--sieac-success)' : 'var(--sieac-danger)'}">${n.media_acumulada == null ? '-' : n.media_acumulada}</td>
         <td><span class="badge ${situacaoBadge(n.situacao)}">${n.situacao}</span></td>
       </tr>
     `).join('');
@@ -247,10 +247,10 @@ function gerarPdfEstudante() {
     n.nota_2bim || '-',
     n.nota_3bim || '-',
     n.nota_4bim || '-',
-    n.media_acumulada || '-',
+    n.media_acumulada == null ? '-' : n.media_acumulada,
     n.situacao,
   ]);
-  const medias = studentNotas.map(n => parseFloat(n.media_acumulada)).filter(v => !isNaN(v) && v > 0);
+  const medias = studentNotas.map(n => parseFloat(n.media_acumulada)).filter(v => !isNaN(v));
   const mediaGeral = medias.length ? Math.round((medias.reduce((a, b) => a + b, 0) / medias.length) * 10) / 10 : '-';
 
   const freqRows = studentFreqs.map(f => {
