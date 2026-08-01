@@ -84,6 +84,7 @@ export function setActiveRoute(route) {
     'dashboard-desempenho': 'Dashboard de Desempenho',
     'dashboard-frequencia': 'Dashboard de Frequência',
     'relatorios': 'Relatório de Notas',
+    'relatorio-sem-notas': 'Relatório de Notas Não Lançadas',
     'dashboard-comparativo': 'Dashboard Comparativo',
     'dashboard-estudante': 'Consulta por Estudante',
     'importar': 'Importar Dados',

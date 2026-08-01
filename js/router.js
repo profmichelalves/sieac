@@ -11,6 +11,7 @@ const routes = {
   'dashboard-comparativo': { page: 'dashboardComparativo', auth: true },
   'dashboard-estudante': { page: 'dashboardEstudante', auth: true },
   'relatorios': { page: 'relatoriosPage', auth: true },
+  'relatorio-sem-notas': { page: 'relatoriosSemNotas', auth: true },
   'importar': { page: 'importPage', auth: true, can: isGestao },
   'usuarios': { page: 'usuariosPage', auth: true, can: isAdmin },
 };
