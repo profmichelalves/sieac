@@ -255,7 +255,8 @@ async function getEstudantesImportados(filters) {
 //  - Reprovado:     frequência < 75% ou mais de 6 disciplinas abaixo
 //  - Recuperação:   1 a 6 disciplinas abaixo (com frequência ≥ 75%)
 //  - Aprovado:      nenhuma disciplina abaixo (com frequência ≥ 75%)
-// Estudantes sem nenhuma nota lançada são considerados com média 0.
+// Estudantes sem nenhuma nota lançada não são classificados; ficam no grupo
+// "Sem Notas Lançadas" (mantendo média 0 no cálculo da Média Geral).
 async function classificarEstudantes(filters) {
   await getRefCache();
   const [idsEstudantes, notas, freqs] = await Promise.all([
@@ -297,15 +298,14 @@ async function classificarEstudantes(filters) {
     freqsPorEstudante[f.estudante_id].count++;
   });
 
-  idsEstudantes.forEach(id => {
-    if (!medias[id]) {
-      medias[id] = { soma: 0, count: 1 };
-      qtdAbaixo[id] = 1;
-    }
+  const idsSemNota = new Set([...idsEstudantes].filter(id => !medias[id]).map(id => String(id)));
+  idsSemNota.forEach(id => {
+    medias[id] = { soma: 0, count: 1 };
   });
 
   const classificacao = {};
   Object.entries(medias).forEach(([eId, m]) => {
+    if (idsSemNota.has(eId)) return;
     const f = freqsPorEstudante[eId];
     const frequencia = f ? f.soma / f.count : null;
     const qtd = qtdAbaixo[eId] || 0;
@@ -315,7 +315,7 @@ async function classificarEstudantes(filters) {
     else classificacao[eId] = 'aprovado';
   });
 
-  return { classificacao, medias, frequenciasPorEstudante: freqsPorEstudante, totalNotas: notas.length, periodo };
+  return { classificacao, medias, frequenciasPorEstudante: freqsPorEstudante, totalNotas: notas.length, periodo, idsSemNota };
 }
 
 export async function getResumoGeral(filters = {}) {
@@ -325,7 +325,7 @@ export async function getResumoGeral(filters = {}) {
     classificarEstudantes(filters),
     queryFrequencias(filters, 'percentual_frequencia,estudante_id'),
   ]);
-  const { classificacao, medias } = dados;
+  const { classificacao, medias, idsSemNota } = dados;
 
   const valoresMedias = Object.values(medias).map(m => m.soma / m.count);
   const mediaGeral = valoresMedias.length ? valoresMedias.reduce((a, b) => a + b, 0) / valoresMedias.length : 0;
@@ -336,6 +336,7 @@ export async function getResumoGeral(filters = {}) {
     else if (c === 'recuperacao') recuperacao++;
     else reprovados++;
   });
+  const semNotas = idsSemNota.size;
   const base = totalEstudantes || 1;
 
   let freqMedia = 0, freqCount = 0, somaFreq = 0;
@@ -355,14 +356,18 @@ export async function getResumoGeral(filters = {}) {
     aprovacao_pct: Math.round(aprovados / base * 1000) / 10,
     reprovacao_pct: Math.round(reprovados / base * 1000) / 10,
     recuperacao_pct: Math.round(recuperacao / base * 1000) / 10,
+    total_aprovacao: aprovados,
     total_recuperacao: recuperacao,
+    total_reprovacao: reprovados,
+    sem_notas: semNotas,
+    sem_notas_pct: Math.round(semNotas / base * 1000) / 10,
     total_notas: dados.totalNotas,
     periodo: dados.periodo,
   };
 }
 
 export async function getResultadoFinal(filters = {}) {
-  const { classificacao, periodo } = await classificarEstudantes(filters);
+  const { classificacao, periodo, idsSemNota } = await classificarEstudantes(filters);
 
   let aprov = 0, repr = 0, recup = 0;
   Object.values(classificacao).forEach(c => {
@@ -371,7 +376,7 @@ export async function getResultadoFinal(filters = {}) {
     else repr++;
   });
 
-  return { data: { aprovados: aprov, reprovados: repr, recuperacao: recup, periodo }, error: null };
+  return { data: { aprovados: aprov, reprovados: repr, recuperacao: recup, sem_notas: idsSemNota.size, periodo }, error: null };
 }
 
 export async function getDetalheResultados(filters = {}) {
@@ -471,15 +476,24 @@ export async function getDetalheSituacao(filters = {}) {
     freqPorEstudante[f.estudante_id].count++;
   });
 
-  idsEstudantes.forEach(id => {
-    if (!porEstudante[id]) {
-      porEstudante[id] = { disciplinas: [{ nome: 'Sem notas lançadas', media: 0 }], turmas: new Set() };
-    }
-  });
-
   const reprovados = [];
   const recuperacao = [];
   const aprovados = [];
+  const semNotas = [];
+
+  idsEstudantes.forEach(id => {
+    if (!porEstudante[id]) {
+      const e = eMap[id];
+      semNotas.push({
+        estudante: e?.nome || `ID ${id}`,
+        matricula: e?.matricula || '-',
+        turma: '-',
+        frequencia: null,
+        qtd: 0,
+        disciplinas: [],
+      });
+    }
+  });
 
   Object.entries(porEstudante).forEach(([eId, dados]) => {
     const e = eMap[eId];
@@ -536,7 +550,9 @@ export async function getDetalheSituacao(filters = {}) {
 
   aprovados.sort((a, b) => a.menor - b.menor || a.mediaGeral - b.mediaGeral);
 
-  return { data: { aprovados, reprovados, recuperacao }, error: null };
+  semNotas.sort((a, b) => a.estudante.localeCompare(b.estudante, 'pt-BR'));
+
+  return { data: { aprovados, reprovados, recuperacao, semNotas }, error: null };
 }
 
 export async function getMediaPorTurma(filters = {}) {
