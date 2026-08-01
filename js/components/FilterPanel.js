@@ -488,6 +488,11 @@ export function getFilters() {
   return { ...(isProfessor() && professorVinculo ? { ...appliedFilters, professor_id: String(professorVinculo.id) } : appliedFilters) };
 }
 
+export function getCurrentFilters() {
+  const base = isDirty ? pendingFilters : appliedFilters;
+  return { ...(isProfessor() && professorVinculo ? { ...base, professor_id: String(professorVinculo.id) } : base) };
+}
+
 function logFilterDiagnostics() {
   if (!filterData) return;
   const { series, turmas, componentes, professores, etapas, alocacoes, turnos } = filterData;

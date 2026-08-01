@@ -7,14 +7,14 @@ export function termosSituacao(periodo) {
       card: { aprovado: 'Aprovação', recuperacao: 'Recuperação', reprovado: 'Reprovação' },
       label: { aprovado: 'Aprovados', recuperacao: 'Recuperação', reprovado: 'Reprovados' },
       tituloGrafico: 'Distribuição dos Resultados Finais',
-      explicacaoGrafico: 'Classifica os estudantes pela frequência e pelo número de disciplinas com média anual inferior a 6,0: Aprovado (nenhuma disciplina abaixo e frequência ≥ 75%), Recuperação (1 a 6 disciplinas abaixo com frequência ≥ 75%) e Reprovado (frequência < 75% ou mais de 6 disciplinas abaixo). Apenas estudantes com todas as disciplinas com notas lançadas são classificados; estudantes com alguma disciplina sem nota aparecem na fatia "Sem Notas Lançadas".',
+      explicacaoGrafico: 'Classifica os estudantes pela frequência e pelo número de disciplinas com média anual inferior a 6,0: Aprovado (nenhuma disciplina abaixo e frequência ≥ 75%), Recuperação (1 a 6 disciplinas abaixo com frequência ≥ 75%) e Reprovado (frequência < 75% ou mais de 6 disciplinas abaixo). Apenas estudantes com todas as disciplinas com notas lançadas são classificados; os percentuais são calculados sobre esses estudantes classificados e somam 100% entre si. Estudantes com alguma disciplina sem nenhuma nota lançada ficam no card "Sem Notas Lançadas" e não entram nesta distribuição.',
     };
   }
   return {
     card: { aprovado: 'Em Aprovação', recuperacao: 'Em Recuperação', reprovado: 'Em Reprovação' },
     label: { aprovado: 'Em Aprovação', recuperacao: 'Em Recuperação', reprovado: 'Em Reprovação' },
     tituloGrafico: 'Distribuição das Situações Parciais',
-    explicacaoGrafico: 'Classifica a situação parcial dos estudantes até o momento: Em Aprovação (nenhuma disciplina com média acumulada inferior a 6,0 e frequência ≥ 75%), Em Recuperação (1 a 6 disciplinas abaixo com frequência ≥ 75%) e Em Reprovação (frequência < 75% ou mais de 6 disciplinas abaixo). Apenas estudantes com todas as disciplinas com notas lançadas são classificados; estudantes com alguma disciplina sem nota aparecem na fatia "Sem Notas Lançadas". Ao final do ano letivo, a situação é consolidada em Aprovado, Recuperação Final ou Reprovado.',
+    explicacaoGrafico: 'Classifica a situação parcial dos estudantes até o momento: Em Aprovação (nenhuma disciplina com média acumulada inferior a 6,0 e frequência ≥ 75%), Em Recuperação (1 a 6 disciplinas abaixo com frequência ≥ 75%) e Em Reprovação (frequência < 75% ou mais de 6 disciplinas abaixo). Apenas estudantes com todas as disciplinas com notas lançadas são classificados; os percentuais são calculados sobre esses estudantes classificados e somam 100% entre si. Estudantes com alguma disciplina sem nenhuma nota lançada ficam no card "Sem Notas Lançadas" e não entram nesta distribuição. Ao final do ano letivo, a situação é consolidada em Aprovado, Recuperação Final ou Reprovado.',
   };
 }
 

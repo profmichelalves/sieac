@@ -203,9 +203,9 @@ async function loadData() {
     const d = resultado.data;
     const termos = termosSituacao(periodoLetivo);
     createDoughnutChart('chart-resultado-final',
-      [termos.label.aprovado, termos.label.reprovado, termos.label.recuperacao, 'Sem Notas Lançadas'],
-      [d.aprovados, d.reprovados, d.recuperacao, d.sem_notas],
-      ['#2dc653', '#e63946', '#ffd000', '#adb5bd']
+      [termos.label.aprovado, termos.label.reprovado, termos.label.recuperacao],
+      [d.aprovados, d.reprovados, d.recuperacao],
+      ['#2dc653', '#e63946', '#ffd000']
     );
   }
 

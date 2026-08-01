@@ -1,4 +1,4 @@
-import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
+import { renderFilterPanel, getCurrentFilters } from '../components/FilterPanel.js';
 import { supabaseFetchAll, supabaseQuery } from '../services/supabase.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
@@ -109,7 +109,7 @@ function aplicarFiltros(notas, filters, cache) {
 }
 
 async function loadData() {
-  const filters = getFilters();
+  const filters = getCurrentFilters();
   const cache = await getCache();
 
   relDataHora = new Date().toLocaleString('pt-BR');
@@ -183,7 +183,8 @@ function ordenarLinhas(linhas, sortKey) {
   });
 }
 
-function gerarPDF() {
+async function gerarPDF() {
+  await loadData();
   if (!relLinhas.length) {
     alert('Nenhum aluno abaixo da média para os filtros selecionados.');
     return;
