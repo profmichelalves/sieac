@@ -1,11 +1,13 @@
 import { showToast } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { supabaseQuery } from '../services/supabase.js';
-import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, buscarEstudantes, podeVerEstudante } from '../repositories/dashboardRepository.js';
+import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, listarEstudantesParaBusca, podeVerEstudante } from '../repositories/dashboardRepository.js';
 import { destroyChart } from '../components/Charts.js';
+import { createSearchSelect } from '../components/SearchSelect.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
 
 let evolChart = null;
+let studentCombo = null;
 let currentStudentId = null;
 let studentInfo = {};
 let studentNotas = [];
@@ -22,18 +24,6 @@ export async function render() {
   main.innerHTML = `
     <style>
       .student-search { max-width:560px; }
-      .student-input {
-        width:100%; padding:8px 12px;
-        border:1px solid var(--sieac-border);
-        border-radius:var(--sieac-radius-sm);
-        background:var(--sieac-bg); color:var(--sieac-text);
-        font-size:0.85rem;
-        transition:border-color var(--sieac-transition);
-      }
-      .student-input:focus {
-        outline:none; border-color:var(--sieac-secondary);
-        box-shadow:0 0 0 3px rgba(var(--sieac-secondary-rgb), 0.15);
-      }
       .student-info-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
       .student-info-item { background:var(--sieac-bg); border-radius:var(--sieac-radius); padding:12px 16px; }
       .student-info-item label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--sieac-text-muted); display:block; margin-bottom:2px; }
@@ -45,29 +35,8 @@ export async function render() {
 
     <div class="student-search mb-4">
       <div class="filter-group">
-        <label class="filter-label">Buscar por nome, matrícula ou turma</label>
-        <div style="display:flex;gap:8px;">
-          <input type="text" class="student-input" id="input-buscar-estudante" placeholder="Ex.: Maria, 2023.0051 ou 6º A" style="flex:1;">
-          <button class="btn btn-primary" id="btn-buscar-estudante"><i class="bi bi-search"></i> Buscar</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="resultados-estudantes" style="display:none;" class="mb-4">
-      <div class="card-sieac">
-        <div class="card-sieac-header">Resultados da busca ${infoBtn('Resultados da busca', 'Estudantes encontrados por nome, matrícula ou turma. Para o perfil Professor, a busca retorna apenas estudantes das suas turmas.')}</div>
-        <div class="card-sieac-body">
-          <div class="table-responsive-custom" style="max-height:320px;overflow-y:auto;">
-            <table class="table-sieac">
-              <thead>
-                <tr><th>Nome</th><th>Matrícula</th><th>Turma</th><th style="width:130px;">Ações</th></tr>
-              </thead>
-              <tbody id="tbody-resultados">
-                <tr><td colspan="4" style="text-align:center;color:var(--sieac-text-muted);">Digite um termo e clique em Buscar.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <label class="filter-label">Buscar estudante por nome ou matrícula</label>
+        <div id="input-buscar-estudante"></div>
       </div>
     </div>
 
@@ -140,39 +109,21 @@ export async function render() {
     </div>
   `;
 
-  document.getElementById('btn-buscar-estudante').addEventListener('click', executarBusca);
-  document.getElementById('input-buscar-estudante').addEventListener('keydown', e => {
-    if (e.key === 'Enter') executarBusca();
+  const listaEstudantes = await listarEstudantesParaBusca();
+  studentCombo = createSearchSelect({
+    items: listaEstudantes,
+    getText: e => `${e.nome} — ${e.matricula}`,
+    getValue: e => e.id,
+    placeholder: 'Digite para filtrar por nome ou matrícula...',
+    onSelect: id => carregarEstudante(id),
   });
+  document.getElementById('input-buscar-estudante').appendChild(studentCombo.el);
   document.getElementById('btn-pdf-estudante').addEventListener('click', gerarPdfEstudante);
 }
 
 export function unload() {
+  if (studentCombo) { studentCombo.destroy(); studentCombo = null; }
   if (evolChart) { evolChart.destroy(); evolChart = null; }
-}
-
-async function executarBusca() {
-  const termo = document.getElementById('input-buscar-estudante').value;
-  if (!termo.trim()) return;
-  const resultados = await buscarEstudantes(termo);
-  const container = document.getElementById('resultados-estudantes');
-  const tbody = document.getElementById('tbody-resultados');
-  container.style.display = 'block';
-  if (!resultados.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--sieac-text-muted);">Nenhum estudante encontrado para a busca.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = resultados.map(r => `
-    <tr>
-      <td><strong>${r.nome}</strong></td>
-      <td>${r.matricula}</td>
-      <td>${r.turma}</td>
-      <td><button class="btn btn-sm btn-primary" data-id="${r.id}"><i class="bi bi-person"></i> Visualizar</button></td>
-    </tr>
-  `).join('');
-  tbody.querySelectorAll('button[data-id]').forEach(btn => {
-    btn.addEventListener('click', () => carregarEstudante(btn.dataset.id));
-  });
 }
 
 async function carregarEstudante(id) {

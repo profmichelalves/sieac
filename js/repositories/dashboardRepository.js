@@ -843,6 +843,14 @@ export async function getTurmasEstudante(estudanteId) {
   return turmas;
 }
 
+export async function listarEstudantesParaBusca() {
+  await getRefCache();
+  let lista = refCache.estudantes.map(e => ({ id: e.id, nome: e.nome, matricula: e.matricula || '-' }));
+  const permitidos = await getEstudantesPermitidos();
+  if (permitidos) lista = lista.filter(e => permitidos.has(Number(e.id)));
+  return lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
 export async function buscarEstudantes(termo) {
   const q = (termo || '').trim();
   if (!q) return [];

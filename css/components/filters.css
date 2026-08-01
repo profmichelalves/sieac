@@ -66,3 +66,98 @@
 }
 
 .filter-badge .remove:hover { opacity: 1; }
+
+.search-select {
+  position: relative;
+  width: 100%;
+}
+
+.search-select-control {
+  position: relative;
+}
+
+.search-select-input {
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--sieac-border);
+  border-radius: var(--sieac-radius-sm);
+  background: var(--sieac-bg);
+  color: var(--sieac-text);
+  font-size: 0.85rem;
+  transition: border-color var(--sieac-transition);
+}
+
+.search-select-input:focus {
+  outline: none;
+  border-color: var(--sieac-secondary);
+  box-shadow: 0 0 0 3px rgba(var(--sieac-secondary-rgb), 0.15);
+}
+
+.search-select-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--sieac-bg-alt);
+}
+
+.search-select-caret {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--sieac-text-muted);
+  pointer-events: none;
+}
+
+.search-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--sieac-surface);
+  border: 1px solid var(--sieac-border);
+  border-radius: var(--sieac-radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  display: none;
+}
+
+.search-select-dropdown:not([hidden]) { display: block; }
+
+.search-select-option {
+  padding: 7px 12px;
+  font-size: 0.85rem;
+  color: var(--sieac-text);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-select-option:hover,
+.search-select-option.highlight { background: var(--sieac-bg-alt); }
+
+.search-select-option.selected {
+  background: rgba(var(--sieac-secondary-rgb), 0.12);
+  color: var(--sieac-primary);
+  font-weight: 600;
+}
+
+.search-select-empty {
+  padding: 7px 12px;
+  font-size: 0.8rem;
+  color: var(--sieac-text-muted);
+}
+
+.search-select.filter-dirty .search-select-input {
+  border-color: #ffd000 !important;
+  box-shadow: 0 0 0 2px rgba(255, 208, 0, 0.25) !important;
+}

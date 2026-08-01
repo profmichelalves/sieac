@@ -1,5 +1,6 @@
 import { supabaseQuery } from '../services/supabase.js';
 import { isProfessor, getProfessorVinculo } from '../services/authService.js';
+import { createSearchSelect } from './SearchSelect.js';
 
 const CACHE_KEY = 'sieac_filter_cache';
 const CACHE_VERSION = 4;
@@ -53,6 +54,22 @@ let onChangeCallback = null;
 let isDirty = false;
 let professorVinculo = null;
 let filterData = null;
+
+const combos = {};
+
+function getSelectValue(id) {
+  const c = combos[id];
+  if (c) return c.getValue();
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
+function setSelectValue(id, val) {
+  const c = combos[id];
+  if (c) { c.setValue(val || ''); return; }
+  const el = document.getElementById(id);
+  if (el) el.value = val || '';
+}
 
 async function getFilterData() {
   const userIsProfessor = isProfessor();
@@ -176,7 +193,6 @@ function rebuildSelectOptions(valid, skipId) {
     { id: 'filter-turma', items: turmas, text: t => t.nome, val: t => t.id, validSet: has(valid?.turmaIds) },
     { id: 'filter-turno', items: turnos, text: t => t, val: t => t, validSet: has(valid?.turnos) },
     { id: 'filter-disciplina', items: componentes, text: c => c.nome, val: c => c.id, validSet: has(valid?.compIds) },
-    { id: 'filter-professor', items: professores, text: p => p.nome, val: p => p.id, validSet: has(valid?.profIds) },
   ];
 
   const placeholder = {
@@ -185,7 +201,6 @@ function rebuildSelectOptions(valid, skipId) {
     'filter-turma': 'Todas as turmas',
     'filter-turno': 'Todos',
     'filter-disciplina': 'Todas',
-    'filter-professor': filterData?.userIsProfessor ? (filterData.professores[0]?.nome || 'Meus dados') : 'Todos',
   };
 
   for (const cfg of config) {
@@ -214,6 +229,21 @@ function rebuildSelectOptions(valid, skipId) {
     } else {
       sel.value = currentVal;
     }
+  }
+
+  const profCombo = combos['filter-professor'];
+  if (profCombo) {
+    const currentVal = getSelectValue('filter-professor');
+    const profValidSet = has(valid?.profIds);
+    const filteredProf = profValidSet
+      ? filterData.professores.filter(item => {
+          const raw = item.id;
+          const idNum = typeof raw === 'number' ? raw : Number(raw);
+          return profValidSet.has(idNum) || profValidSet.has(raw);
+        })
+      : filterData.professores;
+    profCombo.setItems(filteredProf);
+    setSelectValue('filter-professor', currentVal);
   }
 }
 
@@ -289,7 +319,7 @@ export async function renderFilterPanel(containerId, onChange) {
         <div class="col-6 col-md-2">
           <div class="filter-group">
             <label class="filter-label">Professor</label>
-            <select class="filter-select" id="filter-professor" ${filterData.userIsProfessor ? 'disabled' : ''}><option value="">${filterData.userIsProfessor ? (filterData.professores[0]?.nome || 'Meus dados') : 'Todos'}</option></select>
+            <div id="filter-professor"></div>
           </div>
         </div>
         <div class="col-12">
@@ -313,39 +343,53 @@ export async function renderFilterPanel(containerId, onChange) {
   fillSelect('filter-turma', filterData.turmas, t => t.nome, t => t.id);
   fillSelect('filter-turno', filterData.turnos, t => t, t => t);
   fillSelect('filter-disciplina', filterData.componentes, c => c.nome, c => c.id);
-  fillSelect('filter-professor', filterData.professores, p => p.nome, p => p.id);
+
+  if (combos['filter-professor']) combos['filter-professor'].destroy();
+  const profCombo = createSearchSelect({
+    items: filterData.professores,
+    getText: p => p.nome,
+    getValue: p => p.id,
+    placeholder: filterData.userIsProfessor ? (filterData.professores[0]?.nome || 'Meus dados') : 'Digite para filtrar professor...',
+    disabled: filterData.userIsProfessor,
+    onSelect: () => handleFilterChange('filter-professor'),
+  });
+  combos['filter-professor'] = profCombo;
+  document.getElementById('filter-professor').appendChild(profCombo.el);
 
   if (filterData.userIsProfessor && filterData.profId) {
-    document.getElementById('filter-professor').value = filterData.profId;
+    setSelectValue('filter-professor', filterData.profId);
   }
 
   updateBadges();
   bindFilterEvents();
 }
 
+function handleFilterChange(id) {
+  try {
+    rebuildPending();
+    const valid = computeValidOptions(pendingFilters);
+    const cnt = valid && {
+      etapa: valid.etapaIds.length,
+      serie: valid.serieIds.length,
+      turma: valid.turmaIds.length,
+      turno: valid.turnos.length,
+      disciplina: valid.compIds.length,
+      professor: valid.profIds.length,
+    };
+    console.log(`[FilterPanel] change em ${id} | pending=${JSON.stringify(pendingFilters)} | válidos=`, cnt);
+    rebuildSelectOptions(valid, id);
+    markDirty();
+  } catch (e) {
+    console.error('FilterPanel change handler:', e);
+  }
+}
+
 function bindFilterEvents() {
   SELECT_IDS.forEach(id => {
+    if (combos[id]) return;
     const el = document.getElementById(id);
     if (el && !el.disabled) {
-      el.addEventListener('change', () => {
-        try {
-          rebuildPending();
-          const valid = computeValidOptions(pendingFilters);
-          const cnt = valid && {
-            etapa: valid.etapaIds.length,
-            serie: valid.serieIds.length,
-            turma: valid.turmaIds.length,
-            turno: valid.turnos.length,
-            disciplina: valid.compIds.length,
-            professor: valid.profIds.length,
-          };
-          console.log(`[FilterPanel] change em ${id} | pending=${JSON.stringify(pendingFilters)} | válidos=`, cnt);
-          rebuildSelectOptions(valid, id);
-          markDirty();
-        } catch (e) {
-          console.error('FilterPanel change handler:', e);
-        }
-      });
+      el.addEventListener('change', () => handleFilterChange(id));
     }
   });
 
@@ -365,13 +409,17 @@ function bindFilterEvents() {
     clearBtn.addEventListener('click', () => {
       if (filterData?.userIsProfessor) return;
       SELECT_IDS.forEach(id => {
-        const el = document.getElementById(id);
-        if (el && !el.disabled) el.value = '';
+        if (combos[id]) {
+          combos[id].clear();
+        } else {
+          const el = document.getElementById(id);
+          if (el && !el.disabled) el.value = '';
+        }
       });
       pendingFilters = {};
       if (filterData?.userIsProfessor && professorVinculo) {
         pendingFilters.professor_id = String(professorVinculo.id);
-        document.getElementById('filter-professor').value = filterData.profId;
+        setSelectValue('filter-professor', filterData.profId);
       }
       appliedFilters = { ...pendingFilters };
       rebuildSelectOptions(null);
@@ -389,19 +437,20 @@ function rebuildPending() {
   }
   for (const [elId, key] of Object.entries(SEL_TO_KEY)) {
     if (key === 'professor_id' && isProfessor()) continue;
-    const el = document.getElementById(elId);
-    if (el && !el.disabled) {
-      const val = el.value;
-      if (val) pendingFilters[key] = val;
-    }
+    const val = getSelectValue(elId);
+    if (val) pendingFilters[key] = val;
   }
 }
 
 function markDirty() {
   SELECT_IDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (el && el.value) el.classList.add('filter-dirty');
-    else if (el) el.classList.remove('filter-dirty');
+    const has = !!getSelectValue(id);
+    if (combos[id]) {
+      combos[id].el.classList.toggle('filter-dirty', has);
+    } else {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('filter-dirty', has);
+    }
   });
   if (!isDirty) {
     isDirty = true;
@@ -412,7 +461,7 @@ function markDirty() {
 
 function clearDirty() {
   isDirty = false;
-  document.querySelectorAll('.filter-select.filter-dirty').forEach(el => el.classList.remove('filter-dirty'));
+  document.querySelectorAll('.filter-select.filter-dirty, .search-select.filter-dirty').forEach(el => el.classList.remove('filter-dirty'));
   const btn = document.getElementById('btn-pesquisar');
   if (btn) btn.classList.remove('visible');
 }
@@ -424,8 +473,12 @@ function updateBadges() {
   for (const [key, val] of Object.entries(appliedFilters)) {
     if (!val) continue;
     const selId = Object.entries(SEL_TO_KEY).find(([, v]) => v === key)?.[0];
-    const sel = selId ? document.getElementById(selId) : null;
-    const label = sel?.options[sel.selectedIndex]?.text || val;
+    let label = val;
+    if (selId && combos[selId]) label = combos[selId].getText() || val;
+    else {
+      const sel = selId ? document.getElementById(selId) : null;
+      if (sel) label = sel.options[sel.selectedIndex]?.text || val;
+    }
     html += `<span class="filter-badge">${KEY_TO_LABEL[key] || key}: ${label}</span> `;
   }
   container.innerHTML = html;
