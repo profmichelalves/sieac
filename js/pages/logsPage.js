@@ -1,5 +1,6 @@
 import { showToast } from '../utils/helpers.js';
-import { supabaseQuery } from '../services/supabase.js';
+import { supabaseQuery, supabaseRpc } from '../services/supabase.js';
+import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
 const PAGE_SIZE = 100;
 
@@ -44,15 +45,20 @@ export async function render() {
           </div>
           <div class="col-md-2">
             <label class="form-label">De</label>
-            <input type="date" class="form-control" id="log-de">
+            <input type="date" class="form-control" id="log-de" value="${dataHoje()}">
           </div>
           <div class="col-md-2">
             <label class="form-label">Até</label>
-            <input type="date" class="form-control" id="log-ate">
+            <input type="date" class="form-control" id="log-ate" value="${dataHoje()}">
           </div>
           <div class="col-md-1 d-flex align-items-end">
             <button class="btn btn-outline-primary" id="log-filtrar" style="width:100%;">Filtrar</button>
           </div>
+        </div>
+        <div style="margin-top:12px;text-align:right;">
+          <button class="btn btn-outline-danger btn-sm" id="log-limpar">
+            <i class="bi bi-trash3"></i> Limpar Todos os Logs
+          </button>
         </div>
       </div>
     </div>
@@ -107,7 +113,25 @@ export async function render() {
     });
   });
 
+  document.getElementById('log-limpar').addEventListener('click', async () => {
+    if (!confirm('Tem certeza que deseja limpar todos os registros de log? Esta operação não pode ser desfeita.')) return;
+    const res = await supabaseRpc('limpar_dados', { tabelas: ['logs'] });
+    if (res.error) {
+      showToast('Erro ao limpar logs: ' + res.error, 'error');
+      return;
+    }
+    registrarLog(LOG_ACTIONS.LIMPAR_DADOS, { tabela: 'logs', origem: 'tela de logs' });
+    paginaAtual = 0;
+    await carregarLogs();
+    showToast('Logs limpos com sucesso!', 'success');
+  });
+
   await carregarLogs();
+}
+
+function dataHoje() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 async function carregarLogs() {

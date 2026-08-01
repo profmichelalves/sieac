@@ -128,7 +128,7 @@ export async function register(nome, email, matricula, senha, perfilId) {
 
 export async function listarUsuarios() {
   const { data: usuarios, error } = await supabaseQuery('usuarios', {
-    select: 'id,nome,email,matricula,perfil_id,ativo'
+    select: 'id,nome,email,matricula,perfil_id,ativo,created_at'
   });
   if (error) return { data: [], error };
 

@@ -5,6 +5,17 @@ import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
 const PERFIS = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor' };
 
+const COLUNAS_SORT = {
+  nome: u => (u.nome || '').toLowerCase(),
+  email: u => (u.email || '').toLowerCase(),
+  matricula: u => (u.matricula || '').toLowerCase(),
+  perfil: u => Number(u.perfil_id) || 0,
+  status: u => (u.ativo ? 1 : 0),
+  cadastro: u => new Date(u.created_at).getTime() || 0,
+};
+
+let ordenacao = { col: 'cadastro', dir: 'desc' };
+
 export async function render() {
   const main = document.getElementById('main-content');
   main.innerHTML = `
@@ -12,28 +23,42 @@ export async function render() {
     <div class="page-subtitle">Administração de contas de acesso ao sistema</div>
 
     <div class="card-sieac">
-      <div class="card-sieac-header">Usuários cadastrados ${infoBtn('Usuários cadastrados', 'Lista os usuários do sistema com nome, email, matrícula, perfil e status de ativação. O perfil pode ser alterado pelo administrador diretamente na lista; o próprio perfil não pode ser alterado para evitar bloqueio acidental.')}</div>
+      <div class="card-sieac-header">Usuários cadastrados ${infoBtn('Usuários cadastrados', 'Lista os usuários do sistema com nome, email, matrícula, perfil, status e data de cadastro. Clique nos títulos das colunas para ordenar. O perfil pode ser alterado pelo administrador diretamente na lista; o próprio perfil não pode ser alterado para evitar bloqueio acidental.')}</div>
       <div class="card-sieac-body">
         <div class="table-responsive-custom">
           <table class="table-sieac" id="usuarios-table">
             <thead>
               <tr>
-                <th>Nome</th>
-                <th>Email</th>
-                <th>Matrícula</th>
-                <th>Perfil</th>
-                <th>Status</th>
+                <th data-sort="nome" style="cursor:pointer;user-select:none;">Nome<span class="sort-arrow"></span></th>
+                <th data-sort="email" style="cursor:pointer;user-select:none;">Email<span class="sort-arrow"></span></th>
+                <th data-sort="matricula" style="cursor:pointer;user-select:none;">Matrícula<span class="sort-arrow"></span></th>
+                <th data-sort="perfil" style="cursor:pointer;user-select:none;">Perfil<span class="sort-arrow"></span></th>
+                <th data-sort="status" style="cursor:pointer;user-select:none;">Status<span class="sort-arrow"></span></th>
+                <th data-sort="cadastro" style="cursor:pointer;user-select:none;">Cadastro<span class="sort-arrow"></span></th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody id="usuarios-tbody">
-              <tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Carregando...</td></tr>
+              <tr><td colspan="7" style="text-align:center;color:var(--sieac-text-muted);">Carregando...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
   `;
+
+  document.querySelectorAll('#usuarios-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sort;
+      if (ordenacao.col === col) {
+        ordenacao.dir = ordenacao.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        ordenacao.col = col;
+        ordenacao.dir = col === 'cadastro' ? 'desc' : 'asc';
+      }
+      carregarUsuarios();
+    });
+  });
 
   await carregarUsuarios();
 }
@@ -45,14 +70,27 @@ async function carregarUsuarios() {
   const { data: usuarios, error } = await listarUsuarios();
 
   if (error) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--sieac-danger);">Erro ao carregar: ${error}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--sieac-danger);">Erro ao carregar: ${error}</td></tr>`;
     return;
   }
 
   if (!usuarios || !usuarios.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--sieac-text-muted);">Nenhum usuário cadastrado</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--sieac-text-muted);">Nenhum usuário cadastrado</td></tr>`;
     return;
   }
+
+  const ordenar = COLUNAS_SORT[ordenacao.col] || COLUNAS_SORT.nome;
+  usuarios.sort((a, b) => {
+    const va = ordenar(a);
+    const vb = ordenar(b);
+    if (va < vb) return ordenacao.dir === 'asc' ? -1 : 1;
+    if (va > vb) return ordenacao.dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  document.querySelectorAll('#usuarios-table th[data-sort] .sort-arrow').forEach(s => { s.textContent = ''; });
+  const thAtual = document.querySelector(`#usuarios-table th[data-sort="${ordenacao.col}"] .sort-arrow`);
+  if (thAtual) thAtual.textContent = ordenacao.dir === 'asc' ? ' ↑' : ' ↓';
 
   const perfisMap = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor' };
   const currentUser = getCurrentUser();
@@ -62,6 +100,7 @@ async function carregarUsuarios() {
     const perfilOptions = Object.entries(perfisMap)
       .map(([id, nome]) => `<option value="${id}" ${Number(id) === Number(u.perfil_id) ? 'selected' : ''}>${nome}</option>`)
       .join('');
+    const dataCadastro = u.created_at ? new Date(u.created_at).toLocaleString('pt-BR') : '-';
     return `
       <tr>
         <td><strong>${u.nome}${ehProprio ? ' <small style="color:var(--sieac-text-muted)">(você)</small>' : ''}</strong></td>
@@ -76,6 +115,7 @@ async function carregarUsuarios() {
           <span class="user-status ${u.ativo ? 'active' : 'inactive'}"></span>
           ${u.ativo ? 'Ativo' : 'Inativo'}
         </td>
+        <td style="white-space:nowrap;">${dataCadastro}</td>
         <td>
           <div style="display:flex;gap:8px;">
             <button class="btn btn-sm btn-outline-primary usuario-toggle" data-id="${u.id}" data-nome="${u.nome}" data-ativo="${u.ativo}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
