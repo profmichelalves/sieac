@@ -22,6 +22,14 @@ function calcularSituacao(n1, n2, n3, n4) {
   return media >= 6 ? 'Em Aprovação' : 'Em Recuperação';
 }
 
+// Uma disciplina é considerada "sem nota lançada" quando nenhum bimestre possui
+// nota e a média final não foi preenchida (inexistente ou menor/igual a zero).
+function disciplinaVazia(n) {
+  if (notasPreenchidas(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim).length) return false;
+  const mf = parseFloat(n.media_final);
+  return isNaN(mf) || mf <= 0;
+}
+
 async function getRefCache() {
   if (refCache) return refCache;
   const [s, t, c, p, e] = await Promise.all([
@@ -255,8 +263,10 @@ async function getEstudantesImportados(filters) {
 //  - Reprovado:     frequência < 75% ou mais de 6 disciplinas abaixo
 //  - Recuperação:   1 a 6 disciplinas abaixo (com frequência ≥ 75%)
 //  - Aprovado:      nenhuma disciplina abaixo (com frequência ≥ 75%)
-// Estudantes sem nenhuma nota lançada não são classificados; ficam no grupo
-// "Sem Notas Lançadas" (mantendo média 0 no cálculo da Média Geral).
+// Estudantes que possuem alguma disciplina sem nota lançada não são
+// classificados; ficam no grupo "Sem Notas Lançadas" (mantendo média 0 no
+// cálculo da Média Geral). Só são classificados estudantes com todas as
+// disciplinas com notas lançadas.
 async function classificarEstudantes(filters) {
   await getRefCache();
   const [idsEstudantes, notas, freqs] = await Promise.all([
@@ -272,6 +282,7 @@ async function classificarEstudantes(filters) {
 
   const medias = {};
   const qtdAbaixo = {};
+  const disciplinasSemNota = {};
   notas.forEach(n => {
     const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     if (!medias[n.estudante_id]) medias[n.estudante_id] = { soma: 0, count: 0 };
@@ -287,6 +298,11 @@ async function classificarEstudantes(filters) {
       if (!qtdAbaixo[n.estudante_id]) qtdAbaixo[n.estudante_id] = 0;
       qtdAbaixo[n.estudante_id]++;
     }
+
+    if (disciplinaVazia(n)) {
+      if (!disciplinasSemNota[n.estudante_id]) disciplinasSemNota[n.estudante_id] = 0;
+      disciplinasSemNota[n.estudante_id]++;
+    }
   });
 
   const freqsPorEstudante = {};
@@ -298,9 +314,11 @@ async function classificarEstudantes(filters) {
     freqsPorEstudante[f.estudante_id].count++;
   });
 
-  const idsSemNota = new Set([...idsEstudantes].filter(id => !medias[id]).map(id => String(id)));
+  const idsSemNota = new Set([...idsEstudantes].filter(id =>
+    !medias[id] || (disciplinasSemNota[id] && disciplinasSemNota[id] > 0)
+  ).map(id => String(id)));
   idsSemNota.forEach(id => {
-    medias[id] = { soma: 0, count: 1 };
+    if (!medias[id]) medias[id] = { soma: 0, count: 1 };
   });
 
   const classificacao = {};
@@ -439,7 +457,9 @@ export async function getDetalheResultados(filters = {}) {
 // Agrega por estudante as disciplinas para os relatórios de Aprovação (nenhuma
 // disciplina com média < 6,0 e frequência ≥ 75%), Em Recuperação (1 a 6 disciplinas
 // com média < 6,0 e frequência ≥ 75%) e Em Reprovação (frequência < 75% ou mais de
-// 6 disciplinas com média < 6,0).
+// 6 disciplinas com média < 6,0). Estudantes com alguma disciplina sem nota lançada
+// não são classificados; o relatório "Sem Notas Lançadas" lista cada estudante com
+// as disciplinas vazias, informando turma e professor.
 export async function getDetalheSituacao(filters = {}) {
   await getRefCache();
   const [idsEstudantes, notas, freqs] = await Promise.all([
@@ -450,21 +470,33 @@ export async function getDetalheSituacao(filters = {}) {
 
   const alocComp = {}; refCache.alocacoes.forEach(a => alocComp[a.id] = a.componente_id);
   const alocTurma = {}; refCache.alocacoes.forEach(a => alocTurma[a.id] = a.turma_id);
+  const alocProf = {}; refCache.alocacoes.forEach(a => alocProf[a.id] = a.professor_id);
   const cMap = {}; refCache.componentes.forEach(c => cMap[c.id] = c.nome);
   const tMap = {}; refCache.turmas.forEach(t => tMap[t.id] = t.nome);
+  const pMap = {}; refCache.professores.forEach(p => pMap[p.id] = p.nome);
   const eMap = {}; refCache.estudantes.forEach(e => eMap[e.id] = e);
 
   const porEstudante = {};
   notas.forEach(n => {
+    const compId = alocComp[n.alocacao_id];
+    const turmaId = alocTurma[n.alocacao_id];
     let media = calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim);
     if (media === 0) {
       const mf = parseFloat(n.media_final);
       if (!isNaN(mf) && mf > 0) media = mf;
     }
-    if (!porEstudante[n.estudante_id]) porEstudante[n.estudante_id] = { disciplinas: [], turmas: new Set() };
-    porEstudante[n.estudante_id].disciplinas.push({ nome: cMap[alocComp[n.alocacao_id]] || 'N/I', media });
-    const turmaId = alocTurma[n.alocacao_id];
-    if (turmaId && tMap[turmaId]) porEstudante[n.estudante_id].turmas.add(tMap[turmaId]);
+    if (!porEstudante[n.estudante_id]) porEstudante[n.estudante_id] = { disciplinas: [], turmas: new Set(), semNota: [] };
+    const reg = porEstudante[n.estudante_id];
+    reg.disciplinas.push({ nome: cMap[compId] || 'N/I', media });
+    const nomeTurma = tMap[turmaId];
+    if (nomeTurma) reg.turmas.add(nomeTurma);
+    if (disciplinaVazia(n)) {
+      reg.semNota.push({
+        disciplina: cMap[compId] || 'N/I',
+        turma: nomeTurma || '-',
+        professor: pMap[alocProf[n.alocacao_id]] || 'N/I',
+      });
+    }
   });
 
   const freqPorEstudante = {};
@@ -482,30 +514,31 @@ export async function getDetalheSituacao(filters = {}) {
   const semNotas = [];
 
   idsEstudantes.forEach(id => {
-    if (!porEstudante[id]) {
-      const e = eMap[id];
-      semNotas.push({
-        estudante: e?.nome || `ID ${id}`,
-        matricula: e?.matricula || '-',
-        turma: '-',
-        frequencia: null,
-        qtd: 0,
-        disciplinas: [],
-      });
-    }
-  });
+    const e = eMap[id];
+    const dados = porEstudante[id];
+    const nome = e?.nome || `ID ${id}`;
+    const matricula = e?.matricula || '-';
 
-  Object.entries(porEstudante).forEach(([eId, dados]) => {
-    const e = eMap[eId];
-    const freqData = freqPorEstudante[eId];
+    if (!dados || dados.semNota.length) {
+      if (!dados) {
+        semNotas.push({ estudante: nome, matricula, turma: '-', disciplina: '-', professor: '-' });
+      } else {
+        dados.semNota.forEach(sn => {
+          semNotas.push({ estudante: nome, matricula, turma: sn.turma, disciplina: sn.disciplina, professor: sn.professor });
+        });
+      }
+      return;
+    }
+
+    const freqData = freqPorEstudante[id];
     const frequencia = freqData ? Math.round((freqData.soma / freqData.count) * 10) / 10 : null;
     const emRecuperacao = dados.disciplinas.filter(d => d.media < 6).sort((a, b) => a.media - b.media);
     const qtd = emRecuperacao.length;
     const freqBaixa = frequencia != null && frequencia < 75;
 
     const base = {
-      estudante: e?.nome || `ID ${eId}`,
-      matricula: e?.matricula || '-',
+      estudante: nome,
+      matricula,
       turma: [...dados.turmas].sort((a, b) => a.localeCompare(b, 'pt-BR')).join(', ') || '-',
       frequencia,
       qtd,
@@ -520,15 +553,15 @@ export async function getDetalheSituacao(filters = {}) {
         const bola = qtd >= 5 ? 'red' : qtd >= 3 ? 'orange' : 'yellow';
         recuperacao.push({ ...base, bola });
       } else if (qtd === 0) {
-        const medias = dados.disciplinas.map(d => d.media);
+        const mediasArr = dados.disciplinas.map(d => d.media);
         aprovados.push({
           estudante: base.estudante,
           matricula: base.matricula,
           turma: base.turma,
           frequencia: base.frequencia,
-          mediaGeral: Math.round((medias.reduce((a, b) => a + b, 0) / medias.length) * 10) / 10,
-          menor: Math.min(...medias),
-          maior: Math.max(...medias),
+          mediaGeral: Math.round((mediasArr.reduce((a, b) => a + b, 0) / mediasArr.length) * 10) / 10,
+          menor: Math.min(...mediasArr),
+          maior: Math.max(...mediasArr),
         });
       }
     }
@@ -550,7 +583,10 @@ export async function getDetalheSituacao(filters = {}) {
 
   aprovados.sort((a, b) => a.menor - b.menor || a.mediaGeral - b.mediaGeral);
 
-  semNotas.sort((a, b) => a.estudante.localeCompare(b.estudante, 'pt-BR'));
+  semNotas.sort((a, b) =>
+    a.estudante.localeCompare(b.estudante, 'pt-BR') ||
+    a.disciplina.localeCompare(b.disciplina, 'pt-BR')
+  );
 
   return { data: { aprovados, reprovados, recuperacao, semNotas }, error: null };
 }

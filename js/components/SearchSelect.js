@@ -34,20 +34,24 @@ export function createSearchSelect({ items = [], getText = it => String(it), get
 
   input.placeholder = placeholder;
 
-  function selectedIndex() {
-    return currentItems.findIndex(it => String(getValue(it)) === String(selectedValue));
+  function buildFiltered() {
+    const term = norm(input.value);
+    const filtered = [];
+    currentItems.forEach((it, idx) => {
+      if (norm(getText(it)).includes(term)) filtered.push({ it, idx });
+    });
+    return filtered;
   }
 
   function render() {
     if (destroyed) return;
-    const term = norm(input.value);
-    const filtered = currentItems.filter(it => norm(getText(it)).includes(term));
+    const filtered = buildFiltered();
     if (!filtered.length) {
       dropdown.innerHTML = '<li class="search-select-empty">Nenhuma opção encontrada</li>';
     } else {
-      dropdown.innerHTML = filtered.map((it, idx) => {
+      dropdown.innerHTML = filtered.map(({ it, idx }, pos) => {
         const isSel = String(getValue(it)) === String(selectedValue);
-        return `<li role="option" data-idx="${idx}" class="search-select-option${isSel ? ' selected' : ''}${idx === highlight ? ' highlight' : ''}">${esc(getText(it))}</li>`;
+        return `<li role="option" data-idx="${idx}" class="search-select-option${isSel ? ' selected' : ''}${pos === highlight ? ' highlight' : ''}">${esc(getText(it))}</li>`;
       }).join('');
     }
     dropdown.hidden = false;
@@ -55,7 +59,9 @@ export function createSearchSelect({ items = [], getText = it => String(it), get
 
   function openList() {
     if (isDisabled || destroyed) return;
-    highlight = selectedIndex();
+    const filtered = buildFiltered();
+    const selPos = filtered.findIndex(({ it }) => String(getValue(it)) === String(selectedValue));
+    highlight = selPos;
     render();
     open = true;
   }

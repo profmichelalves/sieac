@@ -4,6 +4,7 @@ import { importarNotas, importarFrequencia } from '../services/importService.js'
 import { supabaseRpc } from '../services/supabase.js';
 import { clearCache } from '../repositories/dashboardRepository.js';
 import { clearFilterCache } from '../components/FilterPanel.js';
+import { gerarPdfRelatorio } from '../utils/pdf.js';
 
 const TABELAS = [
   { id: 'notas', label: 'Notas' },
@@ -229,81 +230,63 @@ async function processFile(tipo, file) {
           Ver linhas ignoradas (${ignoradosCount}) ${ignoradosCount > 100 ? '— exibindo as 100 primeiras' : ''}
         </summary>
         <div style="max-height:220px;overflow:auto;margin-top:8px;border:1px solid var(--sieac-border,#ddd);border-radius:8px;padding:8px 12px;font-size:0.8rem;line-height:1.8;">
-          ${(res.ignorados || []).slice(0, 100).map(d => `• ${d}`).join('<br>')}
+          ${(res.ignorados || []).slice(0, 100).map(d => `• ${formatIgnorado(d)}`).join('<br>')}
           ${ignoradosCount > 100 ? `<br><em>... e mais ${ignoradosCount - 100} linhas.</em>` : ''}
         </div>
       </details>
       <div style="margin-top:12px;">
-        <button class="btn btn-outline-primary btn-sm btn-print-ignorados no-print" onclick="window.open('','_blank')">
-          <i class="bi bi-printer"></i> Imprimir Detalhes (${ignoradosCount})
+        <button class="btn btn-outline-primary btn-sm btn-pdf-ignorados no-print">
+          <i class="bi bi-file-earmark-pdf"></i> PDF — Explicação dos Ignorados (${ignoradosCount})
         </button>
       </div>
     ` : ''}
   `;
 
   if (ignoradosCount > 0) {
-    const btn = result.querySelector('.btn-print-ignorados');
+    const btn = result.querySelector('.btn-pdf-ignorados');
     if (btn) {
-      btn.onclick = () => imprimirIgnorados(tipoNome, res, file.name);
+      btn.onclick = () => gerarPdfIgnorados(tipoNome, res, file.name);
     }
   }
 
   showToast(`${tipoNome}: ${res.registros} registros processados`, 'success');
 }
 
-function imprimirIgnorados(tipoNome, res, fileName) {
-  const w = window.open('', '_blank');
-  if (!w) { alert('Popup bloqueado. Permita popups para imprimir.'); return; }
-  const detalhes = (res.ignorados || []).map(d => `<tr><td>${d}</td></tr>`).join('');
+function formatIgnorado(d) {
+  if (typeof d === 'string') return d;
+  if (d.tipo === 'frequencia') return `Ignorado: ${d.matricula} - ${d.turma} (${d.motivo})`;
+  return `Ignorado: ${d.registro} — ${d.turma} / ${d.disciplina} (${d.motivo})`;
+}
 
-  w.document.write(`<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8">
-<title>Detalhes da Importa\u00e7\u00e3o - ${tipoNome}</title>
-<style>
-  @page { margin:20mm 15mm; }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:Georgia,'Times New Roman',serif; font-size:11pt; color:#222; padding:30px; }
-  .header { display:flex; align-items:center; gap:14px; margin-bottom:20px; padding-bottom:14px; border-bottom:2px solid #1a2a3a; }
-  .header h1 { font-size:18pt; margin:0; }
-  .header small { font-size:9pt; color:#666; }
-  .meta { font-size:9pt; color:#555; margin-bottom:18px; }
-  .meta span { display:inline-block; margin-right:20px; }
-  table { width:100%; border-collapse:collapse; margin-top:8px; }
-  th { background:#1a2a3a; color:#fff; padding:7px 10px; font-size:9pt; text-transform:uppercase; letter-spacing:0.4px; text-align:left; border:1px solid #2a3a4a; }
-  td { padding:6px 10px; border:1px solid #ccc; font-size:10pt; }
-  tbody tr:nth-child(even) { background:#f6f8fa; }
-  .footer { margin-top:24px; font-size:8pt; color:#999; text-align:center; border-top:1px solid #ddd; padding-top:10px; }
-</style>
-</head>
-<body>
-<div class="header">
-  <div>
-    <h1>SIEAC — Detalhes da Importa\u00e7\u00e3o</h1>
-    <small>Sistema de Indicadores Educacionais Abel Coelho</small>
-  </div>
-</div>
-<div class="meta">
-  <span><strong>Tipo:</strong> ${tipoNome}</span>
-  <span><strong>Arquivo:</strong> ${fileName}</span>
-  <span><strong>Gerado em:</strong> ${new Date().toLocaleString('pt-BR')}</span>
-</div>
-<div class="meta">
-  <span><strong>Registros no arquivo:</strong> ${res.registros}</span>
-  <span><strong>Inseridos:</strong> ${res.inseridos}</span>
-  <span><strong>Ignorados:</strong> ${detalhes.length}</span>
-</div>
-<table>
-<thead><tr><th>Detalhe do registro ignorado</th></tr></thead>
-<tbody>
-  ${detalhes || '<tr><td style="text-align:center;color:#999;">Nenhum detalhe dispon\u00edvel</td></tr>'}
-</tbody>
-</table>
-<div class="footer">SIEAC — Relat\u00f3rio gerado automaticamente</div>
-<script>window.onload=function(){window.print();window.close();};<\/script>
-</body>
-</html>`);
-  w.document.close();
+function gerarPdfIgnorados(tipoNome, res, fileName) {
+  const ignorados = res.ignorados || [];
+  const isNotas = tipoNome === 'Notas';
+  const avisos = (res.errosDetalhes || []).filter(e => !/\d+\s+ignorados?\s*\(/.test(e));
+
+  const meta = [
+    `Tipo: ${tipoNome}`,
+    `Arquivo: ${fileName}`,
+    `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
+    `Registros no arquivo: ${res.registros}`,
+    `Inseridos: ${res.inseridos}`,
+    `Ignorados: ${ignorados.length}`,
+  ];
+  if (avisos.length) meta.push(`Avisos: ${avisos.join(' | ')}`);
+
+  gerarPdfRelatorio({
+    titulo: 'PROBLEMAS DE IMPORTAÇÃO — SIEAC',
+    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    meta,
+    tabelas: [{
+      titulo: `${tipoNome} — Registros ignorados e explicação de cada caso`,
+      colunas: isNotas ? ['Registro (ID)', 'Turma', 'Disciplina', 'Motivo'] : ['Matrícula', 'Turma', 'Motivo'],
+      linhas: ignorados.map(d => isNotas
+        ? [d.registro, d.turma, d.disciplina, d.motivo]
+        : [d.matricula, d.turma, d.motivo]),
+      colWidths: isNotas ? { 0: 22, 1: 24, 2: 30, 3: 40 } : { 0: 28, 1: 28, 2: 50 },
+      total: `Total — ${ignorados.length} registro(s) ignorado(s)`,
+    }],
+  });
 }
 
 function setupLimparDados() {

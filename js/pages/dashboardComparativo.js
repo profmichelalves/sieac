@@ -94,7 +94,7 @@ export async function render() {
     </div>
   `;
 
-  renderFilterPanel('filter-container-comparativo', () => loadData());
+  await renderFilterPanel('filter-container-comparativo', () => loadData());
   document.querySelectorAll('.quadrant-btn').forEach(btn => {
     btn.addEventListener('click', () => gerarPdfQuadrante(Number(btn.dataset.quad)));
   });

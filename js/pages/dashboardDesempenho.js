@@ -106,7 +106,7 @@ export async function render() {
     </div>
   `;
 
-  renderFilterPanel('filter-container-desempenho', () => loadData());
+  await renderFilterPanel('filter-container-desempenho', () => loadData());
   await loadData();
 }
 

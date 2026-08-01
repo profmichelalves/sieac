@@ -215,7 +215,18 @@ export async function importarNotas(file, onProgress) {
     if (!estudante_id || !alocacao_id) {
       const causa = !estudante_id && !alocacao_id ? 'estudante e alocação'
         : !estudante_id ? 'estudante' : 'alocação';
-      ignorados.push(`Ignorado: ${n.estudante_id || '(sem id)'} — ${n.turma_id || '(sem turma)'} / ${n.componente_id || '(sem componente)'} (${causa} não encontrada/o)`);
+      const motivo = causa === 'estudante e alocação'
+        ? 'Estudante e alocação não encontrados'
+        : causa === 'estudante'
+          ? 'Estudante não encontrado'
+          : 'Alocação não encontrada';
+      ignorados.push({
+        tipo: 'nota',
+        registro: n.estudante_id || '(sem id)',
+        turma: n.turma_id || '(sem turma)',
+        disciplina: n.componente_id || '(sem componente)',
+        motivo,
+      });
       return null;
     }
     const media = n.media_final != null && n.media_final > 0 ? n.media_final : calcularMedia(n);
@@ -341,7 +352,12 @@ export async function importarFrequencia(file, onProgress) {
       const turId = resolverTurma(f.turma);
       if (!estId || !turId) {
         const causa = !estId && !turId ? 'matrícula e turma' : !estId ? 'matrícula' : 'turma';
-        ignorados.push(`Ignorado: ${f.matricula} - ${f.turma} (${causa} não encontrada${!turId ? '/o' : ''})`);
+        const motivo = causa === 'matrícula e turma'
+          ? 'Matrícula e turma não encontradas'
+          : causa === 'matrícula'
+            ? 'Matrícula não encontrada'
+            : 'Turma não encontrada';
+        ignorados.push({ tipo: 'frequencia', matricula: f.matricula, turma: f.turma, motivo });
         continue;
       }
       rowsIns.push({

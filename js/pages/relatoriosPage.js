@@ -59,7 +59,7 @@ export async function render() {
 
   document.getElementById('btn-gerar-pdf').addEventListener('click', gerarPDF);
 
-  renderFilterPanel('filter-container-relatorios', () => loadData());
+  await renderFilterPanel('filter-container-relatorios', () => loadData());
   await loadData();
 }
 

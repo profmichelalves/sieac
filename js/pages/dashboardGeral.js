@@ -57,7 +57,10 @@ export async function render() {
       <div class="col-6 col-md-3">
         <div class="kpi-card success" id="kpi-card-aprovacao">
           <div class="kpi-label" id="kpi-aprovacao-label">Aprovação</div>
-          <div class="kpi-value" style="color:var(--sieac-success)"><span id="kpi-aprovacao">—</span></div>
+          <div class="kpi-value" style="color:var(--sieac-success)">
+            <span class="kpi-percent" id="kpi-aprovacao">—</span>
+            <span class="kpi-count" id="kpi-aprovacao-count"></span>
+          </div>
           <div class="kpi-icon"><i class="bi bi-check-circle"></i></div>
           ${infoBtn('Aprovação', 'Percentual de estudantes aprovados, calculado sobre o total de estudantes importados: nenhuma disciplina com média inferior a 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% ou mais de 6 disciplinas com média inferior a 6,0 são contados como reprovados.' + EXPLICACAO_RESULTADO)}
           <button class="btn btn-sm btn-outline-success kpi-pdf-btn no-print mt-2" data-tipo="aprovados">
@@ -68,7 +71,10 @@ export async function render() {
       <div class="col-6 col-md-3">
         <div class="kpi-card warning" id="kpi-card-recuperacao">
           <div class="kpi-label" id="kpi-recuperacao-label">Recuperação</div>
-          <div class="kpi-value" style="color:var(--sieac-warning)"><span id="kpi-recuperacao">—</span></div>
+          <div class="kpi-value" style="color:var(--sieac-warning)">
+            <span class="kpi-percent" id="kpi-recuperacao">—</span>
+            <span class="kpi-count" id="kpi-recuperacao-count"></span>
+          </div>
           <div class="kpi-icon"><i class="bi bi-arrow-repeat"></i></div>
           ${infoBtn('Recuperação', 'Percentual de estudantes em recuperação, calculado sobre o total de estudantes importados: 1 a 6 disciplinas com média inferior a 6,0 e frequência ≥ 75%, participando das atividades de recuperação previstas. Frequência < 75% é contada como reprovação.' + EXPLICACAO_RESULTADO)}
           <button class="btn btn-sm btn-outline-warning kpi-pdf-btn no-print mt-2" data-tipo="recuperacao">
@@ -79,7 +85,10 @@ export async function render() {
       <div class="col-6 col-md-3">
         <div class="kpi-card danger" id="kpi-card-reprovacao">
           <div class="kpi-label" id="kpi-reprovacao-label">Reprovação</div>
-          <div class="kpi-value" style="color:var(--sieac-danger)"><span id="kpi-reprovacao">—</span></div>
+          <div class="kpi-value" style="color:var(--sieac-danger)">
+            <span class="kpi-percent" id="kpi-reprovacao">—</span>
+            <span class="kpi-count" id="kpi-reprovacao-count"></span>
+          </div>
           <div class="kpi-icon"><i class="bi bi-x-circle"></i></div>
           ${infoBtn('Reprovação', 'Percentual de estudantes reprovados, calculado sobre o total de estudantes importados: frequência média < 75% ou mais de 6 disciplinas com média inferior a 6,0.' + EXPLICACAO_RESULTADO)}
           <button class="btn btn-sm btn-outline-danger kpi-pdf-btn no-print mt-2" data-tipo="reprovados">
@@ -90,9 +99,12 @@ export async function render() {
       <div class="col-6 col-md-3">
         <div class="kpi-card secondary" id="kpi-card-semnotas">
           <div class="kpi-label" id="kpi-semnotas-label">Sem Notas Lançadas</div>
-          <div class="kpi-value" style="color:var(--sieac-secondary)"><span id="kpi-semnotas">—</span></div>
+          <div class="kpi-value" style="color:var(--sieac-secondary)">
+            <span class="kpi-percent" id="kpi-semnotas">—</span>
+            <span class="kpi-count" id="kpi-semnotas-count"></span>
+          </div>
           <div class="kpi-icon"><i class="bi bi-journal-x"></i></div>
-          ${infoBtn('Sem Notas Lançadas', 'Estudantes importados sem nenhuma nota lançada em qualquer disciplina, considerando os filtros aplicados. Não entram na classificação de Aprovação, Recuperação ou Reprovação. Percentual calculado sobre o total de estudantes importados. O relatório PDF lista esses mesmos estudantes.' + EXPLICACAO_RESULTADO)}
+          ${infoBtn('Sem Notas Lançadas', 'Estudantes importados com alguma disciplina sem nota lançada (nenhuma nota nos bimestres nem média final), considerando os filtros aplicados. Não entram na classificação de Aprovação, Recuperação ou Reprovação. Percentual calculado sobre o total de estudantes importados. O relatório PDF lista cada estudante com as disciplinas sem nota, informando turma e professor.' + EXPLICACAO_RESULTADO)}
           <button class="btn btn-sm btn-outline-secondary kpi-pdf-btn no-print mt-2" data-tipo="semnotas">
             <i class="bi bi-file-earmark-pdf"></i> PDF
           </button>
@@ -120,7 +132,7 @@ export async function render() {
     </div>
   `;
 
-  renderFilterPanel('filter-container-geral', () => loadData());
+  await renderFilterPanel('filter-container-geral', () => loadData());
   document.querySelectorAll('.kpi-pdf-btn').forEach(btn => {
     btn.addEventListener('click', () => gerarPdfCard(btn.dataset.tipo));
   });
@@ -177,10 +189,14 @@ async function loadData() {
     }
   }
 
-  animateNumber('kpi-aprovacao', `${resumo.total_aprovacao} (${formatPercent(resumo.aprovacao_pct)})`);
-  animateNumber('kpi-recuperacao', `${resumo.total_recuperacao} (${formatPercent(resumo.recuperacao_pct)})`);
-  animateNumber('kpi-reprovacao', `${resumo.total_reprovacao} (${formatPercent(resumo.reprovacao_pct)})`);
-  animateNumber('kpi-semnotas', `${resumo.sem_notas} (${formatPercent(resumo.sem_notas_pct)})`);
+  animateNumber('kpi-aprovacao', formatPercent(resumo.aprovacao_pct));
+  animateNumber('kpi-aprovacao-count', `${resumo.total_aprovacao} estudantes`);
+  animateNumber('kpi-recuperacao', formatPercent(resumo.recuperacao_pct));
+  animateNumber('kpi-recuperacao-count', `${resumo.total_recuperacao} estudantes`);
+  animateNumber('kpi-reprovacao', formatPercent(resumo.reprovacao_pct));
+  animateNumber('kpi-reprovacao-count', `${resumo.total_reprovacao} estudantes`);
+  animateNumber('kpi-semnotas', formatPercent(resumo.sem_notas_pct));
+  animateNumber('kpi-semnotas-count', `${resumo.sem_notas} estudantes`);
 
   const resultado = await getResultadoFinal(filters);
   if (resultado.data) {
@@ -216,14 +232,14 @@ function textosKpi(periodo) {
       aprovacao: 'Percentual de estudantes aprovados, calculado sobre o total de estudantes importados: nenhuma disciplina com média anual inferior a 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% ou mais de 6 disciplinas com média inferior a 6,0 são contados como reprovados. Estudantes sem nenhuma nota lançada ficam no card "Sem Notas Lançadas" e não entram nessa classificação. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, com Média Geral, Menor Média e Maior Média.',
       recuperacao: 'Percentual de estudantes em recuperação, calculado sobre o total de estudantes importados: 1 a 6 disciplinas com média anual inferior a 6,0 e frequência ≥ 75%, participando das atividades de recuperação previstas. Frequência < 75% é contada como reprovação. Estudantes sem nenhuma nota lançada ficam no card "Sem Notas Lançadas" e não entram nessa classificação. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, classificada por gravidade: 🟡 1 a 2 disciplinas, 🟠 3 a 4 disciplinas e 🔴 5 a 6 disciplinas.',
       reprovacao: 'Percentual de estudantes reprovados, calculado sobre o total de estudantes importados: frequência média < 75% ou mais de 6 disciplinas com média anual inferior a 6,0. Estudantes sem nenhuma nota lançada ficam no card "Sem Notas Lançadas" e não entram nessa classificação. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, classificada por gravidade: 🟡 mais de 6 disciplinas com frequência ≥ 75%, 🟠 frequência < 75% ou mais de 8 disciplinas e 🔴 frequência < 75% e mais de 6 disciplinas.',
-      semNotas: 'Percentual de estudantes importados sem nenhuma nota lançada em qualquer disciplina, calculado sobre o total de estudantes importados. Eles não entram na classificação de Aprovação, Recuperação ou Reprovação. O relatório PDF lista esses mesmos estudantes.',
+      semNotas: 'Percentual de estudantes importados com alguma disciplina sem nota lançada, calculado sobre o total de estudantes importados. Eles não entram na classificação de Aprovação, Recuperação ou Reprovação. O relatório PDF lista cada estudante com as disciplinas sem nota, informando turma e professor.',
     };
   }
   return {
     aprovacao: 'Percentual de estudantes em aprovação até o momento, calculado sobre o total de estudantes importados: nenhuma disciplina com média acumulada inferior a 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% ou mais de 6 disciplinas com média acumulada inferior a 6,0 são contados como reprovados. Estudantes sem nenhuma nota lançada ficam no card "Sem Notas Lançadas" e não entram nessa classificação. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, com Média Geral, Menor Média e Maior Média, ordenado pela Menor Média.',
     recuperacao: 'Percentual de estudantes em recuperação até o momento, calculado sobre o total de estudantes importados: 1 a 6 disciplinas com média acumulada inferior a 6,0 e frequência ≥ 75%, acompanhando os conteúdos ainda em andamento. Frequência < 75% é contada como reprovação. Estudantes sem nenhuma nota lançada ficam no card "Sem Notas Lançadas" e não entram nessa classificação. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, classificada por gravidade: 🟡 1 a 2 disciplinas, 🟠 3 a 4 disciplinas e 🔴 5 a 6 disciplinas.',
     reprovacao: 'Percentual de estudantes que estão sendo reprovados até o momento, calculado sobre o total de estudantes importados: frequência média < 75% ou mais de 6 disciplinas com média acumulada inferior a 6,0. Estudantes sem nenhuma nota lançada ficam no card "Sem Notas Lançadas" e não entram nessa classificação. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, classificada por gravidade: 🟡 mais de 6 disciplinas com frequência ≥ 75%, 🟠 frequência < 75% ou mais de 8 disciplinas e 🔴 frequência < 75% e mais de 6 disciplinas.',
-    semNotas: 'Percentual de estudantes importados sem nenhuma nota lançada em qualquer disciplina até o momento, calculado sobre o total de estudantes importados. Eles não entram na classificação de Aprovação, Recuperação ou Reprovação. O relatório PDF lista esses mesmos estudantes.',
+    semNotas: 'Percentual de estudantes importados com alguma disciplina sem nota lançada até o momento, calculado sobre o total de estudantes importados. Eles não entram na classificação de Aprovação, Recuperação ou Reprovação. O relatório PDF lista cada estudante com as disciplinas sem nota, informando turma e professor.',
   };
 }
 
@@ -344,11 +360,32 @@ function gerarPdfCard(tipo) {
     return;
   }
 
-  const lista = tipo === 'semnotas'
-    ? (detalheSituacao?.semNotas || [])
-    : tipo === 'recuperacao'
-      ? (detalheSituacao?.recuperacao || [])
-      : (detalheSituacao?.reprovados || []);
+  if (tipo === 'semnotas') {
+    const lista = detalheSituacao?.semNotas || [];
+    gerarPdfRelatorio({
+      titulo: conf.titulo,
+      subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+      meta,
+      tabelas: [{
+        titulo: `${conf.tabela} — Estudantes e Disciplinas sem Notas`,
+        colunas: ['Estudante', 'Matrícula', 'Turma', 'Disciplina', 'Professor'],
+        linhas: lista.map(l => [
+          l.estudante,
+          l.matricula,
+          l.turma,
+          l.disciplina,
+          l.professor,
+        ]),
+        colWidths: { 0: 34, 1: 18, 2: 22, 3: 30, 4: 28 },
+        total: `Total — ${lista.length} ${conf.total}`,
+      }],
+    });
+    return;
+  }
+
+  const lista = tipo === 'recuperacao'
+    ? (detalheSituacao?.recuperacao || [])
+    : (detalheSituacao?.reprovados || []);
 
   gerarPdfRelatorio({
     titulo: conf.titulo,
@@ -356,9 +393,8 @@ function gerarPdfCard(tipo) {
     meta,
     tabelas: [{
       titulo: `${conf.tabela} — Estudante e Disciplinas em Recuperação`,
-      colunas: ['Situação', 'Estudante', 'Matrícula', 'Turma', 'Frequência (%)', 'Qtde.', 'Disciplinas em Recuperação'],
+      colunas: ['Estudante', 'Matrícula', 'Turma', 'Frequência (%)', 'Qtde.', 'Disciplinas em Recuperação'],
       linhas: lista.map(l => [
-        tipo === 'semnotas' ? 'Sem notas lançadas' : '',
         l.estudante,
         l.matricula,
         l.turma,
@@ -367,7 +403,7 @@ function gerarPdfCard(tipo) {
         l.disciplinas.map(d => `${d.nome} (${fmtNota(d.media)})`).join(', '),
       ]),
       bolas: lista.map(l => l.bola),
-      colWidths: { 0: 10, 1: 30, 2: 16, 3: 20, 4: 13, 5: 9, 6: 45 },
+      colWidths: { 0: 30, 1: 16, 2: 20, 3: 13, 4: 9, 5: 45 },
       total: `Total — ${lista.length} ${conf.total}`,
     }],
   });

@@ -99,7 +99,7 @@ export async function render() {
     </div>
   `;
 
-  renderFilterPanel('filter-container-frequencia', () => loadData());
+  await renderFilterPanel('filter-container-frequencia', () => loadData());
   document.getElementById('btn-pdf-freq-turma').addEventListener('click', gerarPdfFrequenciaTurma);
   document.getElementById('btn-pdf-baixa-freq').addEventListener('click', gerarPdfBaixaFrequencia);
   await loadData();
