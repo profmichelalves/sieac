@@ -6,7 +6,7 @@ let estudantesPermitidos = null;
 let permitidosCarregados = false;
 
 function notasPreenchidas(n1, n2, n3, n4) {
-  return [n1, n2, n3, n4].map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+  return [n1, n2, n3, n4].map(v => parseFloat(v)).filter(v => !isNaN(v));
 }
 
 function calcularMediaAcumulada(n1, n2, n3, n4) {
@@ -22,12 +22,13 @@ function calcularSituacao(n1, n2, n3, n4) {
   return media >= 6 ? 'Em Aprovação' : 'Em Recuperação';
 }
 
-// Uma disciplina é considerada "sem nota lançada" quando nenhum bimestre possui
-// nota e a média final não foi preenchida (inexistente ou menor/igual a zero).
+// Uma disciplina é considerada "sem nota lançada" apenas quando nenhum bimestre
+// possui nota lançada (nem mesmo 0) e a média final também não foi preenchida.
+// Uma nota 0 é uma nota lançada e, portanto, a disciplina não é vazia.
 function disciplinaVazia(n) {
   if (notasPreenchidas(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim).length) return false;
   const mf = parseFloat(n.media_final);
-  return isNaN(mf) || mf <= 0;
+  return isNaN(mf);
 }
 
 async function getRefCache() {
@@ -263,10 +264,10 @@ async function getEstudantesImportados(filters) {
 //  - Reprovado:     frequência < 75% ou mais de 6 disciplinas abaixo
 //  - Recuperação:   1 a 6 disciplinas abaixo (com frequência ≥ 75%)
 //  - Aprovado:      nenhuma disciplina abaixo (com frequência ≥ 75%)
-// Estudantes que possuem alguma disciplina sem nota lançada não são
-// classificados; ficam no grupo "Sem Notas Lançadas" (mantendo média 0 no
-// cálculo da Média Geral). Só são classificados estudantes com todas as
-// disciplinas com notas lançadas.
+// Estudantes que possuem alguma disciplina sem nenhuma nota lançada não são
+// classificados; ficam no grupo "Sem Notas Lançadas" e não entram no cálculo
+// da Média Geral nem na classificação. Só são classificados estudantes com
+// todas as disciplinas com notas lançadas.
 async function classificarEstudantes(filters) {
   await getRefCache();
   const [idsEstudantes, notas, freqs] = await Promise.all([
@@ -277,13 +278,19 @@ async function classificarEstudantes(filters) {
 
   const periodo = notas.some(n => {
     const v = parseFloat(n.nota_4bim);
-    return !isNaN(v) && v > 0;
+    return !isNaN(v);
   }) ? 'anual' : 'parcial';
 
   const medias = {};
   const qtdAbaixo = {};
   const disciplinasSemNota = {};
   notas.forEach(n => {
+    if (disciplinaVazia(n)) {
+      if (!disciplinasSemNota[n.estudante_id]) disciplinasSemNota[n.estudante_id] = 0;
+      disciplinasSemNota[n.estudante_id]++;
+      return;
+    }
+
     const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     if (!medias[n.estudante_id]) medias[n.estudante_id] = { soma: 0, count: 0 };
     medias[n.estudante_id].soma += mf;
@@ -297,11 +304,6 @@ async function classificarEstudantes(filters) {
     if (media < 6) {
       if (!qtdAbaixo[n.estudante_id]) qtdAbaixo[n.estudante_id] = 0;
       qtdAbaixo[n.estudante_id]++;
-    }
-
-    if (disciplinaVazia(n)) {
-      if (!disciplinasSemNota[n.estudante_id]) disciplinasSemNota[n.estudante_id] = 0;
-      disciplinasSemNota[n.estudante_id]++;
     }
   });
 
@@ -317,9 +319,6 @@ async function classificarEstudantes(filters) {
   const idsSemNota = new Set([...idsEstudantes].filter(id =>
     !medias[id] || (disciplinasSemNota[id] && disciplinasSemNota[id] > 0)
   ).map(id => String(id)));
-  idsSemNota.forEach(id => {
-    if (!medias[id]) medias[id] = { soma: 0, count: 1 };
-  });
 
   const classificacao = {};
   Object.entries(medias).forEach(([eId, m]) => {
@@ -356,6 +355,7 @@ export async function getResumoGeral(filters = {}) {
   });
   const semNotas = idsSemNota.size;
   const base = totalEstudantes || 1;
+  const classificados = aprovados + recuperacao + reprovados;
 
   let freqMedia = 0, freqCount = 0, somaFreq = 0;
   frequencias.forEach(f => {
@@ -371,9 +371,9 @@ export async function getResumoGeral(filters = {}) {
     total_turmas: turmaSet ? turmaSet.size : refCache.turmas.length,
     media_geral: Math.round(mediaGeral * 10) / 10,
     frequencia_media: Math.round(freqMedia * 10) / 10,
-    aprovacao_pct: Math.round(aprovados / base * 1000) / 10,
-    reprovacao_pct: Math.round(reprovados / base * 1000) / 10,
-    recuperacao_pct: Math.round(recuperacao / base * 1000) / 10,
+    aprovacao_pct: classificados ? Math.round(aprovados / classificados * 1000) / 10 : 0,
+    reprovacao_pct: classificados ? Math.round(reprovados / classificados * 1000) / 10 : 0,
+    recuperacao_pct: classificados ? Math.round(recuperacao / classificados * 1000) / 10 : 0,
     total_aprovacao: aprovados,
     total_recuperacao: recuperacao,
     total_reprovacao: reprovados,
@@ -599,7 +599,8 @@ export async function getMediaPorTurma(filters = {}) {
 
   const grupos = {};
   notas.forEach(n => {
-    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
+    const mf = parseFloat(n.media_final);
+    if (isNaN(mf)) return;
     const tId = alocTurma[n.alocacao_id];
     const nome = turmaMap[tId] || `Turma ${tId}`;
     if (!grupos[nome]) grupos[nome] = { soma: 0, count: 0 };
@@ -620,7 +621,8 @@ export async function getMediaPorDisciplina(filters = {}) {
 
   const grupos = {};
   notas.forEach(n => {
-    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
+    const mf = parseFloat(n.media_final);
+    if (isNaN(mf)) return;
     const cId = alocComp[n.alocacao_id];
     const nome = compMap[cId] || `Comp ${cId}`;
     if (!grupos[nome]) grupos[nome] = { soma: 0, count: 0 };
@@ -642,7 +644,8 @@ export async function getMediaPorSerie(filters = {}) {
 
   const grupos = {};
   notas.forEach(n => {
-    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
+    const mf = parseFloat(n.media_final);
+    if (isNaN(mf)) return;
     const tId = alocTurma[n.alocacao_id];
     const sId = turmaSerie[tId];
     const nome = serieMap[sId] || `Série ${sId}`;
@@ -662,10 +665,11 @@ export async function getEvolucaoBimestral(filters = {}) {
 
   const b1 = [], b2 = [], b3 = [], b4 = [];
   notas.forEach(n => {
-    if (parseFloat(n.nota_1bim) > 0) b1.push(parseFloat(n.nota_1bim));
-    if (parseFloat(n.nota_2bim) > 0) b2.push(parseFloat(n.nota_2bim));
-    if (parseFloat(n.nota_3bim) > 0) b3.push(parseFloat(n.nota_3bim));
-    if (parseFloat(n.nota_4bim) > 0) b4.push(parseFloat(n.nota_4bim));
+    const v1 = parseFloat(n.nota_1bim), v2 = parseFloat(n.nota_2bim), v3 = parseFloat(n.nota_3bim), v4 = parseFloat(n.nota_4bim);
+    if (!isNaN(v1)) b1.push(v1);
+    if (!isNaN(v2)) b2.push(v2);
+    if (!isNaN(v3)) b3.push(v3);
+    if (!isNaN(v4)) b4.push(v4);
   });
   const m = arr => arr.length ? Math.round((arr.reduce((a,b) => a+b,0) / arr.length) * 10) / 10 : 0;
   return { data: { bim1: m(b1), bim2: m(b2), bim3: m(b3), bim4: m(b4) }, error: null };
@@ -677,7 +681,8 @@ export async function getDistribuicaoHistograma(filters = {}) {
 
   const faixas = { '0-2': 0, '2-4': 0, '4-6': 0, '6-8': 0, '8-10': 0 };
   notas.forEach(n => {
-    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
+    const mf = parseFloat(n.media_final);
+    if (isNaN(mf)) return;
     if (mf < 2) faixas['0-2']++;
     else if (mf < 4) faixas['2-4']++;
     else if (mf < 6) faixas['4-6']++;
@@ -787,7 +792,8 @@ export async function getMediaPorProfessor(filters = {}) {
 
   const grupos = {};
   notas.forEach(n => {
-    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
+    const mf = parseFloat(n.media_final);
+    if (isNaN(mf)) return;
     const pId = alocProf[n.alocacao_id];
     const nome = pMap[pId] || `Prof ${pId}`;
     if (!grupos[nome]) grupos[nome] = { soma: 0, count: 0 };
@@ -825,7 +831,8 @@ export async function getScatterFreqNota(filters = {}) {
 
   const notasPorAluno = {};
   notas.forEach(n => {
-    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
+    const mf = parseFloat(n.media_final);
+    if (isNaN(mf)) return;
     if (!notasPorAluno[n.estudante_id]) notasPorAluno[n.estudante_id] = { soma: 0, count: 0 };
     notasPorAluno[n.estudante_id].soma += mf;
     notasPorAluno[n.estudante_id].count++;

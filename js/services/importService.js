@@ -31,7 +31,7 @@ async function carregarMapa(table, naturalColumn) {
 
 function calcularMedia(nota) {
   const bims = [nota.nota_1bim, nota.nota_2bim, nota.nota_3bim, nota.nota_4bim]
-    .filter(v => v != null && !isNaN(v) && v > 0);
+    .filter(v => v != null && !isNaN(v));
   if (!bims.length) return null;
   return Math.round((bims.reduce((a, b) => a + b, 0) / bims.length) * 10) / 10;
 }
@@ -229,7 +229,7 @@ export async function importarNotas(file, onProgress) {
       });
       return null;
     }
-    const media = n.media_final != null && n.media_final > 0 ? n.media_final : calcularMedia(n);
+    const media = n.media_final != null ? n.media_final : calcularMedia(n);
     const rFinal = String(n.resultado_final || '').trim().toUpperCase();
     let resultado = n.resultado_final;
     if (media == null) {

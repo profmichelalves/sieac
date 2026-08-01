@@ -200,10 +200,10 @@ async function carregarEstudante(id) {
       const ctx = canvas.getContext('2d');
       const b1 = [], b2 = [], b3 = [], b4 = [];
       studentNotas.forEach(n => {
-        const v1 = parseFloat(n.nota_1bim); if (!isNaN(v1) && v1 > 0) b1.push(v1);
-        const v2 = parseFloat(n.nota_2bim); if (!isNaN(v2) && v2 > 0) b2.push(v2);
-        const v3 = parseFloat(n.nota_3bim); if (!isNaN(v3) && v3 > 0) b3.push(v3);
-        const v4 = parseFloat(n.nota_4bim); if (!isNaN(v4) && v4 > 0) b4.push(v4);
+        const v1 = parseFloat(n.nota_1bim); if (!isNaN(v1)) b1.push(v1);
+        const v2 = parseFloat(n.nota_2bim); if (!isNaN(v2)) b2.push(v2);
+        const v3 = parseFloat(n.nota_3bim); if (!isNaN(v3)) b3.push(v3);
+        const v4 = parseFloat(n.nota_4bim); if (!isNaN(v4)) b4.push(v4);
       });
       const m = arr => arr.length ? Math.round(arr.reduce((a,b) => a+b,0)/arr.length * 10) / 10 : null;
       const dados = [m(b1), m(b2), m(b3), m(b4)];
