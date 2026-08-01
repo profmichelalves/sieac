@@ -52,6 +52,15 @@ export async function register(nome, email, matricula, senha, perfilId) {
     return { error: 'Este email já está cadastrado. Faça login ou use outro email.' };
   }
 
+  const { data: usuariosComMatricula } = await supabaseQuery('usuarios', {
+    select: 'id,email,matricula',
+    filters: [{ col: 'matricula', val: matricula }]
+  });
+
+  if (usuariosComMatricula && usuariosComMatricula.length > 0) {
+    return { error: 'Já existe um usuário cadastrado com esta matrícula.' };
+  }
+
   const { data: perfis } = await supabaseQuery('perfis', {
     select: 'id,nome'
   });
@@ -61,6 +70,17 @@ export async function register(nome, email, matricula, senha, perfilId) {
   const escolhido = (perfis || []).find(p => p.id === Number(perfilId));
   const perfilValido = escolhido && permitidos.has(norm(escolhido.nome)) ? escolhido.id : null;
   const perfilFinal = perfilValido || (perfis || []).find(p => norm(p.nome) === 'professor')?.id || 3;
+
+  const eProfessor = norm((perfis || []).find(p => p.id === perfilFinal)?.nome || '') === 'professor';
+  if (eProfessor) {
+    const { data: professores } = await supabaseQuery('professores', {
+      select: 'id,matricula,nome',
+      filters: [{ col: 'matricula', val: matricula }]
+    });
+    if (!professores || professores.length === 0) {
+      return { error: 'Matrícula não encontrada na tabela de professores. Cadastro não permitido.' };
+    }
+  }
 
   const newUser = {
     nome,
