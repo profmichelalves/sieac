@@ -222,7 +222,7 @@ async function queryFrequencias(filters, selectFields) {
 
 // ---- EXPORTED FUNCTIONS ----
 
-async function getEstudantesImportados(filters) {
+async function getIdsEstudantesImportados(filters) {
   await getRefCache();
   let ids = new Set(refCache.estudantes.map(e => e.id));
   const permitidos = await getEstudantesPermitidos();
@@ -243,16 +243,23 @@ async function getEstudantesImportados(filters) {
     }
     ids = new Set([...ids].filter(id => idsComNota.has(id)));
   }
-  return ids.size;
+  return ids;
 }
 
-// Classifica cada estudante pela média anual e frequência média:
-//  - Reprovado:     frequência < 75% (independente da média)
-//  - Aprovado:      média anual ≥ 6,0 e frequência ≥ 75%
-//  - Recuperação:   média anual < 6,0 (com frequência ≥ 75%)
+async function getEstudantesImportados(filters) {
+  return (await getIdsEstudantesImportados(filters)).size;
+}
+
+// Classifica cada estudante pela frequência e pela quantidade de disciplinas
+// com média inferior a 6,0:
+//  - Reprovado:     frequência < 75% ou mais de 6 disciplinas abaixo
+//  - Recuperação:   1 a 6 disciplinas abaixo (com frequência ≥ 75%)
+//  - Aprovado:      nenhuma disciplina abaixo (com frequência ≥ 75%)
+// Estudantes sem nenhuma nota lançada são considerados com média 0.
 async function classificarEstudantes(filters) {
   await getRefCache();
-  const [notas, freqs] = await Promise.all([
+  const [idsEstudantes, notas, freqs] = await Promise.all([
+    getIdsEstudantesImportados(filters),
     queryNotas(filters, 'estudante_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final'),
     queryFrequencias(filters, 'estudante_id,percentual_frequencia'),
   ]);
@@ -288,6 +295,13 @@ async function classificarEstudantes(filters) {
     if (!freqsPorEstudante[f.estudante_id]) freqsPorEstudante[f.estudante_id] = { soma: 0, count: 0 };
     freqsPorEstudante[f.estudante_id].soma += p;
     freqsPorEstudante[f.estudante_id].count++;
+  });
+
+  idsEstudantes.forEach(id => {
+    if (!medias[id]) {
+      medias[id] = { soma: 0, count: 1 };
+      qtdAbaixo[id] = 1;
+    }
   });
 
   const classificacao = {};
@@ -423,7 +437,8 @@ export async function getDetalheResultados(filters = {}) {
 // 6 disciplinas com média < 6,0).
 export async function getDetalheSituacao(filters = {}) {
   await getRefCache();
-  const [notas, freqs] = await Promise.all([
+  const [idsEstudantes, notas, freqs] = await Promise.all([
+    getIdsEstudantesImportados(filters),
     queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final'),
     queryFrequencias(filters, 'estudante_id,percentual_frequencia'),
   ]);
@@ -454,6 +469,12 @@ export async function getDetalheSituacao(filters = {}) {
     if (!freqPorEstudante[f.estudante_id]) freqPorEstudante[f.estudante_id] = { soma: 0, count: 0 };
     freqPorEstudante[f.estudante_id].soma += p;
     freqPorEstudante[f.estudante_id].count++;
+  });
+
+  idsEstudantes.forEach(id => {
+    if (!porEstudante[id]) {
+      porEstudante[id] = { disciplinas: [{ nome: 'Sem notas lançadas', media: 0 }], turmas: new Set() };
+    }
   });
 
   const reprovados = [];
