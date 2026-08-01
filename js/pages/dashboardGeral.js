@@ -59,7 +59,7 @@ export async function render() {
           <div class="kpi-label" id="kpi-aprovacao-label">Aprovação</div>
           <div class="kpi-value" style="color:var(--sieac-success)"><span id="kpi-aprovacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-check-circle"></i></div>
-          ${infoBtn('Aprovação', 'Percentual de estudantes aprovados: média anual ≥ 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% são contados como reprovados.' + EXPLICACAO_RESULTADO)}
+          ${infoBtn('Aprovação', 'Percentual de estudantes aprovados, calculado sobre o total de estudantes importados: nenhuma disciplina com média inferior a 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% ou mais de 6 disciplinas com média inferior a 6,0 são contados como reprovados.' + EXPLICACAO_RESULTADO)}
           <button class="btn btn-sm btn-outline-success kpi-pdf-btn no-print mt-2" data-tipo="aprovados">
             <i class="bi bi-file-earmark-pdf"></i> PDF
           </button>
@@ -70,7 +70,7 @@ export async function render() {
           <div class="kpi-label" id="kpi-recuperacao-label">Recuperação</div>
           <div class="kpi-value" style="color:var(--sieac-warning)"><span id="kpi-recuperacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-arrow-repeat"></i></div>
-          ${infoBtn('Recuperação', 'Percentual de estudantes em recuperação: média anual < 6,0 e frequência ≥ 75%, participando das atividades de recuperação previstas. Frequência < 75% é contada como reprovação.' + EXPLICACAO_RESULTADO)}
+          ${infoBtn('Recuperação', 'Percentual de estudantes em recuperação, calculado sobre o total de estudantes importados: 1 a 6 disciplinas com média inferior a 6,0 e frequência ≥ 75%, participando das atividades de recuperação previstas. Frequência < 75% é contada como reprovação.' + EXPLICACAO_RESULTADO)}
           <button class="btn btn-sm btn-outline-warning kpi-pdf-btn no-print mt-2" data-tipo="recuperacao">
             <i class="bi bi-file-earmark-pdf"></i> PDF
           </button>
@@ -81,7 +81,7 @@ export async function render() {
           <div class="kpi-label" id="kpi-reprovacao-label">Reprovação</div>
           <div class="kpi-value" style="color:var(--sieac-danger)"><span id="kpi-reprovacao">—</span></div>
           <div class="kpi-icon"><i class="bi bi-x-circle"></i></div>
-          ${infoBtn('Reprovação', 'Percentual de estudantes reprovados: frequência média < 75% ou média anual < 6,0 após recuperação e deliberação do Conselho de Classe.' + EXPLICACAO_RESULTADO)}
+          ${infoBtn('Reprovação', 'Percentual de estudantes reprovados, calculado sobre o total de estudantes importados: frequência média < 75% ou mais de 6 disciplinas com média inferior a 6,0.' + EXPLICACAO_RESULTADO)}
           <button class="btn btn-sm btn-outline-danger kpi-pdf-btn no-print mt-2" data-tipo="reprovados">
             <i class="bi bi-file-earmark-pdf"></i> PDF
           </button>
@@ -92,7 +92,7 @@ export async function render() {
     <div class="row g-4">
       <div class="col-md-5">
         <div class="chart-card" id="card-resultado">
-          <div class="chart-card-title"><span id="chart-resultado-titulo">Distribuição dos Resultados Finais</span> ${infoBtn('Distribuição dos Resultados Finais', 'Classifica os estudantes pela média anual e pela frequência: Aprovado (média ≥ 6,0 e frequência ≥ 75%), Recuperação (média < 6,0 com frequência ≥ 75%) e Reprovado (frequência < 75% ou média insuficiente após recuperação).' + EXPLICACAO_RESULTADO)}</div>
+          <div class="chart-card-title"><span id="chart-resultado-titulo">Distribuição dos Resultados Finais</span> ${infoBtn('Distribuição dos Resultados Finais', 'Classifica os estudantes pela frequência e pelo número de disciplinas com média inferior a 6,0: Aprovado (nenhuma disciplina abaixo e frequência ≥ 75%), Recuperação (1 a 6 disciplinas abaixo com frequência ≥ 75%) e Reprovado (frequência < 75% ou mais de 6 disciplinas abaixo).' + EXPLICACAO_RESULTADO)}</div>
           <div class="chart-container" style="height:320px;">
             <canvas id="chart-resultado-final"></canvas>
           </div>
@@ -201,15 +201,15 @@ function animateNumber(id, value) {
 function textosKpi(periodo) {
   if (periodo === 'anual') {
     return {
-      aprovacao: 'Percentual de estudantes aprovados: média anual ≥ 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% são contados como reprovados. O relatório PDF lista apenas estudantes com frequência ≥ 75% e nenhuma disciplina com média inferior a 6,0 — uma linha por estudante, com Média Geral, Menor Média e Maior Média.',
-      recuperacao: 'Percentual de estudantes em recuperação: média anual < 6,0 e frequência ≥ 75%, participando das atividades de recuperação previstas. Frequência < 75% é contada como reprovação. O relatório PDF lista apenas estudantes com 1 a 6 disciplinas com média inferior a 6,0 e frequência ≥ 75% — uma linha por estudante, classificada por gravidade: 🟡 1 a 2 disciplinas, 🟠 3 a 4 disciplinas e 🔴 5 a 6 disciplinas.',
-      reprovacao: 'Percentual de estudantes reprovados: frequência média < 75% ou média anual < 6,0 após recuperação e deliberação do Conselho de Classe. O relatório PDF lista apenas estudantes com frequência < 75% ou mais de 6 disciplinas com média inferior a 6,0 — uma linha por estudante, classificada por gravidade: 🟡 mais de 6 disciplinas com frequência ≥ 75%, 🟠 frequência < 75% ou mais de 8 disciplinas e 🔴 frequência < 75% e mais de 6 disciplinas.',
+      aprovacao: 'Percentual de estudantes aprovados, calculado sobre o total de estudantes importados: nenhuma disciplina com média anual inferior a 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% ou mais de 6 disciplinas com média inferior a 6,0 são contados como reprovados. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, com Média Geral, Menor Média e Maior Média.',
+      recuperacao: 'Percentual de estudantes em recuperação, calculado sobre o total de estudantes importados: 1 a 6 disciplinas com média anual inferior a 6,0 e frequência ≥ 75%, participando das atividades de recuperação previstas. Frequência < 75% é contada como reprovação. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, classificada por gravidade: 🟡 1 a 2 disciplinas, 🟠 3 a 4 disciplinas e 🔴 5 a 6 disciplinas.',
+      reprovacao: 'Percentual de estudantes reprovados, calculado sobre o total de estudantes importados: frequência média < 75% ou mais de 6 disciplinas com média anual inferior a 6,0. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, classificada por gravidade: 🟡 mais de 6 disciplinas com frequência ≥ 75%, 🟠 frequência < 75% ou mais de 8 disciplinas e 🔴 frequência < 75% e mais de 6 disciplinas.',
     };
   }
   return {
-    aprovacao: 'Percentual de estudantes em aprovação até o momento: média acumulada ≥ 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% são contados como reprovados. O relatório PDF lista apenas estudantes com frequência ≥ 75% e nenhuma disciplina com média acumulada inferior a 6,0 — uma linha por estudante, com Média Geral, Menor Média e Maior Média, ordenado pela Menor Média.',
-    recuperacao: 'Percentual de estudantes em recuperação até o momento: média acumulada < 6,0 e frequência ≥ 75%, acompanhando os conteúdos ainda em andamento. Frequência < 75% é contada como reprovação. O relatório PDF lista apenas estudantes com 1 a 6 disciplinas com média acumulada inferior a 6,0 e frequência ≥ 75% — uma linha por estudante, classificada por gravidade: 🟡 1 a 2 disciplinas, 🟠 3 a 4 disciplinas e 🔴 5 a 6 disciplinas.',
-    reprovacao: 'Percentual de estudantes que estão sendo reprovados até o momento: frequência média < 75% ou média acumulada insuficiente. O relatório PDF lista apenas estudantes com frequência < 75% ou mais de 6 disciplinas com média acumulada inferior a 6,0 — uma linha por estudante, classificada por gravidade: 🟡 mais de 6 disciplinas com frequência ≥ 75%, 🟠 frequência < 75% ou mais de 8 disciplinas e 🔴 frequência < 75% e mais de 6 disciplinas.',
+    aprovacao: 'Percentual de estudantes em aprovação até o momento, calculado sobre o total de estudantes importados: nenhuma disciplina com média acumulada inferior a 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% ou mais de 6 disciplinas com média acumulada inferior a 6,0 são contados como reprovados. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, com Média Geral, Menor Média e Maior Média, ordenado pela Menor Média.',
+    recuperacao: 'Percentual de estudantes em recuperação até o momento, calculado sobre o total de estudantes importados: 1 a 6 disciplinas com média acumulada inferior a 6,0 e frequência ≥ 75%, acompanhando os conteúdos ainda em andamento. Frequência < 75% é contada como reprovação. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, classificada por gravidade: 🟡 1 a 2 disciplinas, 🟠 3 a 4 disciplinas e 🔴 5 a 6 disciplinas.',
+    reprovacao: 'Percentual de estudantes que estão sendo reprovados até o momento, calculado sobre o total de estudantes importados: frequência média < 75% ou mais de 6 disciplinas com média acumulada inferior a 6,0. O relatório PDF lista esses mesmos estudantes — uma linha por estudante, classificada por gravidade: 🟡 mais de 6 disciplinas com frequência ≥ 75%, 🟠 frequência < 75% ou mais de 8 disciplinas e 🔴 frequência < 75% e mais de 6 disciplinas.',
   };
 }
 

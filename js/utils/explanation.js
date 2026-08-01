@@ -1,5 +1,5 @@
 export const EXPLICACAO_RESULTADO =
-  ' Como a média e a situação são calculadas: a média acumulada é a média aritmética das notas dos bimestres lançados, arredondada a 1 casa decimal. Bimestres não lançados não são considerados; quando o estudante não tem nenhuma nota lançada em uma disciplina, a média considerada é 0. Durante o ano letivo (com menos de 4 bimestres lançados): média ≥ 6 → Em Aprovação; média < 6 → Em Recuperação. Ao final do ano (com os 4 bimestres lançados): média ≥ 6 → Aprovado; média < 6 → Recuperação Final. A frequência é a média dos percentuais registrados; frequência inferior a 75% resulta em reprovação, independentemente da média.';
+  ' Como a média e a situação são calculadas: a média acumulada de cada disciplina é a média aritmética das notas dos bimestres lançados, arredondada a 1 casa decimal. Bimestres não lançados não são considerados; quando o estudante não tem nenhuma nota lançada em uma disciplina, a média considerada é 0. A situação de cada estudante é definida pela frequência e pela quantidade de disciplinas com média inferior a 6,0: nenhuma disciplina abaixo e frequência ≥ 75% → Em Aprovação/Aprovado; 1 a 6 disciplinas abaixo e frequência ≥ 75% → Em Recuperação/Recuperação Final; frequência < 75% ou mais de 6 disciplinas abaixo → Em Reprovação/Reprovado. Os percentuais dos cards são calculados sobre o total de estudantes importados. A frequência é a média dos percentuais registrados; frequência inferior a 75% resulta em reprovação, independentemente da média.';
 
 export function termosSituacao(periodo) {
   if (periodo === 'anual') {
@@ -7,14 +7,14 @@ export function termosSituacao(periodo) {
       card: { aprovado: 'Aprovação', recuperacao: 'Recuperação', reprovado: 'Reprovação' },
       label: { aprovado: 'Aprovados', recuperacao: 'Recuperação', reprovado: 'Reprovados' },
       tituloGrafico: 'Distribuição dos Resultados Finais',
-      explicacaoGrafico: 'Classifica os estudantes pela média anual e pela frequência: Aprovado (média ≥ 6,0 e frequência ≥ 75%), Recuperação (média < 6,0 com frequência ≥ 75%) e Reprovado (frequência < 75% ou média insuficiente após recuperação).',
+      explicacaoGrafico: 'Classifica os estudantes pela frequência e pelo número de disciplinas com média anual inferior a 6,0: Aprovado (nenhuma disciplina abaixo e frequência ≥ 75%), Recuperação (1 a 6 disciplinas abaixo com frequência ≥ 75%) e Reprovado (frequência < 75% ou mais de 6 disciplinas abaixo).',
     };
   }
   return {
     card: { aprovado: 'Em Aprovação', recuperacao: 'Em Recuperação', reprovado: 'Em Reprovação' },
     label: { aprovado: 'Em Aprovação', recuperacao: 'Em Recuperação', reprovado: 'Em Reprovação' },
     tituloGrafico: 'Distribuição das Situações Parciais',
-    explicacaoGrafico: 'Classifica a situação parcial dos estudantes até o momento: Em Aprovação (média acumulada ≥ 6,0 e frequência ≥ 75%), Em Recuperação (média acumulada < 6,0 com frequência ≥ 75%) e Em Reprovação (frequência < 75% ou média insuficiente). Ao final do ano letivo, a situação é consolidada em Aprovado, Recuperação Final ou Reprovado.',
+    explicacaoGrafico: 'Classifica a situação parcial dos estudantes até o momento: Em Aprovação (nenhuma disciplina com média acumulada inferior a 6,0 e frequência ≥ 75%), Em Recuperação (1 a 6 disciplinas abaixo com frequência ≥ 75%) e Em Reprovação (frequência < 75% ou mais de 6 disciplinas abaixo). Ao final do ano letivo, a situação é consolidada em Aprovado, Recuperação Final ou Reprovado.',
   };
 }
 

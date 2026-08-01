@@ -253,7 +253,7 @@ async function getEstudantesImportados(filters) {
 async function classificarEstudantes(filters) {
   await getRefCache();
   const [notas, freqs] = await Promise.all([
-    queryNotas(filters, 'estudante_id,media_final,nota_4bim'),
+    queryNotas(filters, 'estudante_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final'),
     queryFrequencias(filters, 'estudante_id,percentual_frequencia'),
   ]);
 
@@ -263,11 +263,22 @@ async function classificarEstudantes(filters) {
   }) ? 'anual' : 'parcial';
 
   const medias = {};
+  const qtdAbaixo = {};
   notas.forEach(n => {
     const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     if (!medias[n.estudante_id]) medias[n.estudante_id] = { soma: 0, count: 0 };
     medias[n.estudante_id].soma += mf;
     medias[n.estudante_id].count++;
+
+    let media = calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim);
+    if (media === 0) {
+      const mf2 = parseFloat(n.media_final);
+      if (!isNaN(mf2) && mf2 > 0) media = mf2;
+    }
+    if (media < 6) {
+      if (!qtdAbaixo[n.estudante_id]) qtdAbaixo[n.estudante_id] = 0;
+      qtdAbaixo[n.estudante_id]++;
+    }
   });
 
   const freqsPorEstudante = {};
@@ -283,9 +294,11 @@ async function classificarEstudantes(filters) {
   Object.entries(medias).forEach(([eId, m]) => {
     const f = freqsPorEstudante[eId];
     const frequencia = f ? f.soma / f.count : null;
+    const qtd = qtdAbaixo[eId] || 0;
     if (frequencia != null && frequencia < 75) classificacao[eId] = 'reprovado';
-    else if (m.soma / m.count >= 6) classificacao[eId] = 'aprovado';
-    else classificacao[eId] = 'recuperacao';
+    else if (qtd > 6) classificacao[eId] = 'reprovado';
+    else if (qtd >= 1) classificacao[eId] = 'recuperacao';
+    else classificacao[eId] = 'aprovado';
   });
 
   return { classificacao, medias, frequenciasPorEstudante: freqsPorEstudante, totalNotas: notas.length, periodo };
@@ -309,7 +322,7 @@ export async function getResumoGeral(filters = {}) {
     else if (c === 'recuperacao') recuperacao++;
     else reprovados++;
   });
-  const total = aprovados + reprovados + recuperacao || 1;
+  const base = totalEstudantes || 1;
 
   let freqMedia = 0, freqCount = 0, somaFreq = 0;
   frequencias.forEach(f => {
@@ -325,9 +338,9 @@ export async function getResumoGeral(filters = {}) {
     total_turmas: turmaSet ? turmaSet.size : refCache.turmas.length,
     media_geral: Math.round(mediaGeral * 10) / 10,
     frequencia_media: Math.round(freqMedia * 10) / 10,
-    aprovacao_pct: Math.round(aprovados / total * 1000) / 10,
-    reprovacao_pct: Math.round(reprovados / total * 1000) / 10,
-    recuperacao_pct: Math.round(recuperacao / total * 1000) / 10,
+    aprovacao_pct: Math.round(aprovados / base * 1000) / 10,
+    reprovacao_pct: Math.round(reprovados / base * 1000) / 10,
+    recuperacao_pct: Math.round(recuperacao / base * 1000) / 10,
     total_recuperacao: recuperacao,
     total_notas: dados.totalNotas,
     periodo: dados.periodo,
