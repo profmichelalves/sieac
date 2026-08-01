@@ -1,4 +1,4 @@
-import { supabaseQuery, supabaseUpsert } from './supabase.js';
+import { supabaseFetchAll, supabaseUpsert } from './supabase.js';
 import { parseNumber } from '../utils/helpers.js';
 
 const BATCH_SIZE = 500;
@@ -23,7 +23,7 @@ async function upsertTabela(table, rows, onConflict) {
 }
 
 async function carregarMapa(table, naturalColumn) {
-  const { data } = await supabaseQuery(table, { select: `id,${naturalColumn}` });
+  const { data } = await supabaseFetchAll(table, { select: `id,${naturalColumn}` });
   const map = {};
   (data || []).forEach(r => { if (r[naturalColumn] != null) map[String(r[naturalColumn])] = r.id; });
   return map;
@@ -38,8 +38,8 @@ function calcularMedia(nota) {
 
 async function verificarRelacoes() {
   const [sRes, tRes] = await Promise.all([
-    supabaseQuery('series', { select: 'id,etapa_ensino_id' }),
-    supabaseQuery('turmas', { select: 'id,serie_id' }),
+    supabaseFetchAll('series', { select: 'id,etapa_ensino_id' }),
+    supabaseFetchAll('turmas', { select: 'id,serie_id' }),
   ]);
   const series = sRes.data || [];
   const turmas = tRes.data || [];
@@ -188,7 +188,7 @@ export async function importarNotas(file, onProgress) {
 
   // Fase 3: alocações (professor ↔ turma ↔ disciplina)
   onProgress(40, 'Inserindo alocações...');
-  const { data: alocExistentes } = await supabaseQuery('alocacoes', { select: 'id,professor_id,turma_id,componente_id' });
+  const { data: alocExistentes } = await supabaseFetchAll('alocacoes', { select: 'id,professor_id,turma_id,componente_id' });
   const existentesSet = new Set((alocExistentes || []).map(a => `${a.professor_id}_${a.turma_id}_${a.componente_id}`));
   const alocParaInserir = [...alocacoesList.values()]
     .map(a => {
@@ -205,7 +205,7 @@ export async function importarNotas(file, onProgress) {
 
   // Fase 4: notas (upsert por estudante + alocação)
   onProgress(45, 'Inserindo notas...');
-  const { data: alocacoesDB } = await supabaseQuery('alocacoes', { select: 'id,professor_id,turma_id,componente_id' });
+  const { data: alocacoesDB } = await supabaseFetchAll('alocacoes', { select: 'id,professor_id,turma_id,componente_id' });
   const alocLookup = {};
   (alocacoesDB || []).forEach(a => { alocLookup[`${a.professor_id}_${a.turma_id}_${a.componente_id}`] = a.id; });
 
@@ -290,8 +290,8 @@ export async function importarFrequencia(file, onProgress) {
 
   onProgress(10, 'Buscando referências...');
   const [estRes, turmaRes] = await Promise.all([
-    supabaseQuery('estudantes', { select: 'id,matricula' }),
-    supabaseQuery('turmas', { select: 'id,nome' }),
+    supabaseFetchAll('estudantes', { select: 'id,matricula' }),
+    supabaseFetchAll('turmas', { select: 'id,nome' }),
   ]);
 
   const normTurma = s => String(s).trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '');
