@@ -1,6 +1,12 @@
 const MARGIN = 8;
 const HEADER_COLOR = [26, 42, 58];
 
+const CORES_BOLA = {
+  red: [229, 57, 53],
+  orange: [255, 152, 0],
+  yellow: [255, 213, 0],
+};
+
 function novoDoc() {
   const { jsPDF } = window.jspdf;
   return new jsPDF({ unit: 'mm', format: 'a4' });
@@ -30,7 +36,7 @@ function desenharCabecalho(doc, titulo, subtitulo, meta) {
 
 function adicionarTabela(doc, tabela, startY) {
   let y = startY;
-  const { titulo = '', colunas = [], linhas = [], colWidths = {}, total = '' } = tabela;
+  const { titulo = '', colunas = [], linhas = [], colWidths = {}, total = '', bolas = [] } = tabela;
   if (titulo) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
@@ -50,6 +56,17 @@ function adicionarTabela(doc, tabela, startY) {
       columnStyles: colWidths,
       showHead: 'everyPage',
       theme: 'grid',
+      didDrawCell: (data) => {
+        if (data.section === 'body' && data.column.index === 0 && bolas[data.row.index]) {
+          const cor = CORES_BOLA[bolas[data.row.index]];
+          if (cor) {
+            const cx = data.cell.x + data.cell.width / 2;
+            const cy = data.cell.y + data.cell.height / 2;
+            doc.setFillColor(cor[0], cor[1], cor[2]);
+            doc.circle(cx, cy, 1.4, 'F');
+          }
+        }
+      },
       didDrawPage: () => {
         const pageH = doc.internal.pageSize.getHeight();
         const pageW = doc.internal.pageSize.getWidth();

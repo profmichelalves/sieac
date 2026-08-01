@@ -2,13 +2,14 @@ import { $, showToast, formatNumber, formatPercent } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO, termosSituacao } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createDoughnutChart, destroyChart } from '../components/Charts.js';
-import { getResumoGeral, getMediaPorSerie, getResultadoFinal, getDetalheResultados } from '../repositories/dashboardRepository.js';
+import { getResumoGeral, getMediaPorSerie, getResultadoFinal, getDetalheResultados, getDetalheSituacao } from '../repositories/dashboardRepository.js';
 import { supabaseQuery } from '../services/supabase.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
 
 const MEDIA_CORTE = 6;
 
 let detalheResultados = null;
+let detalheSituacao = null;
 let relFiltrosAtivos = [];
 let periodoLetivo = 'parcial';
 
@@ -117,8 +118,13 @@ export async function render() {
 
 async function loadData() {
   const filters = getFilters();
-  const [resumo, detalhe] = await Promise.all([getResumoGeral(filters), getDetalheResultados(filters)]);
+  const [resumo, detalhe, situacao] = await Promise.all([
+    getResumoGeral(filters),
+    getDetalheResultados(filters),
+    getDetalheSituacao(filters),
+  ]);
   detalheResultados = detalhe.data || null;
+  detalheSituacao = situacao.data || null;
   relFiltrosAtivos = await montarFiltrosAtivos(filters);
 
   periodoLetivo = resumo.periodo || 'parcial';
@@ -290,32 +296,61 @@ function gerarPdfCard(tipo) {
   }[tipo];
   if (!conf) return;
 
-  const linhas = detalheResultados[tipo] || [];
   const meta = [`Gerado em: ${new Date().toLocaleString('pt-BR')}`];
   if (relFiltrosAtivos.length) meta.push(`Filtros: ${relFiltrosAtivos.join(' | ')}`);
+
+  if (tipo === 'aprovados') {
+    const linhas = detalheResultados.aprovados || [];
+    gerarPdfRelatorio({
+      titulo: conf.titulo,
+      subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+      meta,
+      tabelas: [{
+        titulo: `${conf.tabela} — Estudante, Turma, Disciplina e Notas`,
+        colunas: ['Estudante', 'Matrícula', 'Turma', 'Disciplina', '1º Bim', '2º Bim', '3º Bim', '4º Bim', 'Média Acumulada', 'Freq. (%)', 'Situação'],
+        linhas: linhas.map(l => [
+          l.estudante,
+          l.matricula,
+          l.turma,
+          l.disciplina,
+          fmtNota(l.nota_1bim),
+          fmtNota(l.nota_2bim),
+          fmtNota(l.nota_3bim),
+          fmtNota(l.nota_4bim),
+          fmtNota(l.media_acumulada),
+          fmtNota(l.frequencia),
+          l.situacao,
+        ]),
+        colWidths: { 0: 30, 1: 14, 2: 12, 3: 32, 4: 6.5, 5: 6.5, 6: 6.5, 7: 6.5, 8: 11, 9: 12, 10: 13 },
+        total: `Total — ${linhas.length} registro(s) de ${conf.total}`,
+      }],
+    });
+    return;
+  }
+
+  const lista = tipo === 'recuperacao'
+    ? (detalheSituacao?.recuperacao || [])
+    : (detalheSituacao?.reprovados || []);
 
   gerarPdfRelatorio({
     titulo: conf.titulo,
     subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
     meta,
     tabelas: [{
-      titulo: `${conf.tabela} — Estudante, Turma, Disciplina e Notas`,
-      colunas: ['Estudante', 'Matrícula', 'Turma', 'Disciplina', '1º Bim', '2º Bim', '3º Bim', '4º Bim', 'Média Acumulada', 'Freq. (%)', 'Situação'],
-      linhas: linhas.map(l => [
+      titulo: `${conf.tabela} — Estudante e Disciplinas em Recuperação`,
+      colunas: ['Situação', 'Estudante', 'Matrícula', 'Turma', 'Frequência (%)', 'Qtde.', 'Disciplinas em Recuperação'],
+      linhas: lista.map(l => [
+        '',
         l.estudante,
         l.matricula,
         l.turma,
-        l.disciplina,
-        fmtNota(l.nota_1bim),
-        fmtNota(l.nota_2bim),
-        fmtNota(l.nota_3bim),
-        fmtNota(l.nota_4bim),
-        fmtNota(l.media_acumulada),
-        fmtNota(l.frequencia),
-        l.situacao,
+        l.frequencia != null ? l.frequencia + '%' : '-',
+        String(l.qtd),
+        l.disciplinas.map(d => `${d.nome} (${fmtNota(d.media)})`).join(', '),
       ]),
-      colWidths: { 0: 30, 1: 14, 2: 12, 3: 32, 4: 6.5, 5: 6.5, 6: 6.5, 7: 6.5, 8: 11, 9: 12, 10: 13 },
-      total: `Total — ${linhas.length} registro(s) de ${conf.total}`,
+      bolas: lista.map(l => l.bola),
+      colWidths: { 0: 10, 1: 30, 2: 16, 3: 20, 4: 13, 5: 9, 6: 45 },
+      total: `Total — ${lista.length} ${conf.total}`,
     }],
   });
 }

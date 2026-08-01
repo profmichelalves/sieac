@@ -407,6 +407,93 @@ export async function getDetalheResultados(filters = {}) {
   };
 }
 
+// Agrega por estudante as disciplinas com média acumulada inferior a 6,0 para os
+// relatórios de Em Recuperação (1 a 6 disciplinas e frequência ≥ 75%) e Em Reprovação
+// (frequência < 75% ou mais de 6 disciplinas).
+export async function getDetalheSituacao(filters = {}) {
+  await getRefCache();
+  const [notas, freqs] = await Promise.all([
+    queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final'),
+    queryFrequencias(filters, 'estudante_id,percentual_frequencia'),
+  ]);
+
+  const alocComp = {}; refCache.alocacoes.forEach(a => alocComp[a.id] = a.componente_id);
+  const alocTurma = {}; refCache.alocacoes.forEach(a => alocTurma[a.id] = a.turma_id);
+  const cMap = {}; refCache.componentes.forEach(c => cMap[c.id] = c.nome);
+  const tMap = {}; refCache.turmas.forEach(t => tMap[t.id] = t.nome);
+  const eMap = {}; refCache.estudantes.forEach(e => eMap[e.id] = e);
+
+  const porEstudante = {};
+  notas.forEach(n => {
+    let media = calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim);
+    if (media == null) {
+      const mf = parseFloat(n.media_final);
+      media = !isNaN(mf) && mf > 0 ? mf : null;
+    }
+    if (media == null) return;
+    if (!porEstudante[n.estudante_id]) porEstudante[n.estudante_id] = { disciplinas: [], turmas: new Set() };
+    porEstudante[n.estudante_id].disciplinas.push({ nome: cMap[alocComp[n.alocacao_id]] || 'N/I', media });
+    const turmaId = alocTurma[n.alocacao_id];
+    if (turmaId && tMap[turmaId]) porEstudante[n.estudante_id].turmas.add(tMap[turmaId]);
+  });
+
+  const freqPorEstudante = {};
+  freqs.forEach(f => {
+    const p = parseFloat(f.percentual_frequencia);
+    if (isNaN(p)) return;
+    if (!freqPorEstudante[f.estudante_id]) freqPorEstudante[f.estudante_id] = { soma: 0, count: 0 };
+    freqPorEstudante[f.estudante_id].soma += p;
+    freqPorEstudante[f.estudante_id].count++;
+  });
+
+  const reprovados = [];
+  const recuperacao = [];
+
+  Object.entries(porEstudante).forEach(([eId, dados]) => {
+    const e = eMap[eId];
+    const freqData = freqPorEstudante[eId];
+    const frequencia = freqData ? Math.round((freqData.soma / freqData.count) * 10) / 10 : null;
+    const emRecuperacao = dados.disciplinas.filter(d => d.media < 6).sort((a, b) => a.media - b.media);
+    const qtd = emRecuperacao.length;
+    const freqBaixa = frequencia != null && frequencia < 75;
+
+    const base = {
+      estudante: e?.nome || `ID ${eId}`,
+      matricula: e?.matricula || '-',
+      turma: [...dados.turmas].sort((a, b) => a.localeCompare(b, 'pt-BR')).join(', ') || '-',
+      frequencia,
+      qtd,
+      disciplinas: emRecuperacao,
+    };
+
+    if (freqBaixa || qtd > 6) {
+      const bola = freqBaixa && qtd > 6 ? 'red' : (freqBaixa || qtd > 8) ? 'orange' : 'yellow';
+      reprovados.push({ ...base, bola });
+    } else if (frequencia == null || frequencia >= 75) {
+      if (qtd >= 1 && qtd <= 6) {
+        const bola = qtd >= 5 ? 'red' : qtd >= 3 ? 'orange' : 'yellow';
+        recuperacao.push({ ...base, bola });
+      }
+    }
+  });
+
+  const ordemBola = { red: 0, orange: 1, yellow: 2 };
+
+  reprovados.sort((a, b) =>
+    ordemBola[a.bola] - ordemBola[b.bola] ||
+    (a.frequencia ?? 999) - (b.frequencia ?? 999) ||
+    b.qtd - a.qtd
+  );
+
+  recuperacao.sort((a, b) =>
+    ordemBola[a.bola] - ordemBola[b.bola] ||
+    b.qtd - a.qtd ||
+    Math.min(...a.disciplinas.map(d => d.media)) - Math.min(...b.disciplinas.map(d => d.media))
+  );
+
+  return { data: { reprovados, recuperacao }, error: null };
+}
+
 export async function getMediaPorTurma(filters = {}) {
   await getRefCache();
   const notas = await queryNotas(filters, 'media_final,alocacao_id');
