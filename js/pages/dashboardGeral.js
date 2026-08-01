@@ -201,15 +201,15 @@ function animateNumber(id, value) {
 function textosKpi(periodo) {
   if (periodo === 'anual') {
     return {
-      aprovacao: 'Percentual de estudantes aprovados: média anual ≥ 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% são contados como reprovados.',
-      recuperacao: 'Percentual de estudantes em recuperação: média anual < 6,0 e frequência ≥ 75%, participando das atividades de recuperação previstas. Frequência < 75% é contada como reprovação.',
-      reprovacao: 'Percentual de estudantes reprovados: frequência média < 75% ou média anual < 6,0 após recuperação e deliberação do Conselho de Classe.',
+      aprovacao: 'Percentual de estudantes aprovados: média anual ≥ 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% são contados como reprovados. O relatório PDF lista apenas estudantes com frequência ≥ 75% e nenhuma disciplina com média inferior a 6,0 — uma linha por estudante, com Média Geral, Menor Média e Maior Média.',
+      recuperacao: 'Percentual de estudantes em recuperação: média anual < 6,0 e frequência ≥ 75%, participando das atividades de recuperação previstas. Frequência < 75% é contada como reprovação. O relatório PDF lista apenas estudantes com 1 a 6 disciplinas com média inferior a 6,0 e frequência ≥ 75% — uma linha por estudante, com a quantidade e as disciplinas em recuperação.',
+      reprovacao: 'Percentual de estudantes reprovados: frequência média < 75% ou média anual < 6,0 após recuperação e deliberação do Conselho de Classe. O relatório PDF lista apenas estudantes com frequência < 75% ou mais de 6 disciplinas com média inferior a 6,0 — uma linha por estudante, com a quantidade e as disciplinas em recuperação.',
     };
   }
   return {
-    aprovacao: 'Percentual de estudantes em aprovação até o momento: média acumulada ≥ 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% são contados como reprovados.',
-    recuperacao: 'Percentual de estudantes em recuperação até o momento: média acumulada < 6,0 e frequência ≥ 75%, acompanhando os conteúdos ainda em andamento. Frequência < 75% é contada como reprovação.',
-    reprovacao: 'Percentual de estudantes que estão sendo reprovados até o momento: frequência média < 75% ou média acumulada insuficiente.',
+    aprovacao: 'Percentual de estudantes em aprovação até o momento: média acumulada ≥ 6,0 e frequência ≥ 75%. Estudantes com frequência < 75% são contados como reprovados. O relatório PDF lista apenas estudantes com frequência ≥ 75% e nenhuma disciplina com média acumulada inferior a 6,0 — uma linha por estudante, com Média Geral, Menor Média e Maior Média, ordenado pela Menor Média.',
+    recuperacao: 'Percentual de estudantes em recuperação até o momento: média acumulada < 6,0 e frequência ≥ 75%, acompanhando os conteúdos ainda em andamento. Frequência < 75% é contada como reprovação. O relatório PDF lista apenas estudantes com 1 a 6 disciplinas com média acumulada inferior a 6,0 e frequência ≥ 75% — uma linha por estudante, com a quantidade e as disciplinas em recuperação.',
+    reprovacao: 'Percentual de estudantes que estão sendo reprovados até o momento: frequência média < 75% ou média acumulada insuficiente. O relatório PDF lista apenas estudantes com frequência < 75% ou mais de 6 disciplinas com média acumulada inferior a 6,0 — uma linha por estudante, com a quantidade e as disciplinas em recuperação.',
   };
 }
 
@@ -300,29 +300,25 @@ function gerarPdfCard(tipo) {
   if (relFiltrosAtivos.length) meta.push(`Filtros: ${relFiltrosAtivos.join(' | ')}`);
 
   if (tipo === 'aprovados') {
-    const linhas = detalheResultados.aprovados || [];
+    const lista = detalheSituacao?.aprovados || [];
     gerarPdfRelatorio({
       titulo: conf.titulo,
       subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
       meta,
       tabelas: [{
-        titulo: `${conf.tabela} — Estudante, Turma, Disciplina e Notas`,
-        colunas: ['Estudante', 'Matrícula', 'Turma', 'Disciplina', '1º Bim', '2º Bim', '3º Bim', '4º Bim', 'Média Acumulada', 'Freq. (%)', 'Situação'],
-        linhas: linhas.map(l => [
+        titulo: `${conf.tabela} — Média Geral, Menor e Maior Média`,
+        colunas: ['Estudante', 'Matrícula', 'Turma', 'Frequência (%)', 'Média Geral', 'Menor Média', 'Maior Média'],
+        linhas: lista.map(l => [
           l.estudante,
           l.matricula,
           l.turma,
-          l.disciplina,
-          fmtNota(l.nota_1bim),
-          fmtNota(l.nota_2bim),
-          fmtNota(l.nota_3bim),
-          fmtNota(l.nota_4bim),
-          fmtNota(l.media_acumulada),
-          fmtNota(l.frequencia),
-          l.situacao,
+          l.frequencia != null ? l.frequencia + '%' : '-',
+          fmtNota(l.mediaGeral),
+          fmtNota(l.menor),
+          fmtNota(l.maior),
         ]),
-        colWidths: { 0: 30, 1: 14, 2: 12, 3: 32, 4: 6.5, 5: 6.5, 6: 6.5, 7: 6.5, 8: 11, 9: 12, 10: 13 },
-        total: `Total — ${linhas.length} registro(s) de ${conf.total}`,
+        colWidths: { 0: 40, 1: 20, 2: 25, 3: 16, 4: 16, 5: 16, 6: 16 },
+        total: `Total — ${lista.length} ${conf.total}`,
       }],
     });
     return;

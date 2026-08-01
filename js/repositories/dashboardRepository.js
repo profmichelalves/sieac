@@ -407,9 +407,10 @@ export async function getDetalheResultados(filters = {}) {
   };
 }
 
-// Agrega por estudante as disciplinas com média acumulada inferior a 6,0 para os
-// relatórios de Em Recuperação (1 a 6 disciplinas e frequência ≥ 75%) e Em Reprovação
-// (frequência < 75% ou mais de 6 disciplinas).
+// Agrega por estudante as disciplinas para os relatórios de Aprovação (nenhuma
+// disciplina com média < 6,0 e frequência ≥ 75%), Em Recuperação (1 a 6 disciplinas
+// com média < 6,0 e frequência ≥ 75%) e Em Reprovação (frequência < 75% ou mais de
+// 6 disciplinas com média < 6,0).
 export async function getDetalheSituacao(filters = {}) {
   await getRefCache();
   const [notas, freqs] = await Promise.all([
@@ -448,6 +449,7 @@ export async function getDetalheSituacao(filters = {}) {
 
   const reprovados = [];
   const recuperacao = [];
+  const aprovados = [];
 
   Object.entries(porEstudante).forEach(([eId, dados]) => {
     const e = eMap[eId];
@@ -473,6 +475,17 @@ export async function getDetalheSituacao(filters = {}) {
       if (qtd >= 1 && qtd <= 6) {
         const bola = qtd >= 5 ? 'red' : qtd >= 3 ? 'orange' : 'yellow';
         recuperacao.push({ ...base, bola });
+      } else if (qtd === 0) {
+        const medias = dados.disciplinas.map(d => d.media);
+        aprovados.push({
+          estudante: base.estudante,
+          matricula: base.matricula,
+          turma: base.turma,
+          frequencia: base.frequencia,
+          mediaGeral: Math.round((medias.reduce((a, b) => a + b, 0) / medias.length) * 10) / 10,
+          menor: Math.min(...medias),
+          maior: Math.max(...medias),
+        });
       }
     }
   });
@@ -491,7 +504,9 @@ export async function getDetalheSituacao(filters = {}) {
     Math.min(...a.disciplinas.map(d => d.media)) - Math.min(...b.disciplinas.map(d => d.media))
   );
 
-  return { data: { reprovados, recuperacao }, error: null };
+  aprovados.sort((a, b) => a.menor - b.menor || a.mediaGeral - b.mediaGeral);
+
+  return { data: { aprovados, reprovados, recuperacao }, error: null };
 }
 
 export async function getMediaPorTurma(filters = {}) {
