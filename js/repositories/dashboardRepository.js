@@ -264,10 +264,10 @@ async function getEstudantesImportados(filters) {
 //  - Reprovado:     frequência < 75% ou mais de 6 disciplinas abaixo
 //  - Recuperação:   1 a 6 disciplinas abaixo (com frequência ≥ 75%)
 //  - Aprovado:      nenhuma disciplina abaixo (com frequência ≥ 75%)
-// Estudantes que possuem alguma disciplina sem nenhuma nota lançada não são
-// classificados; ficam no grupo "Sem Notas Lançadas" e não entram no cálculo
-// da Média Geral nem na classificação. Só são classificados estudantes com
-// todas as disciplinas com notas lançadas.
+// Disciplinas sem nenhuma nota lançada não entram na Média Geral nem contam
+// como disciplina abaixo; apenas estudantes sem nenhuma nota lançada em
+// nenhuma disciplina (todas as linhas vazias) ficam no grupo "Sem Notas
+// Lançadas" e não entram na classificação.
 async function classificarEstudantes(filters) {
   await getRefCache();
   const [idsEstudantes, notas, freqs] = await Promise.all([
@@ -283,13 +283,8 @@ async function classificarEstudantes(filters) {
 
   const medias = {};
   const qtdAbaixo = {};
-  const disciplinasSemNota = {};
   notas.forEach(n => {
-    if (disciplinaVazia(n)) {
-      if (!disciplinasSemNota[n.estudante_id]) disciplinasSemNota[n.estudante_id] = 0;
-      disciplinasSemNota[n.estudante_id]++;
-      return;
-    }
+    if (disciplinaVazia(n)) return;
 
     const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
     if (!medias[n.estudante_id]) medias[n.estudante_id] = { soma: 0, count: 0 };
@@ -317,7 +312,7 @@ async function classificarEstudantes(filters) {
   });
 
   const idsSemNota = new Set([...idsEstudantes].filter(id =>
-    !medias[id] || (disciplinasSemNota[id] && disciplinasSemNota[id] > 0)
+    !medias[id]
   ).map(id => String(id)));
 
   const classificacao = {};
@@ -414,7 +409,7 @@ export async function getDetalheResultados(filters = {}) {
   const catMap = { aprovado: 'aprovados', recuperacao: 'recuperacao', reprovado: 'reprovados' };
   const resultado = { aprovados: [], recuperacao: [], reprovados: [] };
   notas.forEach(n => {
-    const mf = isNaN(parseFloat(n.media_final)) ? 0 : parseFloat(n.media_final);
+    if (disciplinaVazia(n)) return;
     const cat = catMap[classificacao[n.estudante_id]];
     if (!cat) return;
     const e = eMap[n.estudante_id];
@@ -457,9 +452,9 @@ export async function getDetalheResultados(filters = {}) {
 // Agrega por estudante as disciplinas para os relatórios de Aprovação (nenhuma
 // disciplina com média < 6,0 e frequência ≥ 75%), Em Recuperação (1 a 6 disciplinas
 // com média < 6,0 e frequência ≥ 75%) e Em Reprovação (frequência < 75% ou mais de
-// 6 disciplinas com média < 6,0). Estudantes com alguma disciplina sem nota lançada
-// não são classificados; o relatório "Sem Notas Lançadas" lista cada estudante com
-// as disciplinas vazias, informando turma e professor.
+// 6 disciplinas com média < 6,0). Disciplinas sem nenhuma nota lançada não
+// entram nos relatórios; apenas estudantes sem nenhuma nota lançada em nenhuma
+// disciplina (todas as linhas vazias) ficam no relatório "Sem Notas Lançadas".
 export async function getDetalheSituacao(filters = {}) {
   await getRefCache();
   const [idsEstudantes, notas, freqs] = await Promise.all([
@@ -470,14 +465,13 @@ export async function getDetalheSituacao(filters = {}) {
 
   const alocComp = {}; refCache.alocacoes.forEach(a => alocComp[a.id] = a.componente_id);
   const alocTurma = {}; refCache.alocacoes.forEach(a => alocTurma[a.id] = a.turma_id);
-  const alocProf = {}; refCache.alocacoes.forEach(a => alocProf[a.id] = a.professor_id);
   const cMap = {}; refCache.componentes.forEach(c => cMap[c.id] = c.nome);
   const tMap = {}; refCache.turmas.forEach(t => tMap[t.id] = t.nome);
-  const pMap = {}; refCache.professores.forEach(p => pMap[p.id] = p.nome);
   const eMap = {}; refCache.estudantes.forEach(e => eMap[e.id] = e);
 
   const porEstudante = {};
   notas.forEach(n => {
+    if (disciplinaVazia(n)) return;
     const compId = alocComp[n.alocacao_id];
     const turmaId = alocTurma[n.alocacao_id];
     let media = calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim);
@@ -485,18 +479,11 @@ export async function getDetalheSituacao(filters = {}) {
       const mf = parseFloat(n.media_final);
       if (!isNaN(mf) && mf > 0) media = mf;
     }
-    if (!porEstudante[n.estudante_id]) porEstudante[n.estudante_id] = { disciplinas: [], turmas: new Set(), semNota: [] };
+    if (!porEstudante[n.estudante_id]) porEstudante[n.estudante_id] = { disciplinas: [], turmas: new Set() };
     const reg = porEstudante[n.estudante_id];
     reg.disciplinas.push({ nome: cMap[compId] || 'N/I', media });
     const nomeTurma = tMap[turmaId];
     if (nomeTurma) reg.turmas.add(nomeTurma);
-    if (disciplinaVazia(n)) {
-      reg.semNota.push({
-        disciplina: cMap[compId] || 'N/I',
-        turma: nomeTurma || '-',
-        professor: pMap[alocProf[n.alocacao_id]] || 'N/I',
-      });
-    }
   });
 
   const freqPorEstudante = {};
@@ -519,14 +506,8 @@ export async function getDetalheSituacao(filters = {}) {
     const nome = e?.nome || `ID ${id}`;
     const matricula = e?.matricula || '-';
 
-    if (!dados || dados.semNota.length) {
-      if (!dados) {
-        semNotas.push({ estudante: nome, matricula, turma: '-', disciplina: '-', professor: '-' });
-      } else {
-        dados.semNota.forEach(sn => {
-          semNotas.push({ estudante: nome, matricula, turma: sn.turma, disciplina: sn.disciplina, professor: sn.professor });
-        });
-      }
+    if (!dados || !dados.disciplinas.length) {
+      semNotas.push({ estudante: nome, matricula, turma: '-', disciplina: '-', professor: '-' });
       return;
     }
 
