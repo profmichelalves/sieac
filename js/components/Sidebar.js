@@ -55,17 +55,17 @@ export function initSidebar() {
 
     const menuUsuarios = document.getElementById('menu-usuarios');
     if (menuUsuarios) {
-      menuUsuarios.style.display = isAdmin() ? 'block' : 'none';
+      menuUsuarios.style.display = isAdmin() ? 'flex' : 'none';
     }
 
     const menuLogs = document.getElementById('menu-logs');
     if (menuLogs) {
-      menuLogs.style.display = isAdmin() ? 'block' : 'none';
+      menuLogs.style.display = isAdmin() ? 'flex' : 'none';
     }
 
     const menuImportar = document.getElementById('menu-importar');
     if (menuImportar) {
-      menuImportar.style.display = user.perfil === 'Professor' ? 'none' : 'block';
+      menuImportar.style.display = user.perfil === 'Professor' ? 'none' : 'flex';
     }
   }
 
