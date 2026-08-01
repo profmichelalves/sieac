@@ -224,6 +224,15 @@ async function processFile(tipo, file) {
       </div>
     ` : ''}
     ${ignoradosCount > 0 ? `
+      <details style="margin-top:12px;">
+        <summary style="cursor:pointer;font-size:0.85rem;color:var(--sieac-warning);user-select:none;">
+          Ver linhas ignoradas (${ignoradosCount}) ${ignoradosCount > 100 ? '— exibindo as 100 primeiras' : ''}
+        </summary>
+        <div style="max-height:220px;overflow:auto;margin-top:8px;border:1px solid var(--sieac-border,#ddd);border-radius:8px;padding:8px 12px;font-size:0.8rem;line-height:1.8;">
+          ${(res.ignorados || []).slice(0, 100).map(d => `• ${d}`).join('<br>')}
+          ${ignoradosCount > 100 ? `<br><em>... e mais ${ignoradosCount - 100} linhas.</em>` : ''}
+        </div>
+      </details>
       <div style="margin-top:12px;">
         <button class="btn btn-outline-primary btn-sm btn-print-ignorados no-print" onclick="window.open('','_blank')">
           <i class="bi bi-printer"></i> Imprimir Detalhes (${ignoradosCount})

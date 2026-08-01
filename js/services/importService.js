@@ -294,10 +294,40 @@ export async function importarFrequencia(file, onProgress) {
     supabaseQuery('turmas', { select: 'id,nome' }),
   ]);
 
+  const normTurma = s => String(s).trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '');
+  const normMatricula = s => String(s).trim().replace(/[^\d]/g, '').replace(/^0+/, '');
+
   const estMap = {};
-  (estRes.data || []).forEach(e => { if (e.matricula) estMap[e.matricula] = e.id; });
+  const estNumMap = {};
+  (estRes.data || []).forEach(e => {
+    if (!e.matricula) return;
+    const m = String(e.matricula).trim();
+    estMap[m] = e.id;
+    const num = normMatricula(m);
+    if (num && !estNumMap[num]) estNumMap[num] = e.id;
+  });
   const turmaMap = {};
-  (turmaRes.data || []).forEach(t => turmaMap[t.nome] = t.id);
+  const turmaNormMap = {};
+  (turmaRes.data || []).forEach(t => {
+    if (!t.nome) return;
+    const n = String(t.nome).trim();
+    turmaMap[n] = t.id;
+    const key = normTurma(n);
+    if (key && !turmaNormMap[key]) turmaNormMap[key] = t.id;
+  });
+
+  const resolverMatricula = (v) => {
+    const m = String(v).trim();
+    if (estMap[m] != null) return estMap[m];
+    const num = normMatricula(m);
+    return num ? (estNumMap[num] ?? null) : null;
+  };
+  const resolverTurma = (v) => {
+    const n = String(v).trim();
+    if (turmaMap[n] != null) return turmaMap[n];
+    const key = normTurma(n);
+    return key ? (turmaNormMap[key] ?? null) : null;
+  };
 
   const ignorados = [];
   const totalFreq = freqList.length;
@@ -307,8 +337,8 @@ export async function importarFrequencia(file, onProgress) {
     const batch = freqList.slice(i, i + BATCH_SIZE);
     const rowsIns = [];
     for (const f of batch) {
-      const estId = estMap[f.matricula];
-      const turId = turmaMap[f.turma];
+      const estId = resolverMatricula(f.matricula);
+      const turId = resolverTurma(f.turma);
       if (!estId || !turId) {
         const causa = !estId && !turId ? 'matrícula e turma' : !estId ? 'matrícula' : 'turma';
         ignorados.push(`Ignorado: ${f.matricula} - ${f.turma} (${causa} não encontrada${!turId ? '/o' : ''})`);
