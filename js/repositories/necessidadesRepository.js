@@ -179,7 +179,7 @@ export async function salvarNecessidadesEstudante(estudanteId, tipoIds = [], pro
 // Relatório de Estudantes NEE: apenas estudantes com pelo menos uma necessidade.
 // Professores enxergam apenas os estudantes das suas turmas; demais perfis, todos.
 export async function listarEstudantesNEE() {
-  const [estudantes, turmasMap, { necessidadesPorEstudante, aeePorEstudante }, permitidos] = await Promise.all([
+  const [{ data: estudantes }, turmasMap, { necessidadesPorEstudante, aeePorEstudante }, permitidos] = await Promise.all([
     supabaseFetchAll('estudantes', { select: 'id,nome,matricula' }),
     getTurmasPorEstudanteMap(),
     getNecessidadesMaps(),
