@@ -214,7 +214,9 @@ async function carregarEstudante(id) {
   const nee = await getNecessidadesEstudante(id);
   studentInfo.necessidades = nee.tipos.length ? nee.tipos.join(', ') : 'Não informado';
   studentInfo.professorAee = nee.professorAee ? nee.professorAee.nome : 'Não informado';
-  document.getElementById('e-necessidades').textContent = studentInfo.necessidades;
+  document.getElementById('e-necessidades').innerHTML = nee.tipos.length
+    ? nee.tipos.map(n => `<span class="badge badge-sieac-secondary" style="margin:2px 4px 2px 0;font-size:0.72rem;">${n}</span>`).join('')
+    : 'Não informado';
   document.getElementById('e-professor-aee').textContent = studentInfo.professorAee;
 
   document.getElementById('estudante-content').style.display = 'block';
@@ -334,8 +336,6 @@ function gerarPdfEstudante() {
       `Turma: ${studentInfo.turma}`,
       `Série: ${studentInfo.serie}`,
       `Turno: ${studentInfo.turno}`,
-      `Necessidades: ${studentInfo.necessidades}`,
-      `Professor AEE: ${studentInfo.professorAee}`,
     ],
     tabelas: [
       {
