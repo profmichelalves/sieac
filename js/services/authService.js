@@ -190,18 +190,14 @@ export async function getProfessorVinculo() {
   const user = getCurrentUser();
   if (!user || user.perfil !== 'Professor') return null;
 
-  const { data: professores } = await supabaseQuery('professores', {
-    select: 'id,matricula,nome',
-    filters: [{ col: 'matricula', val: user.matricula }]
-  });
-  if (!professores || !professores.length) {
-    const { data: all } = await supabaseQuery('professores', {
-      select: 'id,matricula,nome', limit: 100
-    });
-    return null;
-  }
+  const norm = s => String(s ?? '').trim().replace(/[^\d]/g, '').replace(/^0+/, '');
+  const userMat = norm(user.matricula);
 
-  const prof = professores[0];
+  const { data: professores } = await supabaseQuery('professores', {
+    select: 'id,matricula,nome'
+  });
+  const prof = (professores || []).find(p => userMat && norm(p.matricula) === userMat);
+  if (!prof) return null;
   const { data: alocacoes } = await supabaseQuery('alocacoes', {
     select: 'id,turma_id,componente_id',
     filters: [{ col: 'professor_id', val: prof.id }]
