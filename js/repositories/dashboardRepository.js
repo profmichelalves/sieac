@@ -31,7 +31,7 @@ function disciplinaVazia(n) {
   return isNaN(mf);
 }
 
-async function getRefCache() {
+export async function getRefCache() {
   if (refCache) return refCache;
   const [s, t, c, p, e] = await Promise.all([
     supabaseQuery('series', { select: 'id,nome,etapa_ensino_id' }),
@@ -56,7 +56,7 @@ async function getRefCache() {
 
 export function clearCache() { refCache = null; estudantesPermitidos = null; permitidosCarregados = false; }
 
-async function getEstudantesPermitidos() {
+export async function getEstudantesPermitidos() {
   if (permitidosCarregados) return estudantesPermitidos;
   permitidosCarregados = true;
   if (!isProfessor()) {

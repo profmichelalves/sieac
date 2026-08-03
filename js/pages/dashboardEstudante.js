@@ -2,6 +2,7 @@ import { showToast } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { supabaseQuery } from '../services/supabase.js';
 import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, listarEstudantesParaBusca, listarTurmasParaConsulta, listarEstudantesPorTurma, podeVerEstudante } from '../repositories/dashboardRepository.js';
+import { getNecessidadesEstudante } from '../repositories/necessidadesRepository.js';
 import { destroyChart } from '../components/Charts.js';
 import { createSearchSelect } from '../components/SearchSelect.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
@@ -66,6 +67,8 @@ export async function render() {
             <div class="student-info-item"><label>Turma</label><span id="e-turma">—</span></div>
             <div class="student-info-item"><label>Série</label><span id="e-serie">—</span></div>
             <div class="student-info-item"><label>Turno</label><span id="e-turno">—</span></div>
+            <div class="student-info-item"><label>Necessidades</label><span id="e-necessidades">—</span></div>
+            <div class="student-info-item"><label>Professor AEE</label><span id="e-professor-aee">—</span></div>
           </div>
         </div>
       </div>
@@ -208,6 +211,12 @@ async function carregarEstudante(id) {
   document.getElementById('e-serie').textContent = studentInfo.serie;
   document.getElementById('e-turno').textContent = studentInfo.turno;
 
+  const nee = await getNecessidadesEstudante(id);
+  studentInfo.necessidades = nee.tipos.length ? nee.tipos.join(', ') : 'Não informado';
+  studentInfo.professorAee = nee.professorAee ? nee.professorAee.nome : 'Não informado';
+  document.getElementById('e-necessidades').textContent = studentInfo.necessidades;
+  document.getElementById('e-professor-aee').textContent = studentInfo.professorAee;
+
   document.getElementById('estudante-content').style.display = 'block';
 
   const notas = await getNotasEstudante(id);
@@ -325,6 +334,8 @@ function gerarPdfEstudante() {
       `Turma: ${studentInfo.turma}`,
       `Série: ${studentInfo.serie}`,
       `Turno: ${studentInfo.turno}`,
+      `Necessidades: ${studentInfo.necessidades}`,
+      `Professor AEE: ${studentInfo.professorAee}`,
     ],
     tabelas: [
       {

@@ -1,5 +1,5 @@
 import { $$ } from '../utils/helpers.js';
-import { getCurrentUser, isAdmin } from '../services/authService.js';
+import { getCurrentUser, isAdmin, isGestao } from '../services/authService.js';
 
 export function initSidebar() {
   const items = $$('.sidebar-item');
@@ -67,6 +67,11 @@ export function initSidebar() {
     if (menuImportar) {
       menuImportar.style.display = user.perfil === 'Professor' ? 'none' : 'flex';
     }
+
+    const menuCadastroEstudantes = document.getElementById('menu-cadastro-estudantes');
+    if (menuCadastroEstudantes) {
+      menuCadastroEstudantes.style.display = isGestao() ? 'flex' : 'none';
+    }
   }
 
   const btnLogout = document.getElementById('btn-logout');
@@ -90,8 +95,10 @@ export function setActiveRoute(route) {
     'dashboard-frequencia': 'Dashboard de Frequência',
     'relatorios': 'Relatório de Notas',
     'relatorio-sem-notas': 'Relatório de Notas Não Lançadas',
+    'relatorio-nee': 'Relatório de Estudantes NEE',
     'dashboard-comparativo': 'Dashboard Comparativo',
     'dashboard-estudante': 'Consulta por Estudante',
+    'cadastro-estudantes': 'Cadastro de Estudantes',
     'importar': 'Importar Dados',
     'usuarios': 'Gerenciar Usuários',
     'logs': 'Logs de Atividade',

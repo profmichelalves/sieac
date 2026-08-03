@@ -14,6 +14,8 @@ export const LOG_ACTIONS = {
   IMPORTAR_FREQUENCIA: 'importar_frequencia',
   LIMPAR_DADOS: 'limpar_dados',
   GERAR_PDF: 'gerar_pdf',
+  EDITAR_NECESSIDADES: 'editar_necessidades',
+  RELATORIO_NEE: 'relatorio_nee',
 };
 
 export async function registrarLog(acao, detalhes = null) {
