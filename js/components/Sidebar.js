@@ -65,7 +65,7 @@ export function initSidebar() {
 
     const menuImportar = document.getElementById('menu-importar');
     if (menuImportar) {
-      menuImportar.style.display = user.perfil === 'Professor' ? 'none' : 'flex';
+      menuImportar.style.display = (user.perfil === 'Professor' || user.perfil === 'Professor do AEE') ? 'none' : 'flex';
     }
 
     const menuCadastroEstudantes = document.getElementById('menu-cadastro-estudantes');

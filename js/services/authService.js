@@ -80,15 +80,16 @@ export async function register(nome, email, matricula, senha, perfilId) {
     select: 'id,nome'
   });
   const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const permitidos = new Set(['professor', 'gestao escolar']);
+  const permitidos = new Set(['professor', 'professor do aee', 'gestao escolar']);
 
   const escolhido = (perfis || []).find(p => p.id === Number(perfilId));
   const perfilValido = escolhido && permitidos.has(norm(escolhido.nome)) ? escolhido.id : null;
   const perfilFinal = perfilValido || (perfis || []).find(p => norm(p.nome) === 'professor')?.id || 3;
 
-  const eProfessor = norm((perfis || []).find(p => p.id === perfilFinal)?.nome || '') === 'professor';
+  const perfilNomeFinal = norm((perfis || []).find(p => p.id === perfilFinal)?.nome || '');
+  const eProfessorOuAee = ['professor', 'professor do aee'].includes(perfilNomeFinal);
   let professorEncontrado = null;
-  if (eProfessor) {
+  if (eProfessorOuAee) {
     const { data: professores } = await supabaseFetchAll('professores', { select: 'id,matricula,nome' });
     professorEncontrado = (professores || []).find(p => matriculaNormalizada && normMatricula(p.matricula) === matriculaNormalizada) || null;
     if (!professorEncontrado) {
@@ -99,7 +100,7 @@ export async function register(nome, email, matricula, senha, perfilId) {
 
   const normNome = s => norm(String(s || '').trim().replace(/\s+/g, ' '));
   const nomeConfere = professorEncontrado && normNome(nome) === normNome(professorEncontrado.nome);
-  const ativadoAutomaticamente = eProfessor && nomeConfere;
+  const ativadoAutomaticamente = eProfessorOuAee && nomeConfere;
 
   const newUser = {
     nome,
@@ -183,12 +184,21 @@ export function isProfessor() {
   return user?.perfil === 'Professor';
 }
 
+export function isProfessorAee() {
+  const user = getCurrentUser();
+  return user?.perfil === 'Professor do AEE';
+}
+
+export function isProfessorLike() {
+  return isProfessor() || isProfessorAee();
+}
+
 let professorVinculo = null;
 
 export async function getProfessorVinculo() {
   if (professorVinculo) return professorVinculo;
   const user = getCurrentUser();
-  if (!user || user.perfil !== 'Professor') return null;
+  if (!user || (user.perfil !== 'Professor' && user.perfil !== 'Professor do AEE')) return null;
 
   const norm = s => String(s ?? '').trim().replace(/[^\d]/g, '').replace(/^0+/, '');
   const userMat = norm(user.matricula);

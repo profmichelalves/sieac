@@ -180,8 +180,9 @@ async function carregarPerfisCadastro() {
   const fallback = [
     { id: 2, nome: 'Gestão Escolar' },
     { id: 3, nome: 'Professor' },
+    { id: 4, nome: 'Professor do AEE' },
   ];
-  const permitidos = new Set(['professor', 'gestao escolar', 'gestao escolar ']);
+  const permitidos = new Set(['professor', 'professor do aee', 'gestao escolar', 'gestao escolar ']);
 
   let opcoes = fallback;
   try {

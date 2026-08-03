@@ -3,7 +3,7 @@ import { infoBtn } from '../utils/explanation.js';
 import { listarUsuarios, atualizarUsuario, getCurrentUser } from '../services/authService.js';
 import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
-const PERFIS = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor' };
+const PERFIS = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor', 4: 'Professor do AEE' };
 
 const COLUNAS_SORT = {
   nome: u => (u.nome || '').toLowerCase(),
@@ -92,7 +92,7 @@ async function carregarUsuarios() {
   const thAtual = document.querySelector(`#usuarios-table th[data-sort="${ordenacao.col}"] .sort-arrow`);
   if (thAtual) thAtual.textContent = ordenacao.dir === 'asc' ? ' ↑' : ' ↓';
 
-  const perfisMap = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor' };
+  const perfisMap = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor', 4: 'Professor do AEE' };
   const currentUser = getCurrentUser();
 
   tbody.innerHTML = usuarios.map(u => {

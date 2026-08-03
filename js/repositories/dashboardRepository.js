@@ -1,5 +1,5 @@
 import { supabaseQuery, supabaseFetchAll } from '../services/supabase.js';
-import { isProfessor, getProfessorVinculo } from '../services/authService.js';
+import { isProfessor, isProfessorAee, getProfessorVinculo } from '../services/authService.js';
 
 let refCache = null;
 let estudantesPermitidos = null;
@@ -59,13 +59,21 @@ export function clearCache() { refCache = null; estudantesPermitidos = null; per
 export async function getEstudantesPermitidos() {
   if (permitidosCarregados) return estudantesPermitidos;
   permitidosCarregados = true;
-  if (!isProfessor()) {
+  if (!isProfessor() && !isProfessorAee()) {
     estudantesPermitidos = null;
     return null;
   }
   const vinculo = await getProfessorVinculo();
   if (!vinculo) {
     estudantesPermitidos = new Set();
+    return estudantesPermitidos;
+  }
+  if (isProfessorAee()) {
+    const { data: aee } = await supabaseFetchAll('estudante_professores_aee', {
+      select: 'estudante_id',
+      filters: [{ col: 'professor_id', val: vinculo.id }],
+    });
+    estudantesPermitidos = new Set((aee || []).map(a => Number(a.estudante_id)));
     return estudantesPermitidos;
   }
   await getRefCache();
@@ -183,50 +191,56 @@ function montarFiltrosFrequencia(filters) {
 
 async function queryNotas(filters, selectFields) {
   const f = montarFiltrosNotas(filters);
+  let rows = [];
   if (!f) {
     const res = await supabaseFetchAll('notas', { select: selectFields });
-    return res.data || [];
-  }
-  if (f.alocacao_ids && f.alocacao_ids.length) {
+    rows = res.data || [];
+  } else if (f.alocacao_ids && f.alocacao_ids.length) {
     const res = await supabaseFetchAll('notas', {
       select: selectFields,
       filters: [{ col: 'alocacao_id', val: f.alocacao_ids, op: 'in' }],
     });
-    return res.data || [];
-  }
-  if (f.estudante_id) {
+    rows = res.data || [];
+  } else if (f.estudante_id) {
     const fil = [{ col: 'estudante_id', val: f.estudante_id }];
     if (f.alocacao_ids && f.alocacao_ids.length) {
       fil.push({ col: 'alocacao_id', val: f.alocacao_ids, op: 'in' });
     }
     const res = await supabaseFetchAll('notas', { select: selectFields, filters: fil });
-    return res.data || [];
+    rows = res.data || [];
   }
-  return [];
+  if (isProfessorAee()) {
+    const permitidos = await getEstudantesPermitidos();
+    if (permitidos) rows = rows.filter(n => permitidos.has(Number(n.estudante_id)));
+  }
+  return rows;
 }
 
 async function queryFrequencias(filters, selectFields) {
   const f = montarFiltrosFrequencia(filters);
+  let rows = [];
   if (!f) {
     const res = await supabaseFetchAll('frequencias', { select: selectFields });
-    return res.data || [];
-  }
-  if (f.turma_ids && f.turma_ids.length) {
+    rows = res.data || [];
+  } else if (f.turma_ids && f.turma_ids.length) {
     const res = await supabaseFetchAll('frequencias', {
       select: selectFields,
       filters: [{ col: 'turma_id', val: f.turma_ids, op: 'in' }],
     });
-    return res.data || [];
-  }
-  if (f.estudante_id) {
+    rows = res.data || [];
+  } else if (f.estudante_id) {
     const fil = [{ col: 'estudante_id', val: f.estudante_id }];
     if (f.turma_ids && f.turma_ids.length) {
       fil.push({ col: 'turma_id', val: f.turma_ids, op: 'in' });
     }
     const res = await supabaseFetchAll('frequencias', { select: selectFields, filters: fil });
-    return res.data || [];
+    rows = res.data || [];
   }
-  return [];
+  if (isProfessorAee()) {
+    const permitidos = await getEstudantesPermitidos();
+    if (permitidos) rows = rows.filter(f => permitidos.has(Number(f.estudante_id)));
+  }
+  return rows;
 }
 
 // ---- EXPORTED FUNCTIONS ----
