@@ -913,6 +913,68 @@ export async function listarEstudantesParaBusca() {
   return lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
+// Carrega as turmas disponíveis para consulta conforme o perfil do usuário:
+// professor vê apenas as turmas em que está alocado; demais perfis veem todas.
+export async function listarTurmasParaConsulta() {
+  await getRefCache();
+  const serieMap = {};
+  refCache.series.forEach(s => serieMap[s.id] = s.nome);
+  const map = t => ({ id: t.id, nome: t.nome, serie: serieMap[t.serie_id] || '', turno: t.turno || '' });
+
+  if (isProfessor()) {
+    const vinculo = await getProfessorVinculo();
+    if (!vinculo) return [];
+    return vinculo.turmas.map(map).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+
+  return refCache.turmas.map(map).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+// Lista os estudantes de uma turma (via notas -> alocações e via frequências),
+// respeitando as permissões do perfil do usuário.
+export async function listarEstudantesPorTurma(turmaId) {
+  await getRefCache();
+  const ids = new Set();
+
+  const alocIds = refCache.alocacoes.filter(a => String(a.turma_id) === String(turmaId)).map(a => a.id);
+  for (let i = 0; i < alocIds.length; i += 100) {
+    const chunk = alocIds.slice(i, i + 100);
+    if (!chunk.length) continue;
+    const { data: notas } = await supabaseFetchAll('notas', {
+      select: 'estudante_id',
+      filters: [{ col: 'alocacao_id', val: chunk, op: 'in' }],
+      limit: 30000,
+    });
+    (notas || []).forEach(n => ids.add(Number(n.estudante_id)));
+  }
+
+  const { data: freqs } = await supabaseFetchAll('frequencias', {
+    select: 'estudante_id',
+    filters: [{ col: 'turma_id', val: turmaId }],
+    limit: 30000,
+  });
+  (freqs || []).forEach(f => ids.add(Number(f.estudante_id)));
+
+  const permitidos = await getEstudantesPermitidos();
+  const idList = [...ids].filter(id => !permitidos || permitidos.has(Number(id)));
+
+  const eMap = new Map();
+  for (let i = 0; i < idList.length; i += 100) {
+    const chunk = idList.slice(i, i + 100);
+    if (!chunk.length) continue;
+    const { data: ests } = await supabaseQuery('estudantes', {
+      select: 'id,nome,matricula',
+      filters: [{ col: 'id', val: chunk, op: 'in' }],
+      limit: 100,
+    });
+    (ests || []).forEach(e => eMap.set(Number(e.id), e));
+  }
+
+  return idList
+    .map(id => ({ id, nome: eMap.get(id)?.nome || `ID ${id}`, matricula: eMap.get(id)?.matricula || '-' }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
 export async function buscarEstudantes(termo) {
   const q = (termo || '').trim();
   if (!q) return [];

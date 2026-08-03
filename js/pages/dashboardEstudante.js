@@ -1,13 +1,15 @@
 import { showToast } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { supabaseQuery } from '../services/supabase.js';
-import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, listarEstudantesParaBusca, podeVerEstudante } from '../repositories/dashboardRepository.js';
+import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, listarEstudantesParaBusca, listarTurmasParaConsulta, listarEstudantesPorTurma, podeVerEstudante } from '../repositories/dashboardRepository.js';
 import { destroyChart } from '../components/Charts.js';
 import { createSearchSelect } from '../components/SearchSelect.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
 
 let evolChart = null;
 let studentCombo = null;
+let turmaCombo = null;
+let turmaListaCombo = null;
 let currentStudentId = null;
 let studentInfo = {};
 let studentNotas = [];
@@ -35,6 +37,15 @@ export async function render() {
 
     <div class="student-search mb-4">
       <div class="filter-group">
+        <label class="filter-label">Filtrar por turma</label>
+        <div id="input-filtrar-turma"></div>
+      </div>
+      <div class="filter-group mt-3" id="estudantes-turma-wrap" style="display:none;">
+        <label class="filter-label">Estudantes da turma</label>
+        <div id="input-estudantes-turma"></div>
+        <div class="student-turma-count" id="estudantes-turma-contagem" style="font-size:0.78rem;color:var(--sieac-text-muted);margin-top:6px;"></div>
+      </div>
+      <div class="filter-group mt-3">
         <label class="filter-label">Buscar estudante por nome ou matrícula</label>
         <div id="input-buscar-estudante"></div>
       </div>
@@ -118,12 +129,55 @@ export async function render() {
     onSelect: id => carregarEstudante(id),
   });
   document.getElementById('input-buscar-estudante').appendChild(studentCombo.el);
+
+  const turmas = await listarTurmasParaConsulta();
+  turmaCombo = createSearchSelect({
+    items: turmas,
+    getText: t => t.serie ? `${t.nome} — ${t.serie}` : t.nome,
+    getValue: t => t.id,
+    placeholder: turmas.length ? 'Selecione uma turma...' : 'Nenhuma turma disponível para o seu perfil',
+    disabled: !turmas.length,
+    onSelect: id => selecionarTurma(id),
+  });
+  document.getElementById('input-filtrar-turma').appendChild(turmaCombo.el);
+
+  turmaListaCombo = createSearchSelect({
+    items: [],
+    getText: e => `${e.nome} — ${e.matricula}`,
+    getValue: e => e.id,
+    placeholder: 'Selecione um estudante da turma...',
+    onSelect: id => carregarEstudante(id),
+  });
+  document.getElementById('input-estudantes-turma').appendChild(turmaListaCombo.el);
+
   document.getElementById('btn-pdf-estudante').addEventListener('click', gerarPdfEstudante);
 }
 
 export function unload() {
   if (studentCombo) { studentCombo.destroy(); studentCombo = null; }
+  if (turmaCombo) { turmaCombo.destroy(); turmaCombo = null; }
+  if (turmaListaCombo) { turmaListaCombo.destroy(); turmaListaCombo = null; }
   if (evolChart) { evolChart.destroy(); evolChart = null; }
+}
+
+async function selecionarTurma(turmaId) {
+  currentStudentId = null;
+  document.getElementById('estudante-content').style.display = 'none';
+  const wrap = document.getElementById('estudantes-turma-wrap');
+  const contagem = document.getElementById('estudantes-turma-contagem');
+  if (!turmaId) {
+    wrap.style.display = 'none';
+    turmaListaCombo.setItems([]);
+    turmaListaCombo.clear();
+    return;
+  }
+  wrap.style.display = 'block';
+  turmaListaCombo.clear();
+  contagem.textContent = 'Carregando estudantes...';
+  const lista = await listarEstudantesPorTurma(turmaId);
+  turmaListaCombo.setItems(lista);
+  contagem.textContent = lista.length ? `${lista.length} estudante(s) na turma` : 'Nenhum estudante encontrado nesta turma';
+  if (lista.length === 1) carregarEstudante(lista[0].id);
 }
 
 async function carregarEstudante(id) {
