@@ -1,9 +1,9 @@
 import { $, showToast } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
-import { listarUsuarios, atualizarUsuario, getCurrentUser } from '../services/authService.js';
+import { listarUsuarios, listarPerfis, atualizarUsuario, getCurrentUser } from '../services/authService.js';
 import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
-const PERFIS = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor', 4: 'Professor do AEE' };
+const PERFIS_FALLBACK = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor', 4: 'Professor do AEE' };
 
 const COLUNAS_SORT = {
   nome: u => (u.nome || '').toLowerCase(),
@@ -79,6 +79,14 @@ async function carregarUsuarios() {
     return;
   }
 
+  const { data: perfisList } = await listarPerfis();
+  const perfisMap = {};
+  if (perfisList && perfisList.length) {
+    perfisList.forEach(p => { perfisMap[Number(p.id)] = p.nome; });
+  } else {
+    Object.entries(PERFIS_FALLBACK).forEach(([id, nome]) => { perfisMap[Number(id)] = nome; });
+  }
+
   const ordenar = COLUNAS_SORT[ordenacao.col] || COLUNAS_SORT.nome;
   usuarios.sort((a, b) => {
     const va = ordenar(a);
@@ -92,7 +100,6 @@ async function carregarUsuarios() {
   const thAtual = document.querySelector(`#usuarios-table th[data-sort="${ordenacao.col}"] .sort-arrow`);
   if (thAtual) thAtual.textContent = ordenacao.dir === 'asc' ? ' ↑' : ' ↓';
 
-  const perfisMap = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor', 4: 'Professor do AEE' };
   const currentUser = getCurrentUser();
 
   tbody.innerHTML = usuarios.map(u => {
