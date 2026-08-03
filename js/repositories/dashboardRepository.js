@@ -2,8 +2,6 @@ import { supabaseQuery, supabaseFetchAll } from '../services/supabase.js';
 import { isProfessor, isProfessorAee, getProfessorVinculo } from '../services/authService.js';
 
 let refCache = null;
-let estudantesPermitidos = null;
-let permitidosCarregados = false;
 
 function notasPreenchidas(n1, n2, n3, n4) {
   return [n1, n2, n3, n4].map(v => parseFloat(v)).filter(v => !isNaN(v));
@@ -54,27 +52,33 @@ export async function getRefCache() {
   return refCache;
 }
 
-export function clearCache() { refCache = null; estudantesPermitidos = null; permitidosCarregados = false; }
+let permitidosPromise = null;
 
-export async function getEstudantesPermitidos() {
-  if (permitidosCarregados) return estudantesPermitidos;
-  permitidosCarregados = true;
-  if (!isProfessor() && !isProfessorAee()) {
-    estudantesPermitidos = null;
-    return null;
+export function clearCache() { refCache = null; permitidosPromise = null; }
+
+// Conjunto de estudantes que o usuário logado pode visualizar:
+//  - Professor: estudantes com notas nas suas turmas (alocações);
+//  - Professor do AEE: estudantes vinculados a ele em estudante_professores_aee;
+//  - demais perfis: null (todos).
+// O resultado é cacheado como Promise para evitar corrida entre chamadas
+// concorrentes (várias funções chamam isto em Promise.all).
+export function getEstudantesPermitidos() {
+  if (!permitidosPromise) {
+    permitidosPromise = calcularEstudantesPermitidos();
   }
+  return permitidosPromise;
+}
+
+async function calcularEstudantesPermitidos() {
+  if (!isProfessor() && !isProfessorAee()) return null;
   const vinculo = await getProfessorVinculo();
-  if (!vinculo) {
-    estudantesPermitidos = new Set();
-    return estudantesPermitidos;
-  }
+  if (!vinculo) return new Set();
   if (isProfessorAee()) {
     const { data: aee } = await supabaseFetchAll('estudante_professores_aee', {
       select: 'estudante_id',
       filters: [{ col: 'professor_id', val: vinculo.id }],
     });
-    estudantesPermitidos = new Set((aee || []).map(a => Number(a.estudante_id)));
-    return estudantesPermitidos;
+    return new Set((aee || []).map(a => Number(a.estudante_id)));
   }
   await getRefCache();
   const aIds = refCache.alocacoes.filter(a => vinculo.turmaIds.includes(a.turma_id)).map(a => a.id);
@@ -89,8 +93,29 @@ export async function getEstudantesPermitidos() {
     });
     (notas || []).forEach(n => set.add(n.estudante_id));
   }
-  estudantesPermitidos = set;
   return set;
+}
+
+// Turmas em que pelo menos um estudante do conjunto permitido possui
+// notas ou frequência lançadas (usado pelo perfil Professor do AEE).
+async function getTurmasDosEstudantes(permitidos) {
+  const turmaIds = new Set();
+  if (!permitidos || !permitidos.size) return turmaIds;
+  await getRefCache();
+  const alocTurma = {};
+  refCache.alocacoes.forEach(a => { alocTurma[a.id] = a.turma_id; });
+  const { data: notas } = await supabaseFetchAll('notas', { select: 'estudante_id,alocacao_id', limit: 30000 });
+  (notas || []).forEach(n => {
+    if (permitidos.has(Number(n.estudante_id))) {
+      const tId = alocTurma[n.alocacao_id];
+      if (tId != null) turmaIds.add(tId);
+    }
+  });
+  const { data: freqs } = await supabaseFetchAll('frequencias', { select: 'estudante_id,turma_id', limit: 30000 });
+  (freqs || []).forEach(f => {
+    if (permitidos.has(Number(f.estudante_id))) turmaIds.add(f.turma_id);
+  });
+  return turmaIds;
 }
 
 export async function podeVerEstudante(estudanteId) {
@@ -374,10 +399,15 @@ export async function getResumoGeral(filters = {}) {
   freqMedia = freqCount ? somaFreq / freqCount : 0;
 
   const turmaSet = montarTurmasFiltradas(filters);
+  let totalTurmas = turmaSet ? turmaSet.size : refCache.turmas.length;
+  if (isProfessorAee()) {
+    const permitidos = await getEstudantesPermitidos();
+    totalTurmas = (await getTurmasDosEstudantes(permitidos)).size;
+  }
 
   return {
     total_estudantes: totalEstudantes,
-    total_turmas: turmaSet ? turmaSet.size : refCache.turmas.length,
+    total_turmas: totalTurmas,
     media_geral: Math.round(mediaGeral * 10) / 10,
     frequencia_media: Math.round(freqMedia * 10) / 10,
     aprovacao_pct: classificados ? Math.round(aprovados / classificados * 1000) / 10 : 0,
@@ -939,6 +969,12 @@ export async function listarTurmasParaConsulta() {
     const vinculo = await getProfessorVinculo();
     if (!vinculo) return [];
     return vinculo.turmas.map(map).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+  if (isProfessorAee()) {
+    const permitidos = await getEstudantesPermitidos();
+    if (!permitidos || !permitidos.size) return [];
+    const turmaIds = await getTurmasDosEstudantes(permitidos);
+    return refCache.turmas.filter(t => turmaIds.has(t.id)).map(map).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }
 
   return refCache.turmas.map(map).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));

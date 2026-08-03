@@ -1,5 +1,6 @@
 import { renderFilterPanel, getCurrentFilters } from '../components/FilterPanel.js';
 import { supabaseFetchAll, supabaseQuery } from '../services/supabase.js';
+import { getEstudantesPermitidos } from '../repositories/dashboardRepository.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 
@@ -138,7 +139,10 @@ async function loadData() {
   relFiltros = filtrosAtivos;
 
   const { data: notas } = await supabaseFetchAll('notas', { select: 'estudante_id,media_final,alocacao_id' });
-  const filtradas = aplicarFiltros(notas || [], filters, cache);
+  let baseNotas = notas || [];
+  const permitidos = await getEstudantesPermitidos();
+  if (permitidos) baseNotas = baseNotas.filter(n => permitidos.has(Number(n.estudante_id)));
+  const filtradas = aplicarFiltros(baseNotas, filters, cache);
 
   const alocComp = {}; cache.alocacoes.forEach(a => alocComp[a.id] = a.componente_id);
   const alocTurma = {}; cache.alocacoes.forEach(a => alocTurma[a.id] = a.turma_id);

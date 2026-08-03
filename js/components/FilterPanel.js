@@ -1,5 +1,6 @@
 import { supabaseQuery } from '../services/supabase.js';
-import { isProfessor, getProfessorVinculo } from '../services/authService.js';
+import { isProfessor, isProfessorAee, getProfessorVinculo } from '../services/authService.js';
+import { listarTurmasParaConsulta } from '../repositories/dashboardRepository.js';
 import { createSearchSelect } from './SearchSelect.js';
 
 const CACHE_KEY = 'sieac_filter_cache';
@@ -112,6 +113,10 @@ async function getFilterData() {
     compData = compData.filter(c => compIdsSet.has(c.id));
     profData = profData.filter(p => p.id === professorVinculo.id);
     alocData = alocData.filter(a => a.professor_id === professorVinculo.id);
+  }
+
+  if (isProfessorAee()) {
+    turmasData = await listarTurmasParaConsulta();
   }
 
   const def = {};
