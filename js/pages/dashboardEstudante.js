@@ -10,7 +10,6 @@ import { gerarPdfRelatorio } from '../utils/pdf.js';
 let evolChart = null;
 let studentCombo = null;
 let turmaCombo = null;
-let turmaListaCombo = null;
 let currentStudentId = null;
 let studentInfo = {};
 let studentNotas = [];
@@ -26,7 +25,6 @@ export async function render() {
   const main = document.getElementById('main-content');
   main.innerHTML = `
     <style>
-      .student-search { max-width:560px; }
       .student-info-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
       .student-info-item { background:var(--sieac-bg); border-radius:var(--sieac-radius); padding:12px 16px; }
       .student-info-item label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--sieac-text-muted); display:block; margin-bottom:2px; }
@@ -36,19 +34,25 @@ export async function render() {
     <div class="page-title">Consulta por Estudante</div>
     <div class="page-subtitle">Desempenho individual, notas, frequência e evolução</div>
 
-    <div class="student-search mb-4">
-      <div class="filter-group">
-        <label class="filter-label">Filtrar por turma</label>
-        <div id="input-filtrar-turma"></div>
-      </div>
-      <div class="filter-group mt-3" id="estudantes-turma-wrap" style="display:none;">
-        <label class="filter-label">Estudantes da turma</label>
-        <div id="input-estudantes-turma"></div>
-        <div class="student-turma-count" id="estudantes-turma-contagem" style="font-size:0.78rem;color:var(--sieac-text-muted);margin-top:6px;"></div>
-      </div>
-      <div class="filter-group mt-3">
-        <label class="filter-label">Buscar estudante por nome ou matrícula</label>
-        <div id="input-buscar-estudante"></div>
+    <div class="card-sieac mb-4">
+      <div class="card-sieac-header">Filtros</div>
+      <div class="card-sieac-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="filter-label">Filtrar por turma</label>
+            <div id="filtro-turma"></div>
+          </div>
+          <div class="col-md-4">
+            <label class="filter-label">Buscar por nome do estudante</label>
+            <div id="input-buscar-estudante"></div>
+          </div>
+          <div class="col-md-4 d-flex align-items-end gap-2">
+            <div class="student-turma-count" id="contagem-estudantes" style="color:var(--sieac-text-muted);font-size:0.85rem;"></div>
+            <button class="btn btn-sm btn-outline-secondary" id="btn-limpar-filtros" style="border-radius:var(--sieac-radius-pill);padding:6px 16px;">
+              <i class="bi bi-x-circle"></i> Limpar filtros
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -123,16 +127,6 @@ export async function render() {
     </div>
   `;
 
-  const listaEstudantes = await listarEstudantesParaBusca();
-  studentCombo = createSearchSelect({
-    items: listaEstudantes,
-    getText: e => `${e.nome} — ${e.matricula}`,
-    getValue: e => e.id,
-    placeholder: 'Digite para filtrar por nome ou matrícula...',
-    onSelect: id => carregarEstudante(id),
-  });
-  document.getElementById('input-buscar-estudante').appendChild(studentCombo.el);
-
   const turmas = await listarTurmasParaConsulta();
   turmaCombo = createSearchSelect({
     items: turmas,
@@ -142,44 +136,59 @@ export async function render() {
     disabled: !turmas.length,
     onSelect: id => selecionarTurma(id),
   });
-  document.getElementById('input-filtrar-turma').appendChild(turmaCombo.el);
+  document.getElementById('filtro-turma').appendChild(turmaCombo.el);
 
-  turmaListaCombo = createSearchSelect({
-    items: [],
+  const listaEstudantes = await listarEstudantesParaBusca();
+  studentCombo = createSearchSelect({
+    items: listaEstudantes,
     getText: e => `${e.nome} — ${e.matricula}`,
     getValue: e => e.id,
-    placeholder: 'Selecione um estudante da turma...',
+    placeholder: 'Digite para filtrar por nome ou matrícula...',
     onSelect: id => carregarEstudante(id),
   });
-  document.getElementById('input-estudantes-turma').appendChild(turmaListaCombo.el);
+  document.getElementById('input-buscar-estudante').appendChild(studentCombo.el);
+  atualizarContagem(listaEstudantes.length);
 
+  document.getElementById('btn-limpar-filtros').addEventListener('click', limparFiltros);
   document.getElementById('btn-pdf-estudante').addEventListener('click', gerarPdfEstudante);
 }
 
 export function unload() {
   if (studentCombo) { studentCombo.destroy(); studentCombo = null; }
   if (turmaCombo) { turmaCombo.destroy(); turmaCombo = null; }
-  if (turmaListaCombo) { turmaListaCombo.destroy(); turmaListaCombo = null; }
   if (evolChart) { evolChart.destroy(); evolChart = null; }
+}
+
+function atualizarContagem(total, texto) {
+  const el = document.getElementById('contagem-estudantes');
+  if (!el) return;
+  el.textContent = texto || `${total} estudante(s)`;
+}
+
+async function limparFiltros() {
+  currentStudentId = null;
+  document.getElementById('estudante-content').style.display = 'none';
+  turmaCombo.clear();
+  studentCombo.clear();
+  const lista = await listarEstudantesParaBusca();
+  studentCombo.setItems(lista);
+  atualizarContagem(lista.length);
 }
 
 async function selecionarTurma(turmaId) {
   currentStudentId = null;
   document.getElementById('estudante-content').style.display = 'none';
-  const wrap = document.getElementById('estudantes-turma-wrap');
-  const contagem = document.getElementById('estudantes-turma-contagem');
   if (!turmaId) {
-    wrap.style.display = 'none';
-    turmaListaCombo.setItems([]);
-    turmaListaCombo.clear();
+    const lista = await listarEstudantesParaBusca();
+    studentCombo.setItems(lista);
+    atualizarContagem(lista.length);
     return;
   }
-  wrap.style.display = 'block';
-  turmaListaCombo.clear();
-  contagem.textContent = 'Carregando estudantes...';
+  studentCombo.clear();
+  atualizarContagem(0, 'Carregando estudantes...');
   const lista = await listarEstudantesPorTurma(turmaId);
-  turmaListaCombo.setItems(lista);
-  contagem.textContent = lista.length ? `${lista.length} estudante(s) na turma` : 'Nenhum estudante encontrado nesta turma';
+  studentCombo.setItems(lista);
+  atualizarContagem(lista.length);
   if (lista.length === 1) carregarEstudante(lista[0].id);
 }
 
