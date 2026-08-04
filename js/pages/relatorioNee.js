@@ -76,6 +76,17 @@ export function unload() {
   listaNee = [];
 }
 
+function obterOrdenados() {
+  const acessor = SORT_ACCESSOR[ordenacaoNee.col] || SORT_ACCESSOR.nome;
+  return [...listaNee].sort((a, b) => {
+    const va = acessor(a);
+    const vb = acessor(b);
+    if (va < vb) return ordenacaoNee.dir === 'asc' ? -1 : 1;
+    if (va > vb) return ordenacaoNee.dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+
 function renderTabela() {
   const tbody = document.getElementById('tbody-nee');
   if (!tbody) return;
@@ -92,14 +103,7 @@ function renderTabela() {
     return;
   }
 
-  const acessor = SORT_ACCESSOR[ordenacaoNee.col] || SORT_ACCESSOR.nome;
-  const ordenadas = [...listaNee].sort((a, b) => {
-    const va = acessor(a);
-    const vb = acessor(b);
-    if (va < vb) return ordenacaoNee.dir === 'asc' ? -1 : 1;
-    if (va > vb) return ordenacaoNee.dir === 'asc' ? 1 : -1;
-    return 0;
-  });
+  const ordenadas = obterOrdenados();
 
   tbody.innerHTML = ordenadas.map(e => `
     <tr>
@@ -118,7 +122,7 @@ function gerarPdf() {
     return;
   }
 
-  const linhas = listaNee.map(e => [
+  const linhas = obterOrdenados().map(e => [
     e.nome,
     e.matricula,
     e.turmas.join(', ') || '-',
