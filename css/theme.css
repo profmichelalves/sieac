@@ -142,6 +142,39 @@ body {
 .toast-sieac.warning { border-left: 4px solid var(--sieac-warning); }
 .toast-sieac.info { border-left: 4px solid var(--sieac-secondary); }
 
+/* Banner informativo (ex.: aviso de vínculo para o Professor do AEE) */
+.alert-sieac {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  border-radius: var(--sieac-radius-md);
+  border: 1px solid var(--sieac-border);
+  background: var(--sieac-surface);
+  box-shadow: var(--sieac-shadow-md);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--sieac-text);
+}
+.alert-sieac > i {
+  font-size: 1.4rem;
+  color: var(--sieac-warning);
+  margin-top: 2px;
+}
+.alert-sieac-body { flex: 1; }
+.alert-sieac-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--sieac-text-muted);
+  cursor: pointer;
+  padding: 0 4px;
+}
+.alert-sieac-close:hover { color: var(--sieac-text); }
+.alert-sieac.aee-vinculo { border-left: 4px solid var(--sieac-warning); }
+
 /* Scrollable table wrapper */
 .table-responsive-custom {
   overflow-x: auto;

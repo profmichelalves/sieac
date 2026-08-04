@@ -65,6 +65,7 @@ export function renderLogin() {
       btn.textContent = 'Entrar';
     } else {
       clearFilterCache();
+      localStorage.removeItem('sieac_aee_alert_dismissed');
       showToast('Bem-vindo, ' + result.user.nome + '!', 'success');
       window.location.hash = 'dashboard-geral';
       window.location.reload();

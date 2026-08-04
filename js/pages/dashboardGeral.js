@@ -5,6 +5,7 @@ import { createBarChart, createDoughnutChart, destroyChart } from '../components
 import { getResumoGeral, getMediaPorSerie, getResultadoFinal, getDetalheResultados, getDetalheSituacao } from '../repositories/dashboardRepository.js';
 import { supabaseQuery } from '../services/supabase.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
+import { isProfessorAee, temEstudantesAeeVinculados, getCurrentUser } from '../services/authService.js';
 
 const MEDIA_CORTE = 6;
 
@@ -141,7 +142,41 @@ export async function render() {
   document.querySelectorAll('.kpi-pdf-btn').forEach(btn => {
     btn.addEventListener('click', () => gerarPdfCard(btn.dataset.tipo));
   });
+  renderAeeVinculoAlert();
   await loadData();
+}
+
+// Professor do AEE sem estudantes vinculados: exibe um aviso amigável pedindo
+// para entrar em contato com um usuário do perfil Gestão Escolar.
+async function renderAeeVinculoAlert() {
+  if (!isProfessorAee()) return;
+  if (localStorage.getItem('sieac_aee_alert_dismissed') === '1') return;
+  const vinculados = await temEstudantesAeeVinculados();
+  if (vinculados !== false) return;
+
+  const user = getCurrentUser();
+  const primeiroNome = String(user?.nome || 'Professor').split(' ')[0];
+  const main = document.getElementById('main-content');
+
+  const banner = document.createElement('div');
+  banner.className = 'alert-sieac aee-vinculo';
+  banner.setAttribute('role', 'alert');
+  banner.innerHTML = `
+    <i class="bi bi-person-exclamation"></i>
+    <div class="alert-sieac-body">
+      <strong>Olá, ${primeiroNome}!</strong>
+      Seu cadastro de <strong>Professor do AEE</strong> ainda não possui estudantes com NEE vinculados.
+      Para acompanhar os indicadores dos seus alunos, entre em contato com um usuário do perfil
+      <strong>Gestão Escolar</strong> para realizar o vínculo dos seus estudantes com o seu cadastro.
+    </div>
+    <button type="button" class="alert-sieac-close" aria-label="Fechar" title="Fechar">×</button>
+  `;
+  banner.querySelector('.alert-sieac-close').addEventListener('click', () => {
+    localStorage.setItem('sieac_aee_alert_dismissed', '1');
+    banner.remove();
+  });
+
+  main.prepend(banner);
 }
 
 async function loadData() {

@@ -243,3 +243,18 @@ export async function getProfessorVinculo() {
 export function clearProfessorCache() {
   professorVinculo = null;
 }
+
+// Para o perfil Professor do AEE, verifica se existem estudantes com NEE
+// vinculados ao cadastro do professor (tabela estudante_professores_aee).
+// Retorna true/false para Professor do AEE e null para os demais perfis.
+export async function temEstudantesAeeVinculados() {
+  const user = getCurrentUser();
+  if (!user || user.perfil !== 'Professor do AEE') return null;
+  const vinculo = await getProfessorVinculo();
+  if (!vinculo) return false;
+  const { data: aee } = await supabaseFetchAll('estudante_professores_aee', {
+    select: 'estudante_id',
+    filters: [{ col: 'professor_id', val: vinculo.id }],
+  });
+  return (aee || []).length > 0;
+}
