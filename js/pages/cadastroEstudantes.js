@@ -4,6 +4,7 @@ import { createSearchSelect } from '../components/SearchSelect.js';
 import { listarTiposNecessidades, listarProfessoresParaAEE, listarEstudantesCadastro, salvarNecessidadesEstudante } from '../repositories/necessidadesRepository.js';
 import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 import { supabaseQuery } from '../services/supabase.js';
+import { loadEstudanteFiltros, saveEstudanteFiltros, clearEstudanteFiltros } from '../utils/estudanteFiltros.js';
 
 let turmaCombo = null;
 let professorCombo = null;
@@ -104,6 +105,7 @@ export async function render() {
 
   document.getElementById('btn-limpar-filtros').addEventListener('click', () => {
     estado = { turmaId: '', estudanteId: null };
+    clearEstudanteFiltros();
     turmaCombo.clear();
     if (nomeCombo) {
       nomeCombo.clear();
@@ -151,6 +153,7 @@ async function carregarReferencias() {
         nomeCombo.clear();
         nomeCombo.setItems(estudantesParaBusca());
       }
+      saveEstudanteFiltros({ turmaId: id, estudanteId: null });
       renderTabela();
     },
   });
@@ -172,6 +175,7 @@ async function carregarReferencias() {
     placeholder: 'Digite para filtrar por nome ou matrícula...',
     onSelect: id => {
       estado.estudanteId = Number(id);
+      saveEstudanteFiltros({ turmaId: estado.turmaId, estudanteId: Number(id) });
       renderTabela();
     },
   });
@@ -181,6 +185,20 @@ async function carregarReferencias() {
   todosEstudantes = res || [];
   nomeCombo.setItems(estudantesParaBusca());
 
+  restaurarFiltros();
+}
+
+function restaurarFiltros() {
+  const saved = loadEstudanteFiltros();
+  if (saved && saved.turmaId && turmaNomeById[saved.turmaId]) {
+    estado.turmaId = saved.turmaId;
+    turmaCombo.setValue(String(saved.turmaId));
+    if (nomeCombo) nomeCombo.setItems(estudantesParaBusca());
+  }
+  if (saved && saved.estudanteId && todosEstudantes.some(e => e.id === Number(saved.estudanteId))) {
+    estado.estudanteId = Number(saved.estudanteId);
+    if (nomeCombo) nomeCombo.setValue(String(saved.estudanteId));
+  }
   renderTabela();
 }
 

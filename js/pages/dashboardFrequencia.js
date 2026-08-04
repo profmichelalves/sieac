@@ -14,7 +14,12 @@ export async function render() {
     <div class="page-title">Dashboard de Frequência</div>
     <div class="page-subtitle">Acompanhamento da frequência dos estudantes</div>
 
-    <div id="filter-container-frequencia"></div>
+    <div class="card-sieac mb-4">
+      <div class="card-sieac-header">Filtros</div>
+      <div class="card-sieac-body">
+        <div id="filter-container-frequencia"></div>
+      </div>
+    </div>
 
     <div class="row g-4 mb-4">
       <div class="col-6 col-md-3">

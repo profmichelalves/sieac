@@ -19,7 +19,12 @@ export async function render() {
     <div class="page-title">Visão Geral da Escola</div>
     <div class="page-subtitle">Indicadores consolidados do desempenho acadêmico</div>
 
-    <div id="filter-container-geral"></div>
+    <div class="card-sieac mb-4">
+      <div class="card-sieac-header">Filtros</div>
+      <div class="card-sieac-body">
+        <div id="filter-container-geral"></div>
+      </div>
+    </div>
 
     <div class="row g-4 mb-4" id="kpi-row">
       <div class="col-6 col-md-3">

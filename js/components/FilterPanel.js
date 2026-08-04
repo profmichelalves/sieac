@@ -6,6 +6,9 @@ import { createSearchSelect } from './SearchSelect.js';
 const CACHE_KEY = 'sieac_filter_cache';
 const CACHE_VERSION = 4;
 
+const SELECTED_KEY = 'sieac_filter_selected';
+const SELECTED_VERSION = 1;
+
 function loadFilterCache() {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
@@ -24,6 +27,22 @@ function saveFilterCache(data) {
 
 export function clearFilterCache() {
   localStorage.removeItem(CACHE_KEY);
+}
+
+function loadSelectedFilters() {
+  try {
+    const raw = localStorage.getItem(SELECTED_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.v === SELECTED_VERSION && parsed.f) return parsed.f;
+      localStorage.removeItem(SELECTED_KEY);
+    }
+  } catch {}
+  return {};
+}
+
+function saveSelectedFilters(filters) {
+  try { localStorage.setItem(SELECTED_KEY, JSON.stringify({ v: SELECTED_VERSION, f: filters })); } catch {}
 }
 
 const SELECT_IDS = [
@@ -365,8 +384,44 @@ export async function renderFilterPanel(containerId, onChange) {
     setSelectValue('filter-professor', filterData.profId);
   }
 
+  restoreFilterValues();
   updateBadges();
   bindFilterEvents();
+}
+
+function restoreFilterValues() {
+  if (!filterData) return;
+  const validSets = {
+    etapa_id: new Set(filterData.etapas.map(x => String(x.id))),
+    serie_id: new Set(filterData.series.map(x => String(x.id))),
+    turma_id: new Set(filterData.turmas.map(x => String(x.id))),
+    turno: new Set(filterData.turnos.map(x => String(x))),
+    componente_id: new Set(filterData.componentes.map(x => String(x.id))),
+    professor_id: new Set(filterData.userIsProfessor
+      ? (filterData.profId != null ? [String(filterData.profId)] : [])
+      : filterData.professores.map(x => String(x.id))),
+  };
+
+  const restored = {};
+  const persisted = loadSelectedFilters();
+  for (const [key, val] of Object.entries(persisted)) {
+    if (!val) continue;
+    if (!validSets[key]) continue;
+    if (filterData.userIsProfessor && key === 'professor_id') continue;
+    if (!validSets[key].has(String(val))) continue;
+    restored[key] = String(val);
+  }
+
+  pendingFilters = { ...restored };
+  if (filterData.userIsProfessor && professorVinculo) {
+    pendingFilters.professor_id = String(professorVinculo.id);
+  }
+  appliedFilters = { ...pendingFilters };
+  isDirty = false;
+
+  for (const [elId, key] of Object.entries(SEL_TO_KEY)) {
+    setSelectValue(elId, pendingFilters[key] || '');
+  }
 }
 
 function handleFilterChange(id) {
@@ -405,6 +460,7 @@ function bindFilterEvents() {
       appliedFilters = { ...pendingFilters };
       clearDirty();
       updateBadges();
+      saveSelectedFilters(appliedFilters);
       if (onChangeCallback) onChangeCallback(appliedFilters);
     });
   }
@@ -430,6 +486,7 @@ function bindFilterEvents() {
       rebuildSelectOptions(null);
       clearDirty();
       updateBadges();
+      saveSelectedFilters(appliedFilters);
       if (onChangeCallback) onChangeCallback(appliedFilters);
     });
   }

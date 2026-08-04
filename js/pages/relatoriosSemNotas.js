@@ -46,7 +46,12 @@ export async function render() {
       </button>
     </div>
 
-    <div id="filter-container-sem-notas" class="no-print"></div>
+    <div class="card-sieac mb-4 no-print">
+      <div class="card-sieac-header">Filtros</div>
+      <div class="card-sieac-body">
+        <div id="filter-container-sem-notas"></div>
+      </div>
+    </div>
 
     <div class="report-toolbar no-print">
       <span class="report-toolbar-label"><i class="bi bi-sort-down"></i> Ordenar por:</span>

@@ -5,12 +5,14 @@ import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, listarEs
 import { getNecessidadesEstudante } from '../repositories/necessidadesRepository.js';
 import { destroyChart } from '../components/Charts.js';
 import { createSearchSelect } from '../components/SearchSelect.js';
+import { loadEstudanteFiltros, saveEstudanteFiltros, clearEstudanteFiltros } from '../utils/estudanteFiltros.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
 
 let evolChart = null;
 let studentCombo = null;
 let turmaCombo = null;
 let currentStudentId = null;
+let turmaAtualId = '';
 let studentInfo = {};
 let studentNotas = [];
 let studentFreqs = [];
@@ -151,6 +153,8 @@ export async function render() {
 
   document.getElementById('btn-limpar-filtros').addEventListener('click', limparFiltros);
   document.getElementById('btn-pdf-estudante').addEventListener('click', gerarPdfEstudante);
+
+  await restaurarFiltros(turmas);
 }
 
 export function unload() {
@@ -167,6 +171,8 @@ function atualizarContagem(total, texto) {
 
 async function limparFiltros() {
   currentStudentId = null;
+  turmaAtualId = '';
+  clearEstudanteFiltros();
   document.getElementById('estudante-content').style.display = 'none';
   turmaCombo.clear();
   studentCombo.clear();
@@ -175,21 +181,36 @@ async function limparFiltros() {
   atualizarContagem(lista.length);
 }
 
+async function restaurarFiltros(turmas) {
+  const saved = loadEstudanteFiltros();
+  if (!saved || !saved.turmaId) return;
+  if (!turmas.some(t => String(t.id) === String(saved.turmaId))) return;
+  const lista = await selecionarTurma(String(saved.turmaId));
+  if (saved.estudanteId && Array.isArray(lista) && lista.some(e => String(e.id) === String(saved.estudanteId))) {
+    studentCombo.setValue(String(saved.estudanteId));
+    carregarEstudante(Number(saved.estudanteId));
+  }
+}
+
 async function selecionarTurma(turmaId) {
+  turmaAtualId = turmaId || '';
   currentStudentId = null;
   document.getElementById('estudante-content').style.display = 'none';
   if (!turmaId) {
     const lista = await listarEstudantesParaBusca();
     studentCombo.setItems(lista);
     atualizarContagem(lista.length);
-    return;
+    saveEstudanteFiltros({ turmaId: '', estudanteId: null });
+    return lista;
   }
   studentCombo.clear();
   atualizarContagem(0, 'Carregando estudantes...');
   const lista = await listarEstudantesPorTurma(turmaId);
   studentCombo.setItems(lista);
   atualizarContagem(lista.length);
+  saveEstudanteFiltros({ turmaId: turmaId, estudanteId: null });
   if (lista.length === 1) carregarEstudante(lista[0].id);
+  return lista;
 }
 
 async function carregarEstudante(id) {
@@ -199,6 +220,7 @@ async function carregarEstudante(id) {
     return;
   }
   currentStudentId = id;
+  saveEstudanteFiltros({ turmaId: turmaAtualId, estudanteId: id });
   const { data: estudante, error } = await supabaseQuery('estudantes', { select: 'id,nome,matricula', filters: [{ col: 'id', val: id }] });
   if (error || !estudante || !estudante.length) {
     showToast('Estudante não encontrado', 'error');

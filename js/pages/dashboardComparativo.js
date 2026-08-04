@@ -21,7 +21,12 @@ export async function render() {
     <div class="page-title">Análise Combinada</div>
     <div class="page-subtitle">Relação entre frequência e desempenho acadêmico</div>
 
-    <div id="filter-container-comparativo"></div>
+    <div class="card-sieac mb-4">
+      <div class="card-sieac-header">Filtros</div>
+      <div class="card-sieac-body">
+        <div id="filter-container-comparativo"></div>
+      </div>
+    </div>
 
     <div class="row g-4">
       <div class="col-12">

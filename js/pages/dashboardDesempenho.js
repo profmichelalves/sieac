@@ -76,7 +76,12 @@ export async function render() {
     <div class="page-title">Desempenho Acadêmico</div>
     <div class="page-subtitle">Análise de notas, evolução da aprendizagem e distribuição</div>
 
-    <div id="filter-container-desempenho"></div>
+    <div class="card-sieac mb-4">
+      <div class="card-sieac-header">Filtros</div>
+      <div class="card-sieac-body">
+        <div id="filter-container-desempenho"></div>
+      </div>
+    </div>
 
     <div class="row g-4">
       <div class="col-md-6">
