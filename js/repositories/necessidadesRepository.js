@@ -176,7 +176,7 @@ export async function salvarNecessidadesEstudante(estudanteId, tipoIds = [], pro
   return { error: null };
 }
 
-// Relatório de Estudantes NEE: apenas estudantes com pelo menos uma necessidade.
+// Relatório de Estudantes com NEE: apenas estudantes com pelo menos uma necessidade.
 // Professores enxergam apenas os estudantes das suas turmas; demais perfis, todos.
 export async function listarEstudantesNEE() {
   const [{ data: estudantes }, turmasMap, { necessidadesPorEstudante, aeePorEstudante }, permitidos] = await Promise.all([

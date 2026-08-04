@@ -21,12 +21,12 @@ export async function render() {
   const professor = isProfessor();
 
   main.innerHTML = `
-    <div class="page-title">Relatório de Estudantes NEE</div>
+    <div class="page-title">Relatório de Estudantes com NEE</div>
     <div class="page-subtitle">Estudantes com necessidades educacionais especiais e professor de AEE</div>
 
     <div class="card-sieac">
       <div class="card-sieac-header">
-        <span>Estudantes com NEE ${infoBtn('Estudantes NEE', 'Lista todos os estudantes com pelo menos uma necessidade educacional especial cadastrada, com a respectiva turma e o professor de AEE responsável (quando informado). Clique nos títulos das colunas para ordenar. Professores visualizam apenas os estudantes das suas turmas.')}</span>
+        <span>Estudantes com NEE ${infoBtn('Estudantes com NEE', 'Lista todos os estudantes com pelo menos uma necessidade educacional especial cadastrada, com a respectiva turma e o professor de AEE responsável (quando informado). Clique nos títulos das colunas para ordenar. Professores visualizam apenas os estudantes das suas turmas.')}</span>
         <button class="btn btn-sm btn-primary no-print" id="btn-pdf-nee" style="border-radius:var(--sieac-radius-pill);padding:6px 16px;font-size:0.8rem;${professor ? 'display:none;' : ''}">
           <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
         </button>

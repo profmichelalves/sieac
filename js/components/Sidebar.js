@@ -95,7 +95,7 @@ export function setActiveRoute(route) {
     'dashboard-frequencia': 'Dashboard de Frequência',
     'relatorios': 'Relatório de Notas',
     'relatorio-sem-notas': 'Relatório de Notas Não Lançadas',
-    'relatorio-nee': 'Relatório de Estudantes NEE',
+    'relatorio-nee': 'Relatório de Estudantes com NEE',
     'dashboard-comparativo': 'Dashboard Comparativo',
     'dashboard-estudante': 'Consulta por Estudante',
     'cadastro-estudantes': 'Cadastro de Estudantes',
