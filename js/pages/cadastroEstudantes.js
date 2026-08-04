@@ -165,11 +165,8 @@ async function carregarReferencias() {
   });
   document.getElementById('modal-professor-container').appendChild(professorCombo.el);
 
-  const res = await listarEstudantesCadastro({});
-  todosEstudantes = res || [];
-
   nomeCombo = createSearchSelect({
-    items: estudantesParaBusca(),
+    items: [],
     getText: e => `${e.nome} — ${e.matricula}`,
     getValue: e => e.id,
     placeholder: 'Digite para filtrar por nome ou matrícula...',
@@ -179,6 +176,10 @@ async function carregarReferencias() {
     },
   });
   document.getElementById('filtro-nome').appendChild(nomeCombo.el);
+
+  const res = await listarEstudantesCadastro({});
+  todosEstudantes = res || [];
+  nomeCombo.setItems(estudantesParaBusca());
 
   renderTabela();
 }
