@@ -134,6 +134,15 @@ function dataHoje() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// O created_at é armazenado em UTC (TIMESTAMP com NOW()). O filtro De/Até usa
+// datas locais; convertemos os limites do dia local para UTC antes de consultar,
+// senão os registros do fim do dia (que caem no dia UTC seguinte) são omitidos.
+function dataLocalParaUtc(dataStr, fimDoDia) {
+  const d = new Date(`${dataStr}T${fimDoDia ? '23:59:59' : '00:00:00'}`);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 async function carregarLogs() {
   const tbody = document.getElementById('logs-tbody');
   if (!tbody) return;
@@ -146,8 +155,14 @@ async function carregarLogs() {
   const filters = [];
   if (acao) filters.push({ col: 'acao', val: acao });
   if (busca) filters.push({ col: 'usuario_nome', op: 'ilike', val: `%${busca}%` });
-  if (de) filters.push({ col: 'created_at', op: 'gte', val: `${de}T00:00:00` });
-  if (ate) filters.push({ col: 'created_at', op: 'lte', val: `${ate}T23:59:59` });
+  if (de) {
+    const utcDe = dataLocalParaUtc(de, false);
+    if (utcDe) filters.push({ col: 'created_at', op: 'gte', val: utcDe });
+  }
+  if (ate) {
+    const utcAte = dataLocalParaUtc(ate, true);
+    if (utcAte) filters.push({ col: 'created_at', op: 'lte', val: utcAte });
+  }
 
   const { data, error } = await supabaseQuery('logs', {
     select: 'id,usuario_nome,email,acao,detalhes,created_at',
