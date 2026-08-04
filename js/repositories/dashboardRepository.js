@@ -47,7 +47,7 @@ export async function getRefCache() {
     professores: p.data || [],
     etapas: e.data || [],
     alocacoes: a.data || [],
-    estudantes: est.data || [],
+    estudantes: (est.data || []).filter(e => !String(e.nome || '').trim().startsWith('__')),
   };
   return refCache;
 }

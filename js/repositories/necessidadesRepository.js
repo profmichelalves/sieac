@@ -127,6 +127,7 @@ export async function listarEstudantesCadastro({ turmaId = null, nome = '' } = {
   const filtroTurma = turmaId ? String(turmaId) : null;
 
   return (estudantes || [])
+    .filter(e => !String(e.nome || '').trim().startsWith('__'))
     .filter(e => {
       if (filtroTurma) {
         const turmas = turmasMap.get(Number(e.id));
@@ -187,6 +188,7 @@ export async function listarEstudantesNEE() {
   ]);
 
   return (estudantes || [])
+    .filter(e => !String(e.nome || '').trim().startsWith('__'))
     .filter(e => {
       const needs = necessidadesPorEstudante[e.id];
       if (!needs || !needs.length) return false;
