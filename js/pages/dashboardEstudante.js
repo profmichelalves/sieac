@@ -43,7 +43,7 @@ export async function render() {
             <div id="filtro-turma"></div>
           </div>
           <div class="col-md-4">
-            <label class="filter-label">Buscar por nome do estudante</label>
+            <label class="filter-label">Buscar por nome ou matrícula do estudante</label>
             <div id="input-buscar-estudante"></div>
           </div>
           <div class="col-md-4 d-flex align-items-end gap-2">

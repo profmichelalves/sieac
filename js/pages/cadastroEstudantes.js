@@ -1,4 +1,4 @@
-import { $$, showToast, debounce } from '../utils/helpers.js';
+import { $$, showToast } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { createSearchSelect } from '../components/SearchSelect.js';
 import { listarTiposNecessidades, listarProfessoresParaAEE, listarEstudantesCadastro, salvarNecessidadesEstudante } from '../repositories/necessidadesRepository.js';
@@ -7,10 +7,11 @@ import { supabaseQuery } from '../services/supabase.js';
 
 let turmaCombo = null;
 let professorCombo = null;
+let nomeCombo = null;
 let tipos = [];
 let todosEstudantes = [];
 let turmaNomeById = {};
-let estado = { turmaId: '', nome: '' };
+let estado = { turmaId: '', estudanteId: null };
 let estudanteEditando = null;
 let professorAeeSelecionado = null;
 
@@ -29,8 +30,8 @@ export async function render() {
             <div id="filtro-turma"></div>
           </div>
           <div class="col-md-4">
-            <label class="filter-label">Buscar por nome do estudante</label>
-            <input type="text" class="form-control" id="filtro-nome" placeholder="Digite o nome do estudante..." autocomplete="off">
+            <label class="filter-label">Buscar por nome ou matrícula do estudante</label>
+            <div id="filtro-nome"></div>
           </div>
           <div class="col-md-4 d-flex align-items-end gap-2">
             <div class="student-turma-count" id="contagem-estudantes" style="color:var(--sieac-text-muted);font-size:0.85rem;"></div>
@@ -102,17 +103,14 @@ export async function render() {
   await carregarReferencias();
 
   document.getElementById('btn-limpar-filtros').addEventListener('click', () => {
-    estado = { turmaId: '', nome: '' };
+    estado = { turmaId: '', estudanteId: null };
     turmaCombo.clear();
-    const inputNome = document.getElementById('filtro-nome');
-    if (inputNome) inputNome.value = '';
+    if (nomeCombo) {
+      nomeCombo.clear();
+      nomeCombo.setItems(estudantesParaBusca());
+    }
     renderTabela();
   });
-
-  document.getElementById('filtro-nome').addEventListener('input', debounce((e) => {
-    estado.nome = e.target.value;
-    renderTabela();
-  }, 250));
 
   document.getElementById('btn-salvar-necessidades').addEventListener('click', salvarModal);
   document.getElementById('btn-remover-professor').addEventListener('click', () => {
@@ -124,6 +122,7 @@ export async function render() {
 export function unload() {
   if (turmaCombo) { turmaCombo.destroy(); turmaCombo = null; }
   if (professorCombo) { professorCombo.destroy(); professorCombo = null; }
+  if (nomeCombo) { nomeCombo.destroy(); nomeCombo = null; }
   tipos = [];
   todosEstudantes = [];
   turmaNomeById = {};
@@ -147,6 +146,11 @@ async function carregarReferencias() {
     placeholder: 'Selecione uma turma...',
     onSelect: id => {
       estado.turmaId = id;
+      if (nomeCombo) {
+        estado.estudanteId = null;
+        nomeCombo.clear();
+        nomeCombo.setItems(estudantesParaBusca());
+      }
       renderTabela();
     },
   });
@@ -163,22 +167,38 @@ async function carregarReferencias() {
 
   const res = await listarEstudantesCadastro({});
   todosEstudantes = res || [];
+
+  nomeCombo = createSearchSelect({
+    items: estudantesParaBusca(),
+    getText: e => `${e.nome} — ${e.matricula}`,
+    getValue: e => e.id,
+    placeholder: 'Digite para filtrar por nome ou matrícula...',
+    onSelect: id => {
+      estado.estudanteId = Number(id);
+      renderTabela();
+    },
+  });
+  document.getElementById('filtro-nome').appendChild(nomeCombo.el);
+
   renderTabela();
+}
+
+function estudantesParaBusca() {
+  const turmaNome = estado.turmaId ? turmaNomeById[estado.turmaId] : null;
+  return todosEstudantes
+    .filter(e => !turmaNome || e.turmas.includes(turmaNome))
+    .map(e => ({ id: e.id, nome: e.nome, matricula: e.matricula }));
 }
 
 function renderTabela() {
   const tbody = document.getElementById('tbody-cadastro-estudantes');
   if (!tbody) return;
 
-  const q = (estado.nome || '').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const turmaNome = estado.turmaId ? turmaNomeById[estado.turmaId] : null;
 
   const filtrados = todosEstudantes.filter(e => {
     if (turmaNome && !e.turmas.includes(turmaNome)) return false;
-    if (q) {
-      const nomeNorm = e.nome.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      if (!nomeNorm.includes(q)) return false;
-    }
+    if (estado.estudanteId != null && e.id !== estado.estudanteId) return false;
     return true;
   });
 
