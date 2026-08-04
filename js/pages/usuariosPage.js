@@ -1,4 +1,4 @@
-import { $, showToast } from '../utils/helpers.js';
+import { $, showToast, parseDataDb, formatarDataHora } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { listarUsuarios, listarPerfis, atualizarUsuario, getCurrentUser } from '../services/authService.js';
 import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
@@ -11,7 +11,7 @@ const COLUNAS_SORT = {
   matricula: u => (u.matricula || '').toLowerCase(),
   perfil: u => Number(u.perfil_id) || 0,
   status: u => (u.ativo ? 1 : 0),
-  cadastro: u => new Date(u.created_at).getTime() || 0,
+  cadastro: u => parseDataDb(u.created_at)?.getTime() || 0,
 };
 
 let ordenacao = { col: 'cadastro', dir: 'desc' };
@@ -107,7 +107,7 @@ async function carregarUsuarios() {
     const perfilOptions = Object.entries(perfisMap)
       .map(([id, nome]) => `<option value="${id}" ${Number(id) === Number(u.perfil_id) ? 'selected' : ''}>${nome}</option>`)
       .join('');
-    const dataCadastro = u.created_at ? new Date(u.created_at).toLocaleString('pt-BR') : '-';
+    const dataCadastro = u.created_at ? formatarDataHora(u.created_at) : '-';
     return `
       <tr>
         <td><strong>${u.nome}${ehProprio ? ' <small style="color:var(--sieac-text-muted)">(você)</small>' : ''}</strong></td>

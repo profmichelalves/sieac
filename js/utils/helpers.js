@@ -112,3 +112,22 @@ export function hasPerfil(...perfis) {
   const user = getUser();
   return user && perfis.includes(user.perfil);
 }
+
+// Os campos created_at do banco são TIMESTAMP (sem fuso) preenchidos com
+// NOW() em UTC. Sem o sufixo de fuso, `new Date()` interpretaria o valor
+// como hora local e exibiria a hora errada. Aqui tratamos como UTC.
+export function parseDataDb(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s) && !/(Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+    return new Date(s.replace(' ', 'T') + 'Z');
+  }
+  return new Date(s);
+}
+
+export function formatarDataHora(val) {
+  const d = parseDataDb(val);
+  if (!d || isNaN(d.getTime())) return '-';
+  return d.toLocaleString('pt-BR');
+}

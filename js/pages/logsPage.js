@@ -1,4 +1,4 @@
-import { showToast } from '../utils/helpers.js';
+import { showToast, formatarDataHora } from '../utils/helpers.js';
 import { supabaseQuery, supabaseRpc } from '../services/supabase.js';
 import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
@@ -173,7 +173,7 @@ async function carregarLogs() {
       const detalhes = formatarDetalhes(l.detalhes);
       return `
         <tr>
-          <td style="white-space:nowrap;">${new Date(l.created_at).toLocaleString('pt-BR')}</td>
+          <td style="white-space:nowrap;">${formatarDataHora(l.created_at)}</td>
           <td>${l.usuario_nome || '-'}</td>
           <td>${l.email || '-'}</td>
           <td><span class="badge bg-secondary" style="font-weight:500;">${ACAO_LABELS[l.acao] || l.acao}</span></td>

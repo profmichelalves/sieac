@@ -1,4 +1,4 @@
-import { $, showToast } from '../utils/helpers.js';
+import { $, showToast, formatarDataHora } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { importarNotas, importarFrequencia } from '../services/importService.js';
 import { supabaseRpc, supabaseQuery } from '../services/supabase.js';
@@ -413,7 +413,7 @@ async function carregarHistorico() {
             const ignorados = detalhes.ignorados ?? '-';
             return `
               <tr>
-                <td>${new Date(i.created_at).toLocaleString('pt-BR')}</td>
+                <td>${formatarDataHora(i.created_at)}</td>
                 <td>${i.tipo === 'notas' ? 'Notas' : 'Frequência'}</td>
                 <td>${i.arquivo || '-'}</td>
                 <td>${i.registros}</td>
