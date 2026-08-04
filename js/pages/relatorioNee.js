@@ -6,6 +6,16 @@ import { gerarPdfRelatorio } from '../utils/pdf.js';
 
 let listaNee = [];
 
+const SORT_ACCESSOR = {
+  nome: e => (e.nome || '').toLowerCase(),
+  matricula: e => (e.matricula || '').toLowerCase(),
+  turma: e => (e.turmas && e.turmas.length ? e.turmas[0].toLowerCase() : ''),
+  necessidades: e => (e.necessidades || []).join(', ').toLowerCase(),
+  professor: e => (e.professorAee ? e.professorAee.nome.toLowerCase() : ''),
+};
+
+let ordenacaoNee = { col: 'nome', dir: 'asc' };
+
 export async function render() {
   const main = document.getElementById('main-content');
   const professor = isProfessor();
@@ -16,7 +26,7 @@ export async function render() {
 
     <div class="card-sieac">
       <div class="card-sieac-header">
-        <span>Estudantes com NEE ${infoBtn('Estudantes NEE', 'Lista todos os estudantes com pelo menos uma necessidade educacional especial cadastrada, com a respectiva turma e o professor de AEE responsável (quando informado). Professores visualizam apenas os estudantes das suas turmas.')}</span>
+        <span>Estudantes com NEE ${infoBtn('Estudantes NEE', 'Lista todos os estudantes com pelo menos uma necessidade educacional especial cadastrada, com a respectiva turma e o professor de AEE responsável (quando informado). Clique nos títulos das colunas para ordenar. Professores visualizam apenas os estudantes das suas turmas.')}</span>
         <button class="btn btn-sm btn-primary no-print" id="btn-pdf-nee" style="border-radius:var(--sieac-radius-pill);padding:6px 16px;font-size:0.8rem;${professor ? 'display:none;' : ''}">
           <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
         </button>
@@ -27,11 +37,11 @@ export async function render() {
           <table class="table-sieac" id="table-nee">
             <thead>
               <tr>
-                <th>Nome</th>
-                <th>Matrícula</th>
-                <th>Turma</th>
-                <th>Necessidades</th>
-                <th>Professor AEE</th>
+                <th data-sort="nome" style="cursor:pointer;user-select:none;">Nome<span class="sort-arrow"></span></th>
+                <th data-sort="matricula" style="cursor:pointer;user-select:none;">Matrícula<span class="sort-arrow"></span></th>
+                <th data-sort="turma" style="cursor:pointer;user-select:none;">Turma<span class="sort-arrow"></span></th>
+                <th data-sort="necessidades" style="cursor:pointer;user-select:none;">Necessidades<span class="sort-arrow"></span></th>
+                <th data-sort="professor" style="cursor:pointer;user-select:none;">Professor AEE<span class="sort-arrow"></span></th>
               </tr>
             </thead>
             <tbody id="tbody-nee">
@@ -44,6 +54,19 @@ export async function render() {
   `;
 
   document.getElementById('btn-pdf-nee')?.addEventListener('click', gerarPdf);
+
+  document.querySelectorAll('#table-nee th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sort;
+      if (ordenacaoNee.col === col) {
+        ordenacaoNee.dir = ordenacaoNee.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        ordenacaoNee.col = col;
+        ordenacaoNee.dir = 'asc';
+      }
+      renderTabela();
+    });
+  });
 
   listaNee = await listarEstudantesNEE();
   renderTabela();
@@ -60,12 +83,25 @@ function renderTabela() {
   const contagem = document.getElementById('contagem-nee');
   if (contagem) contagem.textContent = `${listaNee.length} estudante(s) com NEE`;
 
+  document.querySelectorAll('#table-nee th[data-sort] .sort-arrow').forEach(s => { s.textContent = ''; });
+  const thAtual = document.querySelector(`#table-nee th[data-sort="${ordenacaoNee.col}"] .sort-arrow`);
+  if (thAtual) thAtual.textContent = ordenacaoNee.dir === 'asc' ? ' ↑' : ' ↓';
+
   if (!listaNee.length) {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--sieac-text-muted);">Nenhum estudante com NEE encontrado para o seu perfil</td></tr>';
     return;
   }
 
-  tbody.innerHTML = listaNee.map(e => `
+  const acessor = SORT_ACCESSOR[ordenacaoNee.col] || SORT_ACCESSOR.nome;
+  const ordenadas = [...listaNee].sort((a, b) => {
+    const va = acessor(a);
+    const vb = acessor(b);
+    if (va < vb) return ordenacaoNee.dir === 'asc' ? -1 : 1;
+    if (va > vb) return ordenacaoNee.dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  tbody.innerHTML = ordenadas.map(e => `
     <tr>
       <td><strong>${e.nome}</strong></td>
       <td>${e.matricula}</td>
