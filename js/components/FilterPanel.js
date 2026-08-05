@@ -163,10 +163,12 @@ function computeValidOptions(pending) {
   if (!filterData) return null;
   const { series, turmas, alocacoes } = filterData;
 
-  // Para o Professor Conselheiro da turma selecionada, o filtro de Disciplina
-  // deve listar todas as disciplinas da turma, não apenas as que ele leciona.
-  // A restrição por professor segue valendo para a consulta dos dados.
+  // Para o Professor Conselheiro da turma selecionada com escopo "Todas as
+  // disciplinas da turma", o filtro de Disciplina deve listar todas as
+  // disciplinas da turma, não apenas as que ele leciona. Caso contrário (escopo
+  // "Minhas disciplinas"), o filtro mantém apenas as disciplinas do professor.
   const conselheiroDaTurma = filterData.userIsProfessor &&
+    pending.escopo === 'todas' &&
     pending.turma_id != null && pending.turma_id !== '' && turmaEhConselheiro(pending.turma_id);
 
   let aloc = alocacoes;
@@ -487,6 +489,8 @@ function handleEscopoChange() {
     setSelectValue('filter-escopo', 'minhas');
     sessionEscopo = 'minhas';
   }
+  const valid = computeValidOptions(pendingFilters);
+  rebuildSelectOptions(valid, 'filter-turma');
   applyEscopoUI();
   markDirty();
 }
