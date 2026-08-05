@@ -78,7 +78,6 @@ let isDirty = false;
 let professorVinculo = null;
 let filterData = null;
 let sessionEscopo = null;      // escolha de escopo na sessão (compartilhada entre telas)
-let escopoInteragido = false;  // true depois que o usuário interage com os filtros na sessão
 
 const combos = {};
 
@@ -452,7 +451,6 @@ function restoreFilterValues() {
 
 function handleFilterChange(id) {
   try {
-    escopoInteragido = true;
     if (id === 'filter-escopo') {
       handleEscopoChange();
       return;
@@ -656,7 +654,7 @@ function applyEscopoUI() {
   const isTodas = getSelectValue('filter-escopo') === 'todas';
   const efetivo = habilitado && isTodas;
 
-  group.style.display = habilitado && escopoInteragido ? '' : 'none';
+  group.style.display = habilitado ? '' : 'none';
   esc.disabled = !habilitado;
   if (!habilitado && isTodas) setSelectValue('filter-escopo', 'minhas');
   if (colProf) colProf.style.display = efetivo ? 'none' : '';
