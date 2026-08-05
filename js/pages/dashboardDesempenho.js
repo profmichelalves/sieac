@@ -4,10 +4,17 @@ import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createLineChart, destroyChart } from '../components/Charts.js';
 import {
   getMediaPorTurma, getMediaPorDisciplina,
-  getEvolucaoBimestral, getDistribuicaoHistograma
+  getEvolucaoBimestral, getDistribuicaoHistograma,
+  getNotasTurmaDisciplina
 } from '../repositories/dashboardRepository.js';
 
 let chartInst = {};
+
+function situacaoBadge(s) {
+  if (s === 'Aprovado' || s === 'Em Aprovação') return 'badge-sieac-success';
+  if (s === 'Recuperação Final' || s === 'Em Recuperação') return 'badge-sieac-warning';
+  return 'badge-sieac-secondary';
+}
 
 function destroyCanvas(id) {
   if (chartInst[id]) { chartInst[id].destroy(); delete chartInst[id]; }
@@ -109,6 +116,31 @@ export async function render() {
         </div>
       </div>
     </div>
+
+    <div class="card-sieac mt-4" id="card-notas-turma-disc" style="display:none;">
+      <div class="card-sieac-header"><span id="card-notas-turma-disc-titulo">Notas por Aluno</span></div>
+      <div class="card-sieac-body">
+        <div class="table-responsive-custom" style="max-height:400px;overflow-y:auto;">
+          <table class="table-sieac">
+            <thead>
+              <tr>
+                <th>Estudante</th>
+                <th>Matrícula</th>
+                <th>1º Bim</th>
+                <th>2º Bim</th>
+                <th>3º Bim</th>
+                <th>4º Bim</th>
+                <th>Média</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-notas-turma-disc">
+              <tr><td colspan="8" style="text-align:center;color:var(--sieac-text-muted);">Selecione uma turma e uma disciplina para ver as notas dos alunos.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   `;
 
   await renderFilterPanel('filter-container-desempenho', () => loadData());
@@ -205,5 +237,36 @@ async function loadData() {
   const hist = await getDistribuicaoHistograma(filters);
   if (hist.data) {
     criarHistograma('chart-distribuicao', hist.data);
+  }
+
+  const cardNotas = document.getElementById('card-notas-turma-disc');
+  const tbodyNotas = document.getElementById('tbody-notas-turma-disc');
+  if (cardNotas && tbodyNotas) {
+    if (filters.turma_id && filters.componente_id) {
+      const res = await getNotasTurmaDisciplina(filters);
+      const linhas = res.data || [];
+      const meta = res.meta || {};
+      document.getElementById('card-notas-turma-disc-titulo').textContent =
+        `Notas por Aluno — ${meta.turma} · ${meta.disciplina}`;
+      if (linhas.length) {
+        tbodyNotas.innerHTML = linhas.map(n => `
+          <tr>
+            <td><strong>${n.estudante}</strong></td>
+            <td>${n.matricula}</td>
+            <td class="num">${n.nota_1bim || '-'}</td>
+            <td class="num">${n.nota_2bim || '-'}</td>
+            <td class="num">${n.nota_3bim || '-'}</td>
+            <td class="num">${n.nota_4bim || '-'}</td>
+            <td class="num" style="font-weight:600;color:${n.media_acumulada == null ? 'inherit' : (parseFloat(n.media_acumulada) >= 6 ? 'var(--sieac-success)' : 'var(--sieac-danger)')}">${n.media_acumulada == null ? '-' : n.media_acumulada}</td>
+            <td><span class="badge ${situacaoBadge(n.situacao)}">${n.situacao}</span></td>
+          </tr>
+        `).join('');
+      } else {
+        tbodyNotas.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--sieac-text-muted);">Nenhuma nota encontrada para esta turma e disciplina.</td></tr>';
+      }
+      cardNotas.style.display = 'block';
+    } else {
+      cardNotas.style.display = 'none';
+    }
   }
 }

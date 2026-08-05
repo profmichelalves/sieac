@@ -660,6 +660,49 @@ export async function getMediaPorDisciplina(filters = {}) {
   };
 }
 
+// Notas de cada estudante em uma turma + disciplina específica (tabela do
+// Dashboard de Desempenho). Retorna vazio quando turma e disciplina não
+// estão selecionadas. Respeita as permissões de perfil (queryNotas).
+export async function getNotasTurmaDisciplina(filters = {}) {
+  if (!filters.turma_id || !filters.componente_id) return { data: [], meta: null, error: null };
+  await getRefCache();
+  const notas = await queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,resultado_final');
+
+  const eMap = {}; refCache.estudantes.forEach(e => eMap[e.id] = e);
+  const alocComp = {}; refCache.alocacoes.forEach(a => alocComp[a.id] = a.componente_id);
+  const cMap = {}; refCache.componentes.forEach(c => cMap[c.id] = c.nome);
+  const tMap = {}; refCache.turmas.forEach(t => tMap[t.id] = t.nome);
+
+  const data = notas.map(n => {
+    const temNota = [n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim].some(v => !isNaN(parseFloat(v)));
+    const e = eMap[n.estudante_id];
+    return {
+      estudante: e?.nome || `ID ${n.estudante_id}`,
+      matricula: e?.matricula || '-',
+      disciplina: cMap[alocComp[n.alocacao_id]] || 'N/I',
+      nota_1bim: n.nota_1bim,
+      nota_2bim: n.nota_2bim,
+      nota_3bim: n.nota_3bim,
+      nota_4bim: n.nota_4bim,
+      media_final: n.media_final,
+      media_acumulada: temNota ? calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim) : null,
+      situacao: temNota ? calcularSituacao(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim) : 'Sem Notas',
+    };
+  }).sort((a, b) =>
+    a.estudante.localeCompare(b.estudante, 'pt-BR') ||
+    a.disciplina.localeCompare(b.disciplina, 'pt-BR')
+  );
+
+  return {
+    data,
+    meta: {
+      turma: tMap[Number(filters.turma_id)] || 'Turma',
+      disciplina: cMap[Number(filters.componente_id)] || 'Disciplina',
+    },
+    error: null,
+  };
+}
+
 export async function getMediaPorSerie(filters = {}) {
   await getRefCache();
   const notas = await queryNotas(filters, 'media_final,alocacao_id');
