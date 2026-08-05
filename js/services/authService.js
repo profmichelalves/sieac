@@ -36,13 +36,16 @@ export async function login(email, senha) {
     return { error: 'Senha incorreta' };
   }
 
+  const SESSION_DURATION_MS = 4 * 60 * 60 * 1000;
+
   const userData = {
     id: user.id,
     nome: user.nome,
     email: user.email,
     matricula: user.matricula,
     perfil: perfilNome,
-    perfil_id: user.perfil_id
+    perfil_id: user.perfil_id,
+    expiresAt: Date.now() + SESSION_DURATION_MS
   };
 
   setUser(userData);
@@ -163,7 +166,12 @@ export async function logout() {
 
 export function getCurrentUser() {
   try {
-    return JSON.parse(localStorage.getItem('sieac_user'));
+    const user = JSON.parse(localStorage.getItem('sieac_user'));
+    if (user && user.expiresAt && Date.now() > user.expiresAt) {
+      clearUser();
+      return null;
+    }
+    return user;
   } catch {
     return null;
   }

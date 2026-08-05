@@ -90,7 +90,12 @@ export function getMesNome(num) {
 
 export function getUser() {
   try {
-    return JSON.parse(localStorage.getItem('sieac_user'));
+    const user = JSON.parse(localStorage.getItem('sieac_user'));
+    if (user && user.expiresAt && Date.now() > user.expiresAt) {
+      clearUser();
+      return null;
+    }
+    return user;
   } catch {
     return null;
   }
