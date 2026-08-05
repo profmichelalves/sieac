@@ -363,6 +363,9 @@ export async function renderFilterPanel(containerId, onChange) {
                 <option value="todas">Todas as disciplinas da turma</option>
               </select>
               <span id="prof-visualizando-note" style="font-size:0.78rem;color:var(--sieac-text-muted);"><i class="bi bi-person-badge"></i> Visualizando apenas suas disciplinas</span>
+              <span id="prof-conselheiro-badge" class="filter-badge" style="display:none;background:rgba(var(--sieac-secondary-rgb),0.12);color:var(--sieac-primary);border-color:rgba(var(--sieac-secondary-rgb),0.35);">
+                <i class="bi bi-mortarboard"></i> Você é o Professor Conselheiro desta turma
+              </span>
             ` : ''}
             <span id="filter-badges" style="margin-left:4px;"></span>
           </div>
@@ -618,6 +621,7 @@ function applyEscopoUI() {
   const esc = document.getElementById('filter-escopo');
   const colProf = document.getElementById('filter-professor-col');
   const note = document.getElementById('prof-visualizando-note');
+  const badge = document.getElementById('prof-conselheiro-badge');
   if (!esc || !filterData?.userIsProfessor) return;
 
   const turmaId = getSelectValue('filter-turma');
@@ -628,6 +632,15 @@ function applyEscopoUI() {
   esc.disabled = !habilitado;
   if (!habilitado && isTodas) setSelectValue('filter-escopo', 'minhas');
   if (colProf) colProf.style.display = efetivo ? 'none' : '';
+  if (badge) {
+    if (habilitado) {
+      const turmaNome = filterData.turmas.find(t => String(t.id) === String(turmaId))?.nome || '';
+      badge.innerHTML = `<i class="bi bi-mortarboard"></i> Você é o Professor Conselheiro da turma <strong>${turmaNome}</strong>`;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
   if (note) {
     note.innerHTML = efetivo
       ? '<i class="bi bi-person-badge"></i> Visualizando todas as disciplinas da turma'
