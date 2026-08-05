@@ -72,6 +72,11 @@ export function initSidebar() {
     if (menuCadastroEstudantes) {
       menuCadastroEstudantes.style.display = isGestao() ? 'flex' : 'none';
     }
+
+    const menuTurmas = document.getElementById('menu-turmas');
+    if (menuTurmas) {
+      menuTurmas.style.display = isGestao() ? 'flex' : 'none';
+    }
   }
 
   const btnLogout = document.getElementById('btn-logout');
@@ -99,6 +104,7 @@ export function setActiveRoute(route) {
     'dashboard-comparativo': 'Dashboard Comparativo',
     'dashboard-estudante': 'Consulta por Estudante',
     'cadastro-estudantes': 'Cadastro de Estudantes',
+    'turmas': 'Cadastro de Turmas',
     'importar': 'Importar Dados',
     'usuarios': 'Gerenciar Usuários',
     'logs': 'Logs de Atividade',

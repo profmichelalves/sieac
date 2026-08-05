@@ -128,10 +128,7 @@ async function getFilterData() {
   if (userIsProfessor && professorVinculo) {
     seriesData = professorVinculo.series;
     turmasData = professorVinculo.turmas;
-    const compIdsSet = new Set(professorVinculo.compIds);
-    compData = compData.filter(c => compIdsSet.has(c.id));
     profData = profData.filter(p => p.id === professorVinculo.id);
-    alocData = alocData.filter(a => a.professor_id === professorVinculo.id);
   }
 
   if (isProfessorAee()) {
@@ -154,6 +151,7 @@ async function getFilterData() {
     turnos: turnoOptions,
     userIsProfessor,
     profId: professorVinculo?.id,
+    responsavelTurmaIds: professorVinculo?.turmasConselheiro ? [...professorVinculo.turmasConselheiro] : [],
   };
 }
 
@@ -258,14 +256,17 @@ function rebuildSelectOptions(valid, skipId) {
   const profCombo = combos['filter-professor'];
   if (profCombo) {
     const currentVal = getSelectValue('filter-professor');
-    const profValidSet = has(valid?.profIds);
-    const filteredProf = profValidSet
-      ? filterData.professores.filter(item => {
+    let filteredProf = filterData.professores;
+    if (!filterData.userIsProfessor) {
+      const profValidSet = has(valid?.profIds);
+      if (profValidSet) {
+        filteredProf = filterData.professores.filter(item => {
           const raw = item.id;
           const idNum = typeof raw === 'number' ? raw : Number(raw);
           return profValidSet.has(idNum) || profValidSet.has(raw);
-        })
-      : filterData.professores;
+        });
+      }
+    }
     profCombo.setItems(filteredProf);
     setSelectValue('filter-professor', currentVal);
   }
@@ -285,6 +286,8 @@ export async function renderFilterPanel(containerId, onChange) {
   }
 
   if (!filterData) return;
+
+  filterData.responsavelTurmaSet = new Set(filterData.responsavelTurmaIds || []);
 
   logFilterDiagnostics();
 
@@ -340,7 +343,7 @@ export async function renderFilterPanel(containerId, onChange) {
             <select class="filter-select" id="filter-disciplina"><option value="">Todas</option></select>
           </div>
         </div>
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-2" id="filter-professor-col">
           <div class="filter-group">
             <label class="filter-label">Professor</label>
             <div id="filter-professor"></div>
@@ -354,7 +357,13 @@ export async function renderFilterPanel(containerId, onChange) {
             <button class="btn-pesquisar" id="btn-pesquisar">
               <i class="bi bi-search"></i> Pesquisar
             </button>
-            ${filterData.userIsProfessor ? '<span style="font-size:0.78rem;color:var(--sieac-text-muted);"><i class="bi bi-person-badge"></i> Visualizando apenas seus dados</span>' : ''}
+            ${filterData.userIsProfessor ? `
+              <select class="filter-select filter-escopo" id="filter-escopo" disabled>
+                <option value="minhas">Minhas disciplinas</option>
+                <option value="todas">Todas as disciplinas da turma</option>
+              </select>
+              <span id="prof-visualizando-note" style="font-size:0.78rem;color:var(--sieac-text-muted);"><i class="bi bi-person-badge"></i> Visualizando apenas suas disciplinas</span>
+            ` : ''}
             <span id="filter-badges" style="margin-left:4px;"></span>
           </div>
         </div>
@@ -385,6 +394,11 @@ export async function renderFilterPanel(containerId, onChange) {
   }
 
   restoreFilterValues();
+  if (filterData.userIsProfessor) {
+    applyEscopoUI();
+    const valid = computeValidOptions(appliedFilters);
+    if (valid) rebuildSelectOptions(valid);
+  }
   updateBadges();
   bindFilterEvents();
 }
@@ -412,8 +426,15 @@ function restoreFilterValues() {
     restored[key] = String(val);
   }
 
-  pendingFilters = { ...restored };
+  let escopo = 'minhas';
   if (filterData.userIsProfessor && professorVinculo) {
+    if (persisted.escopo === 'todas' && restored.turma_id && turmaEhConselheiro(restored.turma_id)) {
+      escopo = 'todas';
+    }
+  }
+
+  pendingFilters = { ...restored, escopo };
+  if (filterData.userIsProfessor && professorVinculo && escopo !== 'todas') {
     pendingFilters.professor_id = String(professorVinculo.id);
   }
   appliedFilters = { ...pendingFilters };
@@ -422,6 +443,7 @@ function restoreFilterValues() {
   for (const [elId, key] of Object.entries(SEL_TO_KEY)) {
     setSelectValue(elId, pendingFilters[key] || '');
   }
+  setSelectValue('filter-escopo', pendingFilters.escopo || 'minhas');
 }
 
 function handleFilterChange(id) {
@@ -438,6 +460,7 @@ function handleFilterChange(id) {
     };
     console.log(`[FilterPanel] change em ${id} | pending=${JSON.stringify(pendingFilters)} | válidos=`, cnt);
     rebuildSelectOptions(valid, id);
+    applyEscopoUI();
     markDirty();
   } catch (e) {
     console.error('FilterPanel change handler:', e);
@@ -452,6 +475,9 @@ function bindFilterEvents() {
       el.addEventListener('change', () => handleFilterChange(id));
     }
   });
+
+  const escopoSel = document.getElementById('filter-escopo');
+  if (escopoSel) escopoSel.addEventListener('change', () => handleFilterChange('filter-escopo'));
 
   const btnPesquisar = document.getElementById('btn-pesquisar');
   if (btnPesquisar) {
@@ -494,6 +520,7 @@ function bindFilterEvents() {
 
 function rebuildPending() {
   pendingFilters = {};
+  const escopo = getSelectValue('filter-escopo');
   if (isProfessor() && professorVinculo) {
     pendingFilters.professor_id = String(professorVinculo.id);
   }
@@ -501,6 +528,13 @@ function rebuildPending() {
     if (key === 'professor_id' && isProfessor()) continue;
     const val = getSelectValue(elId);
     if (val) pendingFilters[key] = val;
+  }
+  if (isProfessor() && escopo === 'todas' && pendingFilters.turma_id && turmaEhConselheiro(pendingFilters.turma_id)) {
+    delete pendingFilters.professor_id;
+    pendingFilters.escopo = 'todas';
+  } else {
+    pendingFilters.escopo = 'minhas';
+    setSelectValue('filter-escopo', 'minhas');
   }
 }
 
@@ -533,7 +567,7 @@ function updateBadges() {
   if (!container) return;
   let html = '';
   for (const [key, val] of Object.entries(appliedFilters)) {
-    if (!val) continue;
+    if (!val || key === 'escopo') continue;
     const selId = Object.entries(SEL_TO_KEY).find(([, v]) => v === key)?.[0];
     let label = val;
     if (selId && combos[selId]) label = combos[selId].getText() || val;
@@ -543,16 +577,62 @@ function updateBadges() {
     }
     html += `<span class="filter-badge">${KEY_TO_LABEL[key] || key}: ${label}</span> `;
   }
+  if (appliedFilters.escopo === 'todas') {
+    html += `<span class="filter-badge">Escopo: Todas as disciplinas da turma</span> `;
+  }
   container.innerHTML = html;
 }
 
 export function getFilters() {
-  return { ...(isProfessor() && professorVinculo ? { ...appliedFilters, professor_id: String(professorVinculo.id) } : appliedFilters) };
+  const base = { ...appliedFilters };
+  if (isProfessor() && professorVinculo && !escopoTodas(appliedFilters)) {
+    base.professor_id = String(professorVinculo.id);
+  }
+  return base;
 }
 
 export function getCurrentFilters() {
   const base = isDirty ? pendingFilters : appliedFilters;
-  return { ...(isProfessor() && professorVinculo ? { ...base, professor_id: String(professorVinculo.id) } : base) };
+  if (isProfessor() && professorVinculo && !escopoTodas(base)) {
+    return { ...base, professor_id: String(professorVinculo.id) };
+  }
+  return { ...base };
+}
+
+// True quando a turma selecionada é uma turma da qual o professor é conselheiro.
+function turmaEhConselheiro(turmaId) {
+  const set = filterData?.responsavelTurmaSet;
+  if (!set || turmaId == null || turmaId === '') return false;
+  return set.has(Number(turmaId)) || set.has(String(turmaId));
+}
+
+// True quando o professor optou por ver todas as disciplinas de uma turma da
+// qual é conselheiro (e essa turma está selecionada no filtro).
+function escopoTodas(f) {
+  if (!filterData?.userIsProfessor || !professorVinculo) return false;
+  if (!f || f.escopo !== 'todas') return false;
+  return turmaEhConselheiro(f.turma_id);
+}
+
+function applyEscopoUI() {
+  const esc = document.getElementById('filter-escopo');
+  const colProf = document.getElementById('filter-professor-col');
+  const note = document.getElementById('prof-visualizando-note');
+  if (!esc || !filterData?.userIsProfessor) return;
+
+  const turmaId = getSelectValue('filter-turma');
+  const habilitado = turmaEhConselheiro(turmaId);
+  const isTodas = getSelectValue('filter-escopo') === 'todas';
+  const efetivo = habilitado && isTodas;
+
+  esc.disabled = !habilitado;
+  if (!habilitado && isTodas) setSelectValue('filter-escopo', 'minhas');
+  if (colProf) colProf.style.display = efetivo ? 'none' : '';
+  if (note) {
+    note.innerHTML = efetivo
+      ? '<i class="bi bi-person-badge"></i> Visualizando todas as disciplinas da turma'
+      : '<i class="bi bi-person-badge"></i> Visualizando apenas suas disciplinas';
+  }
 }
 
 function logFilterDiagnostics() {

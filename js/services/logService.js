@@ -16,6 +16,7 @@ export const LOG_ACTIONS = {
   GERAR_PDF: 'gerar_pdf',
   EDITAR_NECESSIDADES: 'editar_necessidades',
   RELATORIO_NEE: 'relatorio_nee',
+  VINCULAR_CONSELHEIRO: 'vincular_conselheiro',
 };
 
 export async function registrarLog(acao, detalhes = null) {

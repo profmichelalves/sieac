@@ -212,21 +212,41 @@ export async function getProfessorVinculo() {
   const userMat = norm(user.matricula);
 
   const { data: professores } = await supabaseQuery('professores', {
-    select: 'id,matricula,nome'
+    select: 'id,id_pessoa,matricula,nome'
   });
   const prof = (professores || []).find(p => userMat && norm(p.matricula) === userMat);
   if (!prof) return null;
+
   const { data: alocacoes } = await supabaseQuery('alocacoes', {
     select: 'id,turma_id,componente_id',
     filters: [{ col: 'professor_id', val: prof.id }]
   });
 
-  const turmaIds = [...new Set((alocacoes || []).map(a => a.turma_id))];
-  const compIds = [...new Set((alocacoes || []).map(a => a.componente_id))];
+  const { data: conselheiroRes } = await supabaseQuery('turma_conselheiros', {
+    select: 'id_turma',
+    filters: [{ col: 'id_pessoa', val: prof.id_pessoa }]
+  });
+
+  const turmasConselheiroExt = new Set((conselheiroRes || []).map(c => c.id_turma));
 
   const { data: turmas } = await supabaseQuery('turmas', {
-    select: 'id,nome,serie_id,turno'
+    select: 'id,id_turma,nome,serie_id,turno'
   });
+
+  const turmasConselheiro = new Set(
+    (turmas || [])
+      .filter(t => turmasConselheiroExt.has(t.id_turma))
+      .map(t => t.id)
+  );
+
+  const turmaIds = [
+    ...new Set([
+      ...(alocacoes || []).map(a => a.turma_id),
+      ...turmasConselheiro,
+    ])
+  ];
+  const compIds = [...new Set((alocacoes || []).map(a => a.componente_id))];
+
   const { data: series } = await supabaseQuery('series', {
     select: 'id,nome,etapa_ensino_id'
   });
@@ -237,11 +257,13 @@ export async function getProfessorVinculo() {
 
   professorVinculo = {
     id: prof.id,
+    id_pessoa: prof.id_pessoa,
     nome: prof.nome,
     matricula: prof.matricula,
     turmaIds,
     compIds,
     serieIds,
+    turmasConselheiro,
     turmas: turmasFiltradas,
     series: seriesFiltradas,
   };

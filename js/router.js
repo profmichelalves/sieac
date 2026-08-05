@@ -14,6 +14,7 @@ const routes = {
   'relatorio-sem-notas': { page: 'relatoriosSemNotas', auth: true },
   'relatorio-nee': { page: 'relatorioNee', auth: true },
   'cadastro-estudantes': { page: 'cadastroEstudantes', auth: true, can: isGestao },
+  'turmas': { page: 'turmasPage', auth: true, can: isGestao },
   'importar': { page: 'importPage', auth: true, can: isGestao },
   'usuarios': { page: 'usuariosPage', auth: true, can: isAdmin },
   'logs': { page: 'logsPage', auth: true, can: isAdmin },
