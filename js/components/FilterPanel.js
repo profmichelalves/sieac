@@ -260,18 +260,7 @@ function rebuildSelectOptions(valid, skipId) {
   const profCombo = combos['filter-professor'];
   if (profCombo) {
     const currentVal = getSelectValue('filter-professor');
-    let filteredProf = filterData.professores;
-    if (!filterData.userIsProfessor) {
-      const profValidSet = has(valid?.profIds);
-      if (profValidSet) {
-        filteredProf = filterData.professores.filter(item => {
-          const raw = item.id;
-          const idNum = typeof raw === 'number' ? raw : Number(raw);
-          return profValidSet.has(idNum) || profValidSet.has(raw);
-        });
-      }
-    }
-    profCombo.setItems(filteredProf);
+    profCombo.setItems(filterData.professores);
     setSelectValue('filter-professor', currentVal);
   }
 }
