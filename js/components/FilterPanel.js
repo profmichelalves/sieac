@@ -638,15 +638,17 @@ function escopoTodas(f) {
 
 function applyEscopoUI() {
   const esc = document.getElementById('filter-escopo');
+  const group = document.getElementById('filter-escopo-group');
   const colProf = document.getElementById('filter-professor-col');
   const badge = document.getElementById('prof-conselheiro-badge');
-  if (!esc || !filterData?.userIsProfessor) return;
+  if (!esc || !group || !filterData?.userIsProfessor) return;
 
   const turmaId = getSelectValue('filter-turma');
   const habilitado = turmaEhConselheiro(turmaId);
   const isTodas = getSelectValue('filter-escopo') === 'todas';
   const efetivo = habilitado && isTodas;
 
+  group.style.display = habilitado ? '' : 'none';
   esc.disabled = !habilitado;
   if (!habilitado && isTodas) setSelectValue('filter-escopo', 'minhas');
   if (colProf) colProf.style.display = efetivo ? 'none' : '';
