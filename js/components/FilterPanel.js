@@ -344,7 +344,7 @@ export async function renderFilterPanel(containerId, onChange) {
         </div>
         <div class="col-12">
           <div class="filter-bar-actions">
-            <button class="btn btn-sm btn-outline-secondary" id="filter-clear" style="border-radius:var(--sieac-radius-pill);${filterData.userIsProfessor ? 'display:none;' : ''}">
+            <button class="btn btn-sm btn-outline-secondary" id="filter-clear" style="border-radius:var(--sieac-radius-pill);">
               <i class="bi bi-x-circle"></i> Limpar Filtros
             </button>
             ${filterData.userIsProfessor ? `
@@ -512,7 +512,6 @@ function bindFilterEvents() {
   const clearBtn = document.getElementById('filter-clear');
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
-      if (filterData?.userIsProfessor) return;
       SELECT_IDS.forEach(id => {
         if (combos[id]) {
           combos[id].clear();
@@ -525,9 +524,14 @@ function bindFilterEvents() {
       if (filterData?.userIsProfessor && professorVinculo) {
         pendingFilters.professor_id = String(professorVinculo.id);
         setSelectValue('filter-professor', filterData.profId);
+        pendingFilters.escopo = 'minhas';
+        setSelectValue('filter-escopo', 'minhas');
+        sessionEscopo = 'minhas';
       }
       appliedFilters = { ...pendingFilters };
-      rebuildSelectOptions(null);
+      const valid = computeValidOptions(pendingFilters);
+      rebuildSelectOptions(valid, null);
+      if (filterData?.userIsProfessor) applyEscopoUI();
       clearDirty();
       updateBadges();
       saveSelectedFilters(appliedFilters);
