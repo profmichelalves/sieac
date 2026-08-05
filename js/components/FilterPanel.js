@@ -2,6 +2,7 @@ import { supabaseQuery } from '../services/supabase.js';
 import { isProfessor, isProfessorAee, getProfessorVinculo } from '../services/authService.js';
 import { listarTurmasParaConsulta } from '../repositories/dashboardRepository.js';
 import { createSearchSelect } from './SearchSelect.js';
+import { infoBtn } from '../utils/explanation.js';
 
 const CACHE_KEY = 'sieac_filter_cache';
 const CACHE_VERSION = 4;
@@ -354,19 +355,19 @@ export async function renderFilterPanel(containerId, onChange) {
             <button class="btn btn-sm btn-outline-secondary" id="filter-clear" style="border-radius:var(--sieac-radius-pill);${filterData.userIsProfessor ? 'display:none;' : ''}">
               <i class="bi bi-x-circle"></i> Limpar Filtros
             </button>
+            ${filterData.userIsProfessor ? `
+              <div class="filter-group filter-escopo-group">
+                <label class="filter-label">Escopo ${infoBtn('Escopo de Visualização', 'Quando você é o Professor Conselheiro de uma turma, pode visualizar apenas as suas disciplinas ou todas as disciplinas da turma selecionada.')}</label>
+                <select class="filter-select" id="filter-escopo" disabled>
+                  <option value="minhas">Minhas disciplinas</option>
+                  <option value="todas">Todas as disciplinas da turma</option>
+                </select>
+                <span id="prof-conselheiro-badge" class="conselheiro-note" style="display:none;"></span>
+              </div>
+            ` : ''}
             <button class="btn-pesquisar" id="btn-pesquisar">
               <i class="bi bi-search"></i> Pesquisar
             </button>
-            ${filterData.userIsProfessor ? `
-              <select class="filter-select filter-escopo" id="filter-escopo" disabled>
-                <option value="minhas">Minhas disciplinas</option>
-                <option value="todas">Todas as disciplinas da turma</option>
-              </select>
-              <span id="prof-visualizando-note" style="font-size:0.78rem;color:var(--sieac-text-muted);"><i class="bi bi-person-badge"></i> Visualizando apenas suas disciplinas</span>
-              <span id="prof-conselheiro-badge" class="filter-badge" style="display:none;background:rgba(var(--sieac-secondary-rgb),0.12);color:var(--sieac-primary);border-color:rgba(var(--sieac-secondary-rgb),0.35);">
-                <i class="bi bi-mortarboard"></i> Você é o Professor Conselheiro desta turma
-              </span>
-            ` : ''}
             <span id="filter-badges" style="margin-left:4px;"></span>
           </div>
         </div>
@@ -397,11 +398,7 @@ export async function renderFilterPanel(containerId, onChange) {
   }
 
   restoreFilterValues();
-  if (filterData.userIsProfessor) {
-    applyEscopoUI();
-    const valid = computeValidOptions(appliedFilters);
-    if (valid) rebuildSelectOptions(valid);
-  }
+  if (filterData.userIsProfessor) applyEscopoUI();
   updateBadges();
   bindFilterEvents();
 }
@@ -451,6 +448,10 @@ function restoreFilterValues() {
 
 function handleFilterChange(id) {
   try {
+    if (id === 'filter-escopo') {
+      handleEscopoChange();
+      return;
+    }
     rebuildPending();
     const valid = computeValidOptions(pendingFilters);
     const cnt = valid && {
@@ -468,6 +469,24 @@ function handleFilterChange(id) {
   } catch (e) {
     console.error('FilterPanel change handler:', e);
   }
+}
+
+// A mudança do escopo não deve recomputar/reduzir as opções de turma: apenas
+// alterna entre as disciplinas do professor e todas as disciplinas da turma.
+function handleEscopoChange() {
+  if (!filterData?.userIsProfessor || !professorVinculo) return;
+  const escopo = getSelectValue('filter-escopo') === 'todas' ? 'todas' : 'minhas';
+  const turmaId = getSelectValue('filter-turma');
+  if (escopo === 'todas' && turmaEhConselheiro(turmaId)) {
+    pendingFilters.escopo = 'todas';
+    delete pendingFilters.professor_id;
+  } else {
+    pendingFilters.escopo = 'minhas';
+    pendingFilters.professor_id = String(professorVinculo.id);
+    setSelectValue('filter-escopo', 'minhas');
+  }
+  applyEscopoUI();
+  markDirty();
 }
 
 function bindFilterEvents() {
@@ -620,7 +639,6 @@ function escopoTodas(f) {
 function applyEscopoUI() {
   const esc = document.getElementById('filter-escopo');
   const colProf = document.getElementById('filter-professor-col');
-  const note = document.getElementById('prof-visualizando-note');
   const badge = document.getElementById('prof-conselheiro-badge');
   if (!esc || !filterData?.userIsProfessor) return;
 
@@ -636,15 +654,10 @@ function applyEscopoUI() {
     if (habilitado) {
       const turmaNome = filterData.turmas.find(t => String(t.id) === String(turmaId))?.nome || '';
       badge.innerHTML = `<i class="bi bi-mortarboard"></i> Você é o Professor Conselheiro da turma <strong>${turmaNome}</strong>`;
-      badge.style.display = 'inline-flex';
+      badge.style.display = 'block';
     } else {
       badge.style.display = 'none';
     }
-  }
-  if (note) {
-    note.innerHTML = efetivo
-      ? '<i class="bi bi-person-badge"></i> Visualizando todas as disciplinas da turma'
-      : '<i class="bi bi-person-badge"></i> Visualizando apenas suas disciplinas';
   }
 }
 

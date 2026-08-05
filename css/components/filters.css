@@ -44,16 +44,19 @@
   box-shadow: 0 0 0 3px rgba(var(--sieac-secondary-rgb), 0.15);
 }
 
-.filter-escopo {
-  width: auto;
-  padding: 6px 12px;
-  font-size: 0.78rem;
-  border-radius: var(--sieac-radius-pill);
+.filter-escopo-group {
+  min-width: 240px;
 }
 
-.filter-escopo:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.conselheiro-note {
+  font-size: 0.75rem;
+  color: var(--sieac-secondary, #2563eb);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.conselheiro-note strong {
+  font-weight: 700;
 }
 
 .filter-badge {
