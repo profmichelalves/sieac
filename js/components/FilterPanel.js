@@ -359,7 +359,7 @@ export async function renderFilterPanel(containerId, onChange) {
               <i class="bi bi-x-circle"></i> Limpar Filtros
             </button>
             ${filterData.userIsProfessor ? `
-              <div class="filter-group filter-escopo-group" style="display:none;">
+              <div class="filter-group filter-escopo-group" id="filter-escopo-group" style="display:none;">
                 <label class="filter-label">Escopo ${infoBtn('Escopo de Visualização', 'Quando você é o Professor Conselheiro de uma turma, pode visualizar apenas as suas disciplinas ou todas as disciplinas da turma selecionada.')}</label>
                 <select class="filter-select" id="filter-escopo" disabled>
                   <option value="minhas">Minhas disciplinas</option>
