@@ -43,7 +43,9 @@ function loadSelectedFilters() {
 }
 
 function saveSelectedFilters(filters) {
-  try { localStorage.setItem(SELECTED_KEY, JSON.stringify({ v: SELECTED_VERSION, f: filters })); } catch {}
+  const f = { ...filters };
+  delete f.escopo;
+  try { localStorage.setItem(SELECTED_KEY, JSON.stringify({ v: SELECTED_VERSION, f })); } catch {}
 }
 
 const SELECT_IDS = [
@@ -75,6 +77,8 @@ let onChangeCallback = null;
 let isDirty = false;
 let professorVinculo = null;
 let filterData = null;
+let sessionEscopo = null;      // escolha de escopo na sessão (compartilhada entre telas)
+let escopoInteragido = false;  // true depois que o usuário interage com os filtros na sessão
 
 const combos = {};
 
@@ -356,7 +360,7 @@ export async function renderFilterPanel(containerId, onChange) {
               <i class="bi bi-x-circle"></i> Limpar Filtros
             </button>
             ${filterData.userIsProfessor ? `
-              <div class="filter-group filter-escopo-group">
+              <div class="filter-group filter-escopo-group" style="display:none;">
                 <label class="filter-label">Escopo ${infoBtn('Escopo de Visualização', 'Quando você é o Professor Conselheiro de uma turma, pode visualizar apenas as suas disciplinas ou todas as disciplinas da turma selecionada.')}</label>
                 <select class="filter-select" id="filter-escopo" disabled>
                   <option value="minhas">Minhas disciplinas</option>
@@ -428,7 +432,7 @@ function restoreFilterValues() {
 
   let escopo = 'minhas';
   if (filterData.userIsProfessor && professorVinculo) {
-    if (persisted.escopo === 'todas' && restored.turma_id && turmaEhConselheiro(restored.turma_id)) {
+    if (sessionEscopo === 'todas' && restored.turma_id && turmaEhConselheiro(restored.turma_id)) {
       escopo = 'todas';
     }
   }
@@ -448,6 +452,7 @@ function restoreFilterValues() {
 
 function handleFilterChange(id) {
   try {
+    escopoInteragido = true;
     if (id === 'filter-escopo') {
       handleEscopoChange();
       return;
@@ -480,10 +485,12 @@ function handleEscopoChange() {
   if (escopo === 'todas' && turmaEhConselheiro(turmaId)) {
     pendingFilters.escopo = 'todas';
     delete pendingFilters.professor_id;
+    sessionEscopo = 'todas';
   } else {
     pendingFilters.escopo = 'minhas';
     pendingFilters.professor_id = String(professorVinculo.id);
     setSelectValue('filter-escopo', 'minhas');
+    sessionEscopo = 'minhas';
   }
   applyEscopoUI();
   markDirty();
@@ -557,6 +564,7 @@ function rebuildPending() {
   } else {
     pendingFilters.escopo = 'minhas';
     setSelectValue('filter-escopo', 'minhas');
+    sessionEscopo = 'minhas';
   }
 }
 
@@ -648,7 +656,7 @@ function applyEscopoUI() {
   const isTodas = getSelectValue('filter-escopo') === 'todas';
   const efetivo = habilitado && isTodas;
 
-  group.style.display = habilitado ? '' : 'none';
+  group.style.display = habilitado && escopoInteragido ? '' : 'none';
   esc.disabled = !habilitado;
   if (!habilitado && isTodas) setSelectValue('filter-escopo', 'minhas');
   if (colProf) colProf.style.display = efetivo ? 'none' : '';
