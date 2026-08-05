@@ -163,9 +163,15 @@ function computeValidOptions(pending) {
   if (!filterData) return null;
   const { series, turmas, alocacoes } = filterData;
 
+  // Para o Professor Conselheiro da turma selecionada, o filtro de Disciplina
+  // deve listar todas as disciplinas da turma, não apenas as que ele leciona.
+  // A restrição por professor segue valendo para a consulta dos dados.
+  const conselheiroDaTurma = filterData.userIsProfessor &&
+    pending.turma_id != null && pending.turma_id !== '' && turmaEhConselheiro(pending.turma_id);
+
   let aloc = alocacoes;
   if (pending.componente_id) aloc = aloc.filter(a => a.componente_id == pending.componente_id);
-  if (pending.professor_id) aloc = aloc.filter(a => a.professor_id == pending.professor_id);
+  if (pending.professor_id && !conselheiroDaTurma) aloc = aloc.filter(a => a.professor_id == pending.professor_id);
   const alocTurmaIds = new Set(aloc.map(a => a.turma_id));
 
   let turmV = turmas;
