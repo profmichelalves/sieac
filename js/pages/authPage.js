@@ -300,66 +300,71 @@ export function renderRedefinirSenha() {
 
   if (!container) return;
 
-  const token = parseRecoveryFragment();
-  if (!token) {
-    container.innerHTML = `
-      <div class="auth-page">
-        <div class="auth-card">
-          <div class="auth-logo">
-            <div class="auth-logo-icon">S</div>
-            <div class="auth-logo-text">
-              SIEAC
-              <small>Sistema de Indicadores Educacionais Abel Coelho</small>
-            </div>
-          </div>
-          <h2 class="auth-title">Link inválido ou expirado</h2>
-          <div id="auth-alert"></div>
-          <div class="auth-alert error">O link de recuperação é inválido ou já expirou. Solicite um novo link.</div>
-          <div class="auth-link">
-            <a href="#recuperar-senha">Solicitar novo link</a> · <a href="#login">Fazer login</a>
-          </div>
+  container.innerHTML = `
+    <div class="auth-page">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">S</div>
+        <div class="auth-logo-text">
+          SIEAC
+          <small>Sistema de Indicadores Educacionais Abel Coelho</small>
         </div>
       </div>
-    `;
+    </div>
+  `;
+
+  const token = parseRecoveryFragment();
+  if (!token) {
+    const modal = mostrarModalRedefinicao({
+      voltarAoLoginEmHidden: false,
+      body: `
+        <div class="auth-alert error">O link de recuperação é inválido ou já expirou. Solicite um novo link.</div>
+      `,
+      footer: `
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="reset-novo-link" style="border-radius:var(--sieac-radius-pill);">Solicitar novo link</button>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="reset-ir-login" style="border-radius:var(--sieac-radius-pill);">Fazer login</button>
+      `,
+    });
+    modal.querySelector('#reset-novo-link')?.addEventListener('click', () => { window.location.hash = '#recuperar-senha'; });
+    modal.querySelector('#reset-ir-login')?.addEventListener('click', () => { window.location.hash = '#login'; });
     return;
   }
 
   // Usa a sessão de recuperação para autenticar a troca de senha.
   setSession(token);
 
-  container.innerHTML = `
-    <div class="auth-page">
-      <div class="auth-card">
-        <div class="auth-logo">
-          <div class="auth-logo-icon">S</div>
-          <div class="auth-logo-text">
-            SIEAC
-            <small>Sistema de Indicadores Educacionais Abel Coelho</small>
-          </div>
+  let concluido = false;
+  const modal = mostrarModalRedefinicao({
+    voltarAoLoginEmHidden: true,
+    body: `
+      <div id="auth-alert"></div>
+      <form id="reset-form">
+        <div class="mb-3">
+          <label class="form-label" for="reset-senha">Nova Senha</label>
+          <input type="password" class="form-control" id="reset-senha" placeholder="Crie uma nova senha" required autocomplete="new-password">
         </div>
-        <h2 class="auth-title">Definir Nova Senha</h2>
-        <div id="auth-alert"></div>
-        <form class="auth-form" id="reset-form">
-          <div class="mb-3">
-            <label class="form-label">Nova Senha</label>
-            <input type="password" class="form-control" id="reset-senha" placeholder="Crie uma nova senha" required autocomplete="new-password">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Confirmar Nova Senha</label>
-            <input type="password" class="form-control" id="reset-confirm" placeholder="Repita a nova senha" required autocomplete="new-password">
-          </div>
-          <button type="submit" class="auth-btn" id="reset-btn">Salvar nova senha</button>
-        </form>
-      </div>
-    </div>
-  `;
+        <div class="mb-3">
+          <label class="form-label" for="reset-confirm">Confirmar Nova Senha</label>
+          <input type="password" class="form-control" id="reset-confirm" placeholder="Repita a nova senha" required autocomplete="new-password">
+        </div>
+      </form>
+    `,
+    footer: `
+      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:var(--sieac-radius-pill);">Cancelar</button>
+      <button type="submit" form="reset-form" class="btn btn-primary" id="reset-btn" style="border-radius:var(--sieac-radius-pill);">Salvar nova senha</button>
+    `,
+  });
+  modal.addEventListener('hidden.bs.modal', () => {
+    if (!concluido) clearSession();
+  });
 
-  document.getElementById('reset-form').addEventListener('submit', async (e) => {
+  const form = modal.querySelector('#reset-form');
+  const btn = modal.querySelector('#reset-btn');
+  const alertEl = modal.querySelector('#auth-alert');
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const senha = document.getElementById('reset-senha').value;
     const confirm = document.getElementById('reset-confirm').value;
-    const alertEl = document.getElementById('auth-alert');
-    const btn = document.getElementById('reset-btn');
 
     if (senha.length < 4) {
       alertEl.innerHTML = `<div class="auth-alert error">A senha deve ter no mínimo 4 caracteres.</div>`;
@@ -382,12 +387,51 @@ export function renderRedefinirSenha() {
       return;
     }
 
+    concluido = true;
     clearSession();
     clearUser();
     sessionStorage.setItem('sieac_senha_redefinida', '1');
+    bootstrap.Modal.getInstance(modal)?.hide();
     window.location.hash = '#login';
     window.location.reload();
   });
+}
+
+// Exibe o formulário de nova senha em uma modal Bootstrap, seguindo o mesmo
+// layout das demais janelas modais da aplicação.
+function mostrarModalRedefinicao({ body, footer, voltarAoLoginEmHidden = true }) {
+  document.getElementById('modal-redefinir-senha')?.remove();
+  const modalEl = document.createElement('div');
+  modalEl.className = 'modal fade';
+  modalEl.id = 'modal-redefinir-senha';
+  modalEl.tabIndex = -1;
+  modalEl.setAttribute('aria-hidden', 'true');
+  modalEl.innerHTML = `
+    <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
+      <div class="modal-content" style="border-radius:var(--sieac-radius-xl);box-shadow:var(--sieac-shadow-lg);">
+        <div class="modal-header">
+          <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-key-fill" style="color:var(--sieac-warning);margin-right:8px;"></i>Definir Nova Senha</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p style="color:var(--sieac-text-muted);font-size:0.9rem;margin-bottom:16px;">Crie uma nova senha para acessar o SIEAC.</p>
+          ${body}
+        </div>
+        <div class="modal-footer">
+          ${footer}
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalEl);
+  modalEl.addEventListener('hidden.bs.modal', () => {
+    document.getElementById('modal-redefinir-senha')?.remove();
+    if (voltarAoLoginEmHidden && !window.location.hash.startsWith('#redefinir-senha')) {
+      window.location.hash = '#login';
+    }
+  });
+  new bootstrap.Modal(modalEl).show();
+  return modalEl;
 }
 
 function escapeHtmlMsg(text) {
