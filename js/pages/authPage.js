@@ -264,7 +264,11 @@ export function renderRecuperarSenha() {
 
     const result = await recuperarSenha(email);
     if (result.error) {
-      alertEl.innerHTML = `<div class="auth-alert error">${escapeHtmlMsg(result.error)}</div>`;
+      const isRateLimit = /rate limit|limite/i.test(result.error);
+      const msg = isRateLimit
+        ? 'Muitas solicitações de recuperação. Aguarde cerca de 1 hora antes de tentar novamente.'
+        : 'Não foi possível enviar o link. Se o problema persistir, aguarde alguns minutos e tente novamente.';
+      alertEl.innerHTML = `<div class="auth-alert error">${escapeHtmlMsg(msg)}</div>`;
       btn.disabled = false;
       btn.textContent = 'Enviar link';
     } else {
