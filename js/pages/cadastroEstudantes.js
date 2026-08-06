@@ -1,4 +1,4 @@
-import { $$, showToast } from '../utils/helpers.js';
+import { $$, showToast, escapeHtml } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { createSearchSelect } from '../components/SearchSelect.js';
 import { listarTiposNecessidades, listarProfessoresParaAEE, listarEstudantesCadastro, salvarNecessidadesEstudante } from '../repositories/necessidadesRepository.js';
@@ -231,11 +231,11 @@ function renderTabela() {
 
   tbody.innerHTML = filtrados.map(e => `
     <tr>
-      <td><strong>${e.nome}</strong></td>
-      <td>${e.matricula}</td>
-      <td>${e.turmas.join(', ') || '-'}</td>
+      <td><strong>${escapeHtml(e.nome)}</strong></td>
+      <td>${escapeHtml(e.matricula)}</td>
+      <td>${escapeHtml(e.turmas.join(', ') || '-')}</td>
       <td>${renderNecessidades(e.necessidades)}</td>
-      <td>${e.professorAee ? e.professorAee.nome : '<span style="color:var(--sieac-text-muted);">Não informado</span>'}</td>
+      <td>${e.professorAee ? escapeHtml(e.professorAee.nome) : '<span style="color:var(--sieac-text-muted);">Não informado</span>'}</td>
       <td>
         <button class="btn btn-sm btn-outline-primary btn-editar-estudante" data-id="${e.id}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
           <i class="bi bi-pencil-square"></i> Editar
@@ -253,7 +253,7 @@ function renderNecessidades(necessidades) {
   if (!necessidades || !necessidades.length) {
     return '<span style="color:var(--sieac-text-muted);">—</span>';
   }
-  return necessidades.map(n => `<span class="badge badge-sieac-secondary" style="margin:2px 4px 2px 0;">${n}</span>`).join('');
+  return necessidades.map(n => `<span class="badge badge-sieac-secondary" style="margin:2px 4px 2px 0;">${escapeHtml(n)}</span>`).join('');
 }
 
 async function abrirModal(estudanteId) {
@@ -275,7 +275,7 @@ async function abrirModal(estudanteId) {
         <div class="col-md-6">
           <div class="form-check">
             <input class="form-check-input tipo-check" type="checkbox" id="tipo-${t.id}" value="${t.id}" ${selecionadas.has(t.id) ? 'checked' : ''}>
-            <label class="form-check-label" for="tipo-${t.id}">${t.nome}</label>
+            <label class="form-check-label" for="tipo-${t.id}">${escapeHtml(t.nome)}</label>
           </div>
         </div>
       `).join('')

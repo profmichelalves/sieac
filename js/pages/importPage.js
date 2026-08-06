@@ -1,4 +1,4 @@
-import { $, showToast, formatarDataHora } from '../utils/helpers.js';
+import { $, showToast, formatarDataHora, escapeHtml } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { importarNotas, importarFrequencia } from '../services/importService.js';
 import { supabaseRpc, supabaseQuery } from '../services/supabase.js';
@@ -223,7 +223,7 @@ async function processFile(tipo, file) {
     ${res.errosDetalhes && res.errosDetalhes.length ? `
       <div style="margin-top:12px;font-size:0.8rem;color:var(--sieac-danger);">
         <strong>Detalhes dos erros:</strong><br>
-        ${res.errosDetalhes.slice(0, 5).map(e => `• ${e}`).join('<br>')}
+        ${res.errosDetalhes.slice(0, 5).map(e => `• ${escapeHtml(e)}`).join('<br>')}
       </div>
     ` : ''}
     ${ignoradosCount > 0 ? `
@@ -266,9 +266,9 @@ async function processFile(tipo, file) {
 }
 
 function formatIgnorado(d) {
-  if (typeof d === 'string') return d;
-  if (d.tipo === 'frequencia') return `Ignorado: ${d.matricula} - ${d.turma} (${d.motivo})`;
-  return `Ignorado: ${d.registro} — ${d.turma} / ${d.disciplina} (${d.motivo})`;
+  if (typeof d === 'string') return escapeHtml(d);
+  if (d.tipo === 'frequencia') return `Ignorado: ${escapeHtml(d.matricula)} - ${escapeHtml(d.turma)} (${escapeHtml(d.motivo)})`;
+  return `Ignorado: ${escapeHtml(d.registro)} — ${escapeHtml(d.turma)} / ${escapeHtml(d.disciplina)} (${escapeHtml(d.motivo)})`;
 }
 
 function gerarPdfIgnorados(tipoNome, res, fileName) {
@@ -415,7 +415,7 @@ async function carregarHistorico() {
               <tr>
                 <td>${formatarDataHora(i.created_at)}</td>
                 <td>${i.tipo === 'notas' ? 'Notas' : 'Frequência'}</td>
-                <td>${i.arquivo || '-'}</td>
+                <td>${escapeHtml(i.arquivo || '-')}</td>
                 <td>${i.registros}</td>
                 <td>${i.inseridos}</td>
                 <td style="color:${i.erros > 0 ? 'var(--sieac-danger)' : 'inherit'}">${i.erros}</td>

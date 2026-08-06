@@ -5,6 +5,8 @@ import { showToast } from './utils/helpers.js';
 const routes = {
   'login': { page: 'auth', auth: false },
   'registrar': { page: 'auth', auth: false },
+  'recuperar-senha': { page: 'auth', auth: false },
+  'redefinir-senha': { page: 'auth', auth: false },
   'dashboard-geral': { page: 'dashboardGeral', auth: true },
   'dashboard-desempenho': { page: 'dashboardDesempenho', auth: true },
   'dashboard-frequencia': { page: 'dashboardFrequencia', auth: true },
@@ -24,6 +26,14 @@ let currentPage = null;
 
 export async function navigate() {
   let hash = window.location.hash.replace('#', '') || 'login';
+
+  // Link de recuperação de senha do Supabase Auth (fluxo implicit) chega como
+  // "#access_token=...&type=recovery" — trata como a página de nova senha.
+  const rawHash = window.location.hash;
+  if (rawHash.includes('type=recovery') && rawHash.includes('access_token=')) {
+    hash = 'redefinir-senha';
+  }
+
   const route = routes[hash];
 
   if (!route) {
@@ -45,7 +55,7 @@ export async function navigate() {
     }
   }
 
-  if (hash === 'login' || hash === 'registrar') {
+  if (['login', 'registrar', 'recuperar-senha', 'redefinir-senha'].includes(hash)) {
     document.getElementById('auth-container').style.display = 'flex';
     document.getElementById('app-shell').style.display = 'none';
   } else {
@@ -67,6 +77,14 @@ export async function navigate() {
     } else if (hash === 'registrar') {
       const { renderRegister } = await import('./pages/authPage.js');
       renderRegister();
+      currentPage = { unload: () => {} };
+    } else if (hash === 'recuperar-senha') {
+      const { renderRecuperarSenha } = await import('./pages/authPage.js');
+      renderRecuperarSenha();
+      currentPage = { unload: () => {} };
+    } else if (hash === 'redefinir-senha') {
+      const { renderRedefinirSenha } = await import('./pages/authPage.js');
+      renderRedefinirSenha();
       currentPage = { unload: () => {} };
     } else {
       const pageModule = await import(`./pages/${route.page}.js`);

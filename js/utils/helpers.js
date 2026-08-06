@@ -48,7 +48,7 @@ export function showToast(message, type = 'info') {
 
   const toast = document.createElement('div');
   toast.className = `toast-sieac ${type}`;
-  toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="font-size:1.2rem;"></i><span>${message}</span>`;
+  toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="font-size:1.2rem;"></i><span>${escapeHtml(message)}</span>`;
   document.body.appendChild(toast);
 
   setTimeout(() => {
@@ -107,6 +107,69 @@ export function setUser(user) {
 
 export function clearUser() {
   localStorage.removeItem('sieac_user');
+}
+
+const SESSION_KEY = 'sieac_auth_session';
+
+// Sessão do Supabase Auth (GoTrue): { access_token, refresh_token, expires_at }.
+export function getSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || !s.access_token) return null;
+    return s;
+  } catch {
+    return null;
+  }
+}
+
+export function setSession(session) {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch {}
+}
+
+export function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch {}
+}
+
+export function getRefreshToken() {
+  return getSession()?.refresh_token || null;
+}
+
+export function isSessionExpired() {
+  const s = getSession();
+  if (!s) return true;
+  // margem de 60s antes do vencimento
+  return !s.expires_at || Date.now() / 1000 + 60 >= s.expires_at;
+}
+
+export function getAuthToken() {
+  return getSession()?.access_token || null;
+}
+
+export function setAuthToken(token) {
+  // compatibilidade: preserva a sessão e atualiza apenas o access token
+  if (token) {
+    const atual = getSession() || {};
+    setSession({ ...atual, access_token: token });
+  } else {
+    clearSession();
+  }
+}
+
+export function clearAuthToken() {
+  clearSession();
+}
+
+// Escapa valores antes de interpolar em innerHTML (mitigação XSS).
+export function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export function isAuthenticated() {

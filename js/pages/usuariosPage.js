@@ -1,6 +1,6 @@
-import { $, showToast, parseDataDb, formatarDataHora } from '../utils/helpers.js';
+import { $, showToast, parseDataDb, formatarDataHora, escapeHtml } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
-import { listarUsuarios, listarPerfis, atualizarUsuario, getCurrentUser } from '../services/authService.js';
+import { listarUsuarios, listarPerfis, atualizarUsuario, excluirUsuario, resetarSenha, getCurrentUser } from '../services/authService.js';
 import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
 const PERFIS_FALLBACK = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor', 4: 'Professor do AEE' };
@@ -105,16 +105,16 @@ async function carregarUsuarios() {
   tbody.innerHTML = usuarios.map(u => {
     const ehProprio = currentUser && String(u.id) === String(currentUser.id);
     const perfilOptions = Object.entries(perfisMap)
-      .map(([id, nome]) => `<option value="${id}" ${Number(id) === Number(u.perfil_id) ? 'selected' : ''}>${nome}</option>`)
+      .map(([id, nome]) => `<option value="${escapeHtml(id)}" ${Number(id) === Number(u.perfil_id) ? 'selected' : ''}>${escapeHtml(nome)}</option>`)
       .join('');
     const dataCadastro = u.created_at ? formatarDataHora(u.created_at) : '-';
     return `
       <tr>
-        <td><strong>${u.nome}${ehProprio ? ' <small style="color:var(--sieac-text-muted)">(você)</small>' : ''}</strong></td>
-        <td>${u.email}</td>
-        <td>${u.matricula}</td>
+        <td><strong>${escapeHtml(u.nome)}${ehProprio ? ' <small style="color:var(--sieac-text-muted)">(você)</small>' : ''}</strong></td>
+        <td>${escapeHtml(u.email)}</td>
+        <td>${escapeHtml(u.matricula)}</td>
         <td>
-          <select class="perfil-select" data-id="${u.id}" data-nome="${u.nome}" data-perfil="${u.perfil_id}" ${ehProprio ? 'disabled title="Não é possível alterar o próprio perfil"' : ''} style="padding:4px 8px;border:1px solid var(--sieac-border);border-radius:var(--sieac-radius-sm);font-size:0.8rem;background:var(--sieac-bg);color:var(--sieac-text);">
+          <select class="perfil-select" data-id="${u.id}" data-nome="${escapeHtml(u.nome)}" data-perfil="${u.perfil_id}" ${ehProprio ? 'disabled title="Não é possível alterar o próprio perfil"' : ''} style="padding:4px 8px;border:1px solid var(--sieac-border);border-radius:var(--sieac-radius-sm);font-size:0.8rem;background:var(--sieac-bg);color:var(--sieac-text);">
             ${perfilOptions}
           </select>
         </td>
@@ -125,11 +125,14 @@ async function carregarUsuarios() {
         <td style="white-space:nowrap;">${dataCadastro}</td>
         <td>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-sm btn-outline-primary usuario-toggle" data-id="${u.id}" data-nome="${u.nome}" data-ativo="${u.ativo}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
+            <button class="btn btn-sm btn-outline-primary usuario-toggle" data-id="${u.id}" data-nome="${escapeHtml(u.nome)}" data-ativo="${u.ativo}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
               ${u.ativo ? 'Desativar' : 'Ativar'}
             </button>
-            <button class="btn btn-sm btn-outline-danger usuario-delete" data-id="${u.id}" data-nome="${u.nome}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
+            <button class="btn btn-sm btn-outline-danger usuario-delete" data-id="${u.id}" data-nome="${escapeHtml(u.nome)}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
               <i class="bi bi-trash"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-warning usuario-reset" data-id="${u.id}" data-nome="${escapeHtml(u.nome)}" title="Redefinir senha" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
+              <i class="bi bi-key"></i>
             </button>
           </div>
         </td>
@@ -173,14 +176,31 @@ async function carregarUsuarios() {
   tbody.querySelectorAll('.usuario-delete').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
-      const { supabaseDelete } = await import('../services/supabase.js');
-      const { error } = await supabaseDelete('usuarios', 'id', btn.dataset.id);
+      const { error } = await excluirUsuario(btn.dataset.id);
       if (error) {
         showToast('Erro ao excluir: ' + error, 'error');
       } else {
         registrarLog(LOG_ACTIONS.EXCLUIR_USUARIO, { usuario_id: btn.dataset.id, usuario_nome: btn.dataset.nome });
         showToast('Usuário excluído!', 'success');
         await carregarUsuarios();
+      }
+    });
+  });
+
+  tbody.querySelectorAll('.usuario-reset').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const novaSenha = prompt(`Nova senha para ${btn.dataset.nome}:`, '');
+      if (!novaSenha) return;
+      if (novaSenha.length < 4) {
+        showToast('A senha deve ter no mínimo 4 caracteres.', 'error');
+        return;
+      }
+      const { error } = await resetarSenha(btn.dataset.id, novaSenha);
+      if (error) {
+        showToast('Erro ao redefinir senha: ' + error, 'error');
+      } else {
+        registrarLog(LOG_ACTIONS.RESETAR_SENHA, { usuario_id: btn.dataset.id, usuario_nome: btn.dataset.nome });
+        showToast('Senha redefinida com sucesso! O usuário entrará com a nova senha.', 'success');
       }
     });
   });

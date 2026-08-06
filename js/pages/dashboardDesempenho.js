@@ -1,4 +1,4 @@
-import { $, formatNumber } from '../utils/helpers.js';
+import { $, formatNumber, escapeHtml } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createLineChart, destroyChart } from '../components/Charts.js';
@@ -251,14 +251,14 @@ async function loadData() {
       if (linhas.length) {
         tbodyNotas.innerHTML = linhas.map(n => `
           <tr>
-            <td><strong>${n.estudante}</strong></td>
-            <td>${n.matricula}</td>
+            <td><strong>${escapeHtml(n.estudante)}</strong></td>
+            <td>${escapeHtml(n.matricula)}</td>
             <td class="num">${n.nota_1bim || '-'}</td>
             <td class="num">${n.nota_2bim || '-'}</td>
             <td class="num">${n.nota_3bim || '-'}</td>
             <td class="num">${n.nota_4bim || '-'}</td>
             <td class="num" style="font-weight:600;color:${n.media_acumulada == null ? 'inherit' : (parseFloat(n.media_acumulada) >= 6 ? 'var(--sieac-success)' : 'var(--sieac-danger)')}">${n.media_acumulada == null ? '-' : n.media_acumulada}</td>
-            <td><span class="badge ${situacaoBadge(n.situacao)}">${n.situacao}</span></td>
+            <td><span class="badge ${situacaoBadge(n.situacao)}">${escapeHtml(n.situacao)}</span></td>
           </tr>
         `).join('');
       } else {

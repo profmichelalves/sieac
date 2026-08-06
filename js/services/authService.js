@@ -1,24 +1,70 @@
-import { rest, supabaseQuery, supabaseFetchAll, supabaseUpsert } from './supabase.js';
-import { setUser, clearUser, showToast } from '../utils/helpers.js';
+import { supabaseRpc, supabaseQuery, getClient } from './supabase.js';
+import { setUser, clearUser, setSession, clearSession, getAuthToken } from '../utils/helpers.js';
 import { registrarLog, LOG_ACTIONS } from './logService.js';
 
+function mapearErroLogin(body) {
+  const code = body?.error_code || body?.code;
+  const msg = body?.msg || body?.error_description || body?.message || body?.error || '';
+  if (code === 'invalid_grant' || /invalid login credentials/i.test(msg)) {
+    return 'Credenciais inválidas. Verifique email e senha.';
+  }
+  if (code === 'email_not_confirmed') {
+    return 'Email não confirmado. Verifique sua caixa de entrada.';
+  }
+  if (code === 'user_not_found') {
+    return 'Usuário não encontrado.';
+  }
+  if (code === 'over_email_send_rate_limit') {
+    return 'Muitas tentativas. Aguarde alguns minutos.';
+  }
+  return msg ? `Falha no login: ${msg}` : 'Falha no login.';
+}
+
 export async function login(email, senha) {
-  const { data: usuarios, error } = await supabaseQuery('usuarios', {
-    select: 'id,nome,email,matricula,perfil_id,ativo,senha_hash',
-    filters: [{ col: 'email', val: email }]
-  });
+  const client = getClient();
+  if (!client) return { error: 'Supabase não configurado' };
 
-  if (error) {
+  // Supabase Auth: grant_type=password valida o bcrypt do auth.users.
+  let body;
+  try {
+    const res = await fetch(`${client.url}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': client.key, 'Authorization': `Bearer ${client.key}` },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), password: senha }),
+    });
+    body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = mapearErroLogin(body);
+      registrarLog(LOG_ACTIONS.LOGIN_FALHA, { email, motivo: msg });
+      return { error: msg };
+    }
+  } catch {
     registrarLog(LOG_ACTIONS.LOGIN_FALHA, { email, motivo: 'erro de conexão' });
-    return { error: 'Erro ao conectar ao banco' };
-  }
-  if (!usuarios || usuarios.length === 0) {
-    registrarLog(LOG_ACTIONS.LOGIN_FALHA, { email, motivo: 'usuário não encontrado' });
-    return { error: 'Usuário não encontrado' };
+    return { error: 'Erro ao conectar ao servidor de autenticação.' };
   }
 
-  const user = usuarios[0];
+  const session = {
+    access_token: body.access_token,
+    refresh_token: body.refresh_token,
+    expires_at: body.expires_at || Math.floor(Date.now() / 1000) + (body.expires_in || 3600),
+  };
+  setSession(session);
+
+  const { data: usuarios, error: errUsuarios } = await supabaseQuery('usuarios', {
+    select: 'id,nome,email,matricula,perfil_id,ativo',
+    filters: [{ col: 'auth_user_id', val: body.user?.id }],
+  });
+  const user = Array.isArray(usuarios) && usuarios.length ? usuarios[0] : null;
+
+  if (errUsuarios || !user) {
+    clearSession();
+    clearUser();
+    registrarLog(LOG_ACTIONS.LOGIN_FALHA, { email, motivo: 'perfil não encontrado' });
+    return { error: 'Usuário sem perfil no sistema. Contate o administrador.' };
+  }
   if (!user.ativo) {
+    clearSession();
+    clearUser();
     registrarLog(LOG_ACTIONS.LOGIN_FALHA, { email, motivo: 'aguardando ativação' });
     return { error: 'Usuário aguardando ativação. Contate o administrador.' };
   }
@@ -29,12 +75,6 @@ export async function login(email, senha) {
   });
 
   const perfilNome = perfis?.[0]?.nome || 'Professor';
-
-  const senhaMatch = senha === user.senha_hash;
-  if (!senhaMatch) {
-    registrarLog(LOG_ACTIONS.LOGIN_FALHA, { email, motivo: 'senha incorreta' });
-    return { error: 'Senha incorreta' };
-  }
 
   const SESSION_DURATION_MS = 4 * 60 * 60 * 1000;
 
@@ -60,74 +100,27 @@ export async function listarPerfis() {
 }
 
 export async function register(nome, email, matricula, senha, perfilId) {
-  const normMatricula = s => String(s ?? '').trim().replace(/[^\d]/g, '').replace(/^0+/, '');
-
-  const { data: existentes } = await supabaseQuery('usuarios', {
-    select: 'id,email,matricula',
-    filters: [{ col: 'email', val: email }]
+  const { data, error } = await supabaseRpc('registrar_usuario', {
+    p_nome: nome,
+    p_email: email,
+    p_matricula: matricula,
+    p_senha: senha,
+    p_perfil_id: perfilId,
   });
 
-  if (existentes && existentes.length > 0) {
-    return { error: 'Este email já está cadastrado. Faça login ou use outro email.' };
-  }
-
-  const { data: usuariosMatriculas } = await supabaseFetchAll('usuarios', { select: 'id,email,matricula' });
-  const matriculaNormalizada = normMatricula(matricula);
-  const duplicado = (usuariosMatriculas || []).find(u => matriculaNormalizada && normMatricula(u.matricula) === matriculaNormalizada);
-
-  if (duplicado) {
-    return { error: 'Já existe um usuário cadastrado com esta matrícula.' };
-  }
-
-  const { data: perfis } = await supabaseQuery('perfis', {
-    select: 'id,nome'
-  });
-  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const permitidos = new Set(['professor', 'professor do aee', 'gestao escolar']);
-
-  const escolhido = (perfis || []).find(p => p.id === Number(perfilId));
-  const perfilValido = escolhido && permitidos.has(norm(escolhido.nome)) ? escolhido.id : null;
-  const perfilFinal = perfilValido || (perfis || []).find(p => norm(p.nome) === 'professor')?.id || 3;
-
-  const perfilNomeFinal = norm((perfis || []).find(p => p.id === perfilFinal)?.nome || '');
-  const eProfessorOuAee = ['professor', 'professor do aee'].includes(perfilNomeFinal);
-  let professorEncontrado = null;
-  if (eProfessorOuAee) {
-    const { data: professores } = await supabaseFetchAll('professores', { select: 'id,matricula,nome' });
-    professorEncontrado = (professores || []).find(p => matriculaNormalizada && normMatricula(p.matricula) === matriculaNormalizada) || null;
-    if (!professorEncontrado) {
-      registrarLog(LOG_ACTIONS.CADASTRO, { email, matricula, motivo: 'matrícula não encontrada na tabela de professores' });
-      return { error: 'Matrícula não encontrada na tabela de professores. Cadastro não permitido.' };
-    }
-  }
-
-  const normNome = s => norm(String(s || '').trim().replace(/\s+/g, ' '));
-  const nomeConfere = professorEncontrado && normNome(nome) === normNome(professorEncontrado.nome);
-  const ativadoAutomaticamente = eProfessorOuAee && nomeConfere;
-
-  const newUser = {
-    nome,
-    email,
-    matricula,
-    senha_hash: senha,
-    perfil_id: perfilFinal,
-    ativo: ativadoAutomaticamente
-  };
-
-  const { data, error } = await supabaseUpsert('usuarios', [newUser]);
   if (error) {
-    registrarLog(LOG_ACTIONS.CADASTRO, { email, matricula, motivo: 'erro ao inserir' });
+    registrarLog(LOG_ACTIONS.CADASTRO, { email, matricula, motivo: 'erro ao cadastrar' });
     return { error: 'Erro ao cadastrar: ' + error };
   }
-  registrarLog(LOG_ACTIONS.CADASTRO, {
-    email,
-    matricula,
-    perfil: norm((perfis || []).find(p => p.id === perfilFinal)?.nome || ''),
-    ativadoAutomaticamente,
-    professorEncontrado: !!professorEncontrado,
-    nomeConfere
-  });
-  return { success: true, ativadoAutomaticamente, error: null };
+
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  if (!res || !res.success) {
+    registrarLog(LOG_ACTIONS.CADASTRO, { email, matricula, motivo: res?.error || 'negado' });
+    return { error: res?.error || 'Erro ao cadastrar' };
+  }
+
+  registrarLog(LOG_ACTIONS.CADASTRO, { email, matricula, perfil: String(perfilId), ativadoAutomaticamente: res.ativado_automaticamente });
+  return { success: true, ativadoAutomaticamente: res.ativado_automaticamente, error: null };
 }
 
 export async function listarUsuarios() {
@@ -148,13 +141,86 @@ export async function listarUsuarios() {
 }
 
 export async function atualizarUsuario(id, campos) {
-  const { error } = await rest.patch(`/rest/v1/usuarios?id=eq.${id}`, campos);
-  return { error };
+  const { data, error } = await supabaseRpc('atualizar_usuario', {
+    p_id: Number(id),
+    p_perfil_id: campos.perfil_id != null ? Number(campos.perfil_id) : null,
+    p_ativo: campos.ativo != null ? Boolean(campos.ativo) : null,
+  });
+  if (error) return { error };
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  return { error: res && res.error ? res.error : null };
+}
+
+export async function excluirUsuario(id) {
+  const { data, error } = await supabaseRpc('excluir_usuario', { p_id: Number(id) });
+  if (error) return { error };
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  return { error: res && res.error ? res.error : null };
+}
+
+export async function resetarSenha(id, novaSenha) {
+  const { data, error } = await supabaseRpc('resetar_senha', {
+    p_id: Number(id),
+    p_nova_senha: novaSenha,
+  });
+  if (error) return { error };
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  return { error: res && res.error ? res.error : null };
+}
+
+// Fluxo "Esqueci minha senha" (Supabase Auth, fluxo implicit):
+// 1) recuperarSenha dispara o e-mail de recuperação (POST /auth/v1/recover).
+// 2) O link do e-mail redireciona para <site>#access_token=...&type=recovery.
+// 3) redefinirSenha troca a senha com a sessão recém-obtida (PUT /auth/v1/update).
+export async function recuperarSenha(email) {
+  const client = getClient();
+  if (!client) return { error: 'Supabase não configurado' };
+  try {
+    const res = await fetch(`${client.url}/auth/v1/recover`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': client.key, 'Authorization': `Bearer ${client.key}` },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+    if (res.ok) return { error: null };
+    const body = await res.json().catch(() => ({}));
+    return { error: body?.msg || body?.error_description || 'Erro ao solicitar a recuperação de senha.' };
+  } catch {
+    return { error: 'Erro ao conectar ao servidor de autenticação.' };
+  }
+}
+
+export async function redefinirSenha(novaSenha) {
+  const client = getClient();
+  const token = getAuthToken();
+  if (!client || !token) return { error: 'Sessão inválida. Solicite um novo link de recuperação.' };
+  try {
+    const res = await fetch(`${client.url}/auth/v1/update`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'apikey': client.key, 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ password: novaSenha }),
+    });
+    if (res.ok) return { error: null };
+    const body = await res.json().catch(() => ({}));
+    return { error: body?.msg || body?.error_description || 'Erro ao redefinir a senha.' };
+  } catch {
+    return { error: 'Erro ao conectar ao servidor de autenticação.' };
+  }
 }
 
 export async function logout() {
   const user = getCurrentUser();
   registrarLog(LOG_ACTIONS.LOGOUT, { email: user?.email });
+  const client = getClient();
+  const token = getAuthToken();
+  if (client && token) {
+    try {
+      await fetch(`${client.url}/auth/v1/logout`, {
+        method: 'POST',
+        headers: { 'apikey': client.key, 'Authorization': `Bearer ${token}` },
+      });
+    } catch {}
+  }
+  clearSession();
   clearUser();
   try {
     const { clearFilterCache } = await import('../components/FilterPanel.js');

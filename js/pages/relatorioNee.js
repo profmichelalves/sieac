@@ -1,4 +1,4 @@
-import { showToast } from '../utils/helpers.js';
+import { showToast, escapeHtml } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { isProfessor } from '../services/authService.js';
 import { listarEstudantesNEE } from '../repositories/necessidadesRepository.js';
@@ -107,11 +107,11 @@ function renderTabela() {
 
   tbody.innerHTML = ordenadas.map(e => `
     <tr>
-      <td><strong>${e.nome}</strong></td>
-      <td>${e.matricula}</td>
-      <td>${e.turmas.join(', ') || '-'}</td>
-      <td>${e.necessidades.map(n => `<span class="badge badge-sieac-secondary" style="margin:2px 4px 2px 0;">${n}</span>`).join('')}</td>
-      <td>${e.professorAee ? e.professorAee.nome : '<span style="color:var(--sieac-text-muted);">Não informado</span>'}</td>
+      <td><strong>${escapeHtml(e.nome)}</strong></td>
+      <td>${escapeHtml(e.matricula)}</td>
+      <td>${escapeHtml(e.turmas.join(', ') || '-')}</td>
+      <td>${(e.necessidades || []).map(n => `<span class="badge badge-sieac-secondary" style="margin:2px 4px 2px 0;">${escapeHtml(n)}</span>`).join('')}</td>
+      <td>${e.professorAee ? escapeHtml(e.professorAee.nome) : '<span style="color:var(--sieac-text-muted);">Não informado</span>'}</td>
     </tr>
   `).join('');
 }

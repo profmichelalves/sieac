@@ -1,5 +1,5 @@
-import { showToast, formatarDataHora } from '../utils/helpers.js';
-import { supabaseQuery, supabaseRpc } from '../services/supabase.js';
+import { showToast, formatarDataHora, escapeHtml } from '../utils/helpers.js';
+import { supabaseRpc } from '../services/supabase.js';
 import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
 const PAGE_SIZE = 100;
@@ -152,24 +152,13 @@ async function carregarLogs() {
   const de = document.getElementById('log-de').value;
   const ate = document.getElementById('log-ate').value;
 
-  const filters = [];
-  if (acao) filters.push({ col: 'acao', val: acao });
-  if (busca) filters.push({ col: 'usuario_nome', op: 'ilike', val: `%${busca}%` });
-  if (de) {
-    const utcDe = dataLocalParaUtc(de, false);
-    if (utcDe) filters.push({ col: 'created_at', op: 'gte', val: utcDe });
-  }
-  if (ate) {
-    const utcAte = dataLocalParaUtc(ate, true);
-    if (utcAte) filters.push({ col: 'created_at', op: 'lte', val: utcAte });
-  }
-
-  const { data, error } = await supabaseQuery('logs', {
-    select: 'id,usuario_nome,email,acao,detalhes,created_at',
-    filters,
-    order: 'created_at.desc',
-    limit: PAGE_SIZE + 1,
-    offset: paginaAtual * PAGE_SIZE
+  const { data, error } = await supabaseRpc('listar_logs', {
+    p_busca: busca || null,
+    p_acao: acao || null,
+    p_de: de ? dataLocalParaUtc(de, false) : null,
+    p_ate: ate ? dataLocalParaUtc(ate, true) : null,
+    p_limit: PAGE_SIZE + 1,
+    p_offset: paginaAtual * PAGE_SIZE,
   });
 
   if (error) {
@@ -189,9 +178,9 @@ async function carregarLogs() {
       return `
         <tr>
           <td style="white-space:nowrap;">${formatarDataHora(l.created_at)}</td>
-          <td>${l.usuario_nome || '-'}</td>
-          <td>${l.email || '-'}</td>
-          <td><span class="badge bg-secondary" style="font-weight:500;">${ACAO_LABELS[l.acao] || l.acao}</span></td>
+          <td>${escapeHtml(l.usuario_nome) || '-'}</td>
+          <td>${escapeHtml(l.email) || '-'}</td>
+          <td><span class="badge bg-secondary" style="font-weight:500;">${escapeHtml(ACAO_LABELS[l.acao] || l.acao)}</span></td>
           <td style="max-width:420px;">${detalhes}</td>
         </tr>`;
     }).join('');
@@ -209,17 +198,17 @@ function formatarDetalhes(detalhes) {
   if (!detalhes) return '<span style="color:var(--sieac-text-muted);font-size:0.8rem;">—</span>';
   let obj = detalhes;
   if (typeof detalhes === 'string') {
-    try { obj = JSON.parse(detalhes); } catch { return `<span style="font-size:0.8rem;">${detalhes}</span>`; }
+    try { obj = JSON.parse(detalhes); } catch { return `<span style="font-size:0.8rem;">${escapeHtml(detalhes)}</span>`; }
   }
   if (!Object.keys(obj).length) return '<span style="color:var(--sieac-text-muted);font-size:0.8rem;">—</span>';
   const linhas = Object.entries(obj)
-    .map(([k, v]) => `<div><span style="color:var(--sieac-text-muted);">${k}:</span> <span style="font-size:0.8rem;">${formatValor(v)}</span></div>`)
+    .map(([k, v]) => `<div><span style="color:var(--sieac-text-muted);">${escapeHtml(k)}:</span> <span style="font-size:0.8rem;">${formatValor(v)}</span></div>`)
     .join('');
   return `<div style="font-size:0.8rem;line-height:1.5;">${linhas}</div>`;
 }
 
 function formatValor(v) {
   if (v === null || v === undefined) return '-';
-  if (typeof v === 'object') return JSON.stringify(v);
-  return String(v);
+  if (typeof v === 'object') return escapeHtml(JSON.stringify(v));
+  return escapeHtml(String(v));
 }

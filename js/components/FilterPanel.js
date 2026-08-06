@@ -3,6 +3,7 @@ import { isProfessor, isProfessorAee, getProfessorVinculo } from '../services/au
 import { listarTurmasParaConsulta } from '../repositories/dashboardRepository.js';
 import { createSearchSelect } from './SearchSelect.js';
 import { infoBtn } from '../utils/explanation.js';
+import { escapeHtml } from '../utils/helpers.js';
 
 const CACHE_KEY = 'sieac_filter_cache';
 const CACHE_VERSION = 4;
@@ -212,7 +213,7 @@ function fillSelect(id, items, textFn, valueFn) {
   const sel = document.getElementById(id);
   if (!sel || !items) return;
   for (const item of items) {
-    sel.innerHTML += `<option value="${valueFn(item)}">${textFn(item)}</option>`;
+    sel.innerHTML += `<option value="${escapeHtml(valueFn(item))}">${escapeHtml(textFn(item))}</option>`;
   }
 }
 
@@ -255,7 +256,7 @@ function rebuildSelectOptions(valid, skipId) {
     }
     for (const item of filtered) {
       const v = cfg.val(item);
-      sel.innerHTML += `<option value="${v}">${cfg.text(item)}</option>`;
+      sel.innerHTML += `<option value="${escapeHtml(v)}">${escapeHtml(cfg.text(item))}</option>`;
     }
     if (cfg.validSet) {
       const stillValid = currentVal && (cfg.validSet.has(Number(currentVal)) || cfg.validSet.has(currentVal));
@@ -663,7 +664,7 @@ function applyEscopoUI() {
   if (badge) {
     if (habilitado) {
       const turmaNome = filterData.turmas.find(t => String(t.id) === String(turmaId))?.nome || '';
-      badge.innerHTML = `<i class="bi bi-mortarboard"></i> Você é o Professor Conselheiro da turma <strong>${turmaNome}</strong>`;
+      badge.innerHTML = `<i class="bi bi-mortarboard"></i> Você é o Professor Conselheiro da turma <strong>${escapeHtml(turmaNome)}</strong>`;
       badge.style.display = 'block';
     } else {
       badge.style.display = 'none';

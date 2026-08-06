@@ -1,7 +1,8 @@
 import { $, showToast } from '../utils/helpers.js';
 import { validateLoginFields, validateRegisterFields } from '../utils/validators.js';
-import { login, register, listarPerfis } from '../services/authService.js';
+import { login, register, listarPerfis, recuperarSenha, redefinirSenha } from '../services/authService.js';
 import { clearFilterCache } from '../components/FilterPanel.js';
+import { setSession, clearSession, clearUser } from '../utils/helpers.js';
 
 export function renderLogin() {
   const container = document.getElementById('auth-container');
@@ -36,10 +37,20 @@ export function renderLogin() {
         <div class="auth-link">
           Não tem conta? <a href="#registrar">Cadastre-se</a>
         </div>
+        <div class="auth-link">
+          <a href="#recuperar-senha">Esqueci minha senha</a>
+        </div>
 
       </div>
     </div>
   `;
+
+  const avisoRedefinida = sessionStorage.getItem('sieac_senha_redefinida');
+  if (avisoRedefinida) {
+    sessionStorage.removeItem('sieac_senha_redefinida');
+    const alertEl = document.getElementById('auth-alert');
+    if (alertEl) alertEl.innerHTML = `<div class="auth-alert success">Senha redefinida com sucesso! Faça login com a nova senha.</div>`;
+  }
 
   document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -203,4 +214,182 @@ async function carregarPerfisCadastro() {
 function normEqual(a, b) {
   const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   return norm(a) === norm(b);
+}
+
+export function renderRecuperarSenha() {
+  const container = document.getElementById('auth-container');
+  const shell = document.getElementById('app-shell');
+  if (container) container.style.display = 'flex';
+  if (shell) shell.style.display = 'none';
+
+  if (!container) return;
+  container.innerHTML = `
+    <div class="auth-page">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <div class="auth-logo-icon">S</div>
+          <div class="auth-logo-text">
+            SIEAC
+            <small>Sistema de Indicadores Educacionais Abel Coelho</small>
+          </div>
+        </div>
+        <h2 class="auth-title">Recuperar Senha</h2>
+        <p style="text-align:center;color:var(--text-muted);font-size:0.9rem;margin-bottom:16px;">
+          Informe seu e-mail cadastrado. Enviaremos um link para você definir uma nova senha.
+        </p>
+        <div id="auth-alert"></div>
+        <form class="auth-form" id="recover-form">
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="recover-email" placeholder="seu@email.com" required autocomplete="email">
+          </div>
+          <button type="submit" class="auth-btn" id="recover-btn">Enviar link</button>
+        </form>
+        <div class="auth-link">
+          Lembrou a senha? <a href="#login">Faça login</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('recover-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('recover-email').value;
+    const alertEl = document.getElementById('auth-alert');
+    const btn = document.getElementById('recover-btn');
+
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    alertEl.innerHTML = '';
+
+    const result = await recuperarSenha(email);
+    if (result.error) {
+      alertEl.innerHTML = `<div class="auth-alert error">${escapeHtmlMsg(result.error)}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Enviar link';
+    } else {
+      alertEl.innerHTML = `<div class="auth-alert success">Se o e-mail estiver cadastrado, você receberá um link de recuperação.</div>`;
+      btn.textContent = 'Link enviado';
+    }
+  });
+}
+
+// Extrai access_token/refresh_token/expires_at do fragmento de recuperação do
+// Supabase Auth: <site>#access_token=...&refresh_token=...&type=recovery
+function parseRecoveryFragment() {
+  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+  const params = new URLSearchParams(hash);
+  if (params.get('type') !== 'recovery' || !params.get('access_token')) return null;
+  const expiresAt = parseInt(params.get('expires_at') || '0', 10);
+  return {
+    access_token: params.get('access_token'),
+    refresh_token: params.get('refresh_token'),
+    expires_at: expiresAt || Math.floor(Date.now() / 1000) + 3600,
+  };
+}
+
+export function renderRedefinirSenha() {
+  const container = document.getElementById('auth-container');
+  const shell = document.getElementById('app-shell');
+  if (container) container.style.display = 'flex';
+  if (shell) shell.style.display = 'none';
+
+  if (!container) return;
+
+  const token = parseRecoveryFragment();
+  if (!token) {
+    container.innerHTML = `
+      <div class="auth-page">
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="auth-logo-icon">S</div>
+            <div class="auth-logo-text">
+              SIEAC
+              <small>Sistema de Indicadores Educacionais Abel Coelho</small>
+            </div>
+          </div>
+          <h2 class="auth-title">Link inválido ou expirado</h2>
+          <div id="auth-alert"></div>
+          <div class="auth-alert error">O link de recuperação é inválido ou já expirou. Solicite um novo link.</div>
+          <div class="auth-link">
+            <a href="#recuperar-senha">Solicitar novo link</a> · <a href="#login">Fazer login</a>
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // Usa a sessão de recuperação para autenticar a troca de senha.
+  setSession(token);
+
+  container.innerHTML = `
+    <div class="auth-page">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <div class="auth-logo-icon">S</div>
+          <div class="auth-logo-text">
+            SIEAC
+            <small>Sistema de Indicadores Educacionais Abel Coelho</small>
+          </div>
+        </div>
+        <h2 class="auth-title">Definir Nova Senha</h2>
+        <div id="auth-alert"></div>
+        <form class="auth-form" id="reset-form">
+          <div class="mb-3">
+            <label class="form-label">Nova Senha</label>
+            <input type="password" class="form-control" id="reset-senha" placeholder="Crie uma nova senha" required autocomplete="new-password">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirmar Nova Senha</label>
+            <input type="password" class="form-control" id="reset-confirm" placeholder="Repita a nova senha" required autocomplete="new-password">
+          </div>
+          <button type="submit" class="auth-btn" id="reset-btn">Salvar nova senha</button>
+        </form>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('reset-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const senha = document.getElementById('reset-senha').value;
+    const confirm = document.getElementById('reset-confirm').value;
+    const alertEl = document.getElementById('auth-alert');
+    const btn = document.getElementById('reset-btn');
+
+    if (senha.length < 4) {
+      alertEl.innerHTML = `<div class="auth-alert error">A senha deve ter no mínimo 4 caracteres.</div>`;
+      return;
+    }
+    if (senha !== confirm) {
+      alertEl.innerHTML = `<div class="auth-alert error">As senhas não conferem.</div>`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+    alertEl.innerHTML = '';
+
+    const result = await redefinirSenha(senha);
+    if (result.error) {
+      alertEl.innerHTML = `<div class="auth-alert error">${escapeHtmlMsg(result.error)}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Salvar nova senha';
+      return;
+    }
+
+    clearSession();
+    clearUser();
+    sessionStorage.setItem('sieac_senha_redefinida', '1');
+    window.location.hash = '#login';
+    window.location.reload();
+  });
+}
+
+function escapeHtmlMsg(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

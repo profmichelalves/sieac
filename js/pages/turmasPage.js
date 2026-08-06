@@ -1,4 +1,4 @@
-import { showToast } from '../utils/helpers.js';
+import { showToast, escapeHtml } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { listarTurmasComConselheiro, listarProfessores, salvarConselheiro } from '../services/turmaService.js';
 import { createSearchSelect } from '../components/SearchSelect.js';
@@ -85,9 +85,9 @@ function renderTabela(filtro = '') {
 
   tbody.innerHTML = filtradas.map((t, i) => `
     <tr data-id-turma="${t.id_turma}" data-index="${i}">
-      <td class="fw-semibold">${t.nome}</td>
-      <td>${t.serie || '-'}</td>
-      <td>${t.turno || '-'}</td>
+      <td class="fw-semibold">${escapeHtml(t.nome)}</td>
+      <td>${escapeHtml(t.serie || '-')}</td>
+      <td>${escapeHtml(t.turno || '-')}</td>
       <td><div class="turma-conselheiro" data-slot="${i}"></div></td>
       <td>
         <button class="btn btn-sm btn-primary btn-salvar-conselheiro">

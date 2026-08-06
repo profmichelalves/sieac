@@ -1,4 +1,4 @@
-import { $, formatNumber, formatPercent } from '../utils/helpers.js';
+import { $, formatNumber, formatPercent, escapeHtml } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createLineChart, destroyAllCharts } from '../components/Charts.js';
@@ -168,8 +168,8 @@ async function loadData() {
     if (baixaFreqData.length) {
       tbody.innerHTML = baixaFreqData.slice(0, 20).map(e => `
         <tr>
-          <td><strong>${e.nome}</strong></td>
-          <td>${e.turma}</td>
+          <td><strong>${escapeHtml(e.nome)}</strong></td>
+          <td>${escapeHtml(e.turma)}</td>
           <td>${e.percentual_frequencia}%</td>
           <td><span class="badge badge-sieac-danger">Alerta</span></td>
         </tr>

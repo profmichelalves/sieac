@@ -1,0 +1,20 @@
+/*
+  SIEAC - Security Headers (Netlify / Cloudflare Pages)
+  GitHub Pages NÃO suporta cabeçalhos personalizados: para serví-los, publique
+  por Netlify ou Cloudflare Pages. Se o publish dir for a raiz do repositório,
+  mova este arquivo para a raiz como "_headers".
+
+  Nota CSP: o app usa estilos inline em todo o template (style="...") e alguns
+  handlers inline (onclick/onerror), então script-src/style-src exigem
+  'unsafe-inline'. A remoção gradual disso está registrada no RIPD (Fase 4).
+  Ajuste o domínio do connect-src caso o projeto Supabase seja recriado.
+*/
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://hoxqkdxtaplbwlznakjg.supabase.co https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+*/

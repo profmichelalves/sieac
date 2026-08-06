@@ -1,4 +1,4 @@
-import { showToast } from '../utils/helpers.js';
+import { showToast, escapeHtml } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { supabaseQuery } from '../services/supabase.js';
 import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, listarEstudantesParaBusca, listarTurmasParaConsulta, listarEstudantesPorTurma, podeVerEstudante } from '../repositories/dashboardRepository.js';
@@ -246,7 +246,7 @@ async function carregarEstudante(id) {
   studentInfo.necessidades = nee.tipos.length ? nee.tipos.join(', ') : 'Não informado';
   studentInfo.professorAee = nee.professorAee ? nee.professorAee.nome : 'Não informado';
   document.getElementById('e-necessidades').innerHTML = nee.tipos.length
-    ? nee.tipos.map(n => `<span class="badge badge-sieac-secondary" style="margin:2px 4px 2px 0;font-size:0.72rem;">${n}</span>`).join('')
+    ? nee.tipos.map(n => `<span class="badge badge-sieac-secondary" style="margin:2px 4px 2px 0;font-size:0.72rem;">${escapeHtml(n)}</span>`).join('')
     : 'Não informado';
   document.getElementById('e-professor-aee').textContent = studentInfo.professorAee;
 
@@ -258,13 +258,13 @@ async function carregarEstudante(id) {
   if (studentNotas.length) {
     tbodyNotas.innerHTML = studentNotas.map(n => `
       <tr>
-        <td><strong>${n.disciplina}</strong></td>
+        <td><strong>${escapeHtml(n.disciplina)}</strong></td>
         <td class="num">${n.nota_1bim || '-'}</td>
         <td class="num">${n.nota_2bim || '-'}</td>
         <td class="num">${n.nota_3bim || '-'}</td>
         <td class="num">${n.nota_4bim || '-'}</td>
         <td class="num" style="font-weight:600;color:${parseFloat(n.media_acumulada) >= 6 ? 'var(--sieac-success)' : 'var(--sieac-danger)'}">${n.media_acumulada == null ? '-' : n.media_acumulada}</td>
-        <td><span class="badge ${situacaoBadge(n.situacao)}">${n.situacao}</span></td>
+        <td><span class="badge ${situacaoBadge(n.situacao)}">${escapeHtml(n.situacao)}</span></td>
       </tr>
     `).join('');
   } else {

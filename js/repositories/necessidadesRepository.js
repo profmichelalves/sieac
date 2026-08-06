@@ -1,4 +1,4 @@
-import { supabaseQuery, supabaseFetchAll, supabaseUpsert, supabaseDelete } from '../services/supabase.js';
+import { supabaseQuery, supabaseFetchAll, supabaseRpc } from '../services/supabase.js';
 import { getRefCache, getEstudantesPermitidos } from './dashboardRepository.js';
 
 const norm = s => String(s ?? '').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -153,26 +153,16 @@ export async function listarEstudantesCadastro({ turmaId = null, nome = '' } = {
 export async function salvarNecessidadesEstudante(estudanteId, tipoIds = [], professorId = null) {
   const tiposUnicos = [...new Set(tipoIds.map(Number).filter(id => id))];
 
-  const { error: errDelete } = await supabaseDelete('estudante_necessidades', 'estudante_id', estudanteId);
-  if (errDelete) return { error: errDelete };
+  const { data, error } = await supabaseRpc('salvar_necessidades', {
+    p_estudante_id: Number(estudanteId),
+    p_tipo_ids: tiposUnicos,
+    p_professor_aee_id: professorId ? Number(professorId) : null,
+  });
 
-  if (tiposUnicos.length) {
-    const rows = tiposUnicos.map(tipoId => ({ estudante_id: Number(estudanteId), tipo_necessidade_id: tipoId }));
-    const { error: errInsert } = await supabaseUpsert('estudante_necessidades', rows, 'estudante_id,tipo_necessidade_id');
-    if (errInsert) return { error: errInsert };
-  }
+  if (error) return { error };
 
-  if (professorId) {
-    const { error: errAee } = await supabaseUpsert(
-      'estudante_professores_aee',
-      [{ estudante_id: Number(estudanteId), professor_id: Number(professorId) }],
-      'estudante_id'
-    );
-    if (errAee) return { error: errAee };
-  } else {
-    const { error: errAeeDel } = await supabaseDelete('estudante_professores_aee', 'estudante_id', estudanteId);
-    if (errAeeDel) return { error: errAeeDel };
-  }
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  if (res && res.error) return { error: res.error };
 
   return { error: null };
 }

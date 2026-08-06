@@ -1,4 +1,4 @@
-import { supabaseQuery, supabaseUpsert, supabaseDelete } from './supabase.js';
+import { supabaseQuery, supabaseRpc } from './supabase.js';
 import { registrarLog, LOG_ACTIONS } from './logService.js';
 
 // Lista as turmas com o Professor Conselheiro vinculado (via turma_conselheiros).
@@ -49,22 +49,23 @@ export async function listarProfessores() {
 }
 
 // Vincula (ou remove) o Professor Conselheiro de uma turma.
-// idPessoa vazio remove o vínculo existente.
+// idPessoa vazio remove o vínculo existente. A escrita é feita pelo RPC
+// salvar_conselheiro (SECURITY DEFINER, somente gestão).
 export async function salvarConselheiro(idTurma, idPessoa) {
   const idP = idPessoa == null ? '' : String(idPessoa).trim();
-  if (!idP) {
-    const { error } = await supabaseDelete('turma_conselheiros', 'id_turma', idTurma);
-    if (error) return { error };
-    registrarLog(LOG_ACTIONS.VINCULAR_CONSELHEIRO, { id_turma: idTurma, id_pessoa: null, acao: 'remover' });
-    return { error: null };
-  }
-
-  const { error } = await supabaseUpsert(
-    'turma_conselheiros',
-    [{ id_turma: Number(idTurma), id_pessoa: Number(idP) }],
-    'id_turma'
-  );
+  const { data, error } = await supabaseRpc('salvar_conselheiro', {
+    p_id_turma: Number(idTurma),
+    p_id_pessoa: idP ? Number(idP) : null,
+  });
   if (error) return { error };
-  registrarLog(LOG_ACTIONS.VINCULAR_CONSELHEIRO, { id_turma: idTurma, id_pessoa: Number(idP), acao: 'vincular' });
+
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  if (res && res.error) return { error: res.error };
+
+  registrarLog(LOG_ACTIONS.VINCULAR_CONSELHEIRO, {
+    id_turma: idTurma,
+    id_pessoa: idP ? Number(idP) : null,
+    acao: idP ? 'vincular' : 'remover',
+  });
   return { error: null };
 }

@@ -1,4 +1,4 @@
-import { $, showToast, formatNumber, formatPercent } from '../utils/helpers.js';
+import { $, showToast, formatNumber, formatPercent, escapeHtml } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO, termosSituacao } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createDoughnutChart, destroyChart } from '../components/Charts.js';
@@ -164,7 +164,7 @@ async function renderAeeVinculoAlert() {
   banner.innerHTML = `
     <i class="bi bi-person-exclamation"></i>
     <div class="alert-sieac-body">
-      <strong>Olá, ${primeiroNome}!</strong>
+      <strong>Olá, ${escapeHtml(primeiroNome)}!</strong>
       Seu cadastro de <strong>Professor do AEE</strong> ainda não possui estudantes com NEE vinculados.
       Para acompanhar os indicadores dos seus alunos, entre em contato com um usuário do perfil
       <strong>Gestão Escolar</strong> para realizar o vínculo dos seus estudantes com o seu cadastro.

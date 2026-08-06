@@ -1,4 +1,8 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config.js';
+import {
+  getAuthToken, clearAuthToken, clearUser,
+  getSession, setSession, getRefreshToken, isSessionExpired, clearSession,
+} from '../utils/helpers.js';
 
 const client = { url: SUPABASE_URL, key: SUPABASE_ANON_KEY };
 
@@ -6,12 +10,81 @@ export function getClient() {
   return client;
 }
 
+// Bearer: access token do Supabase Auth (GoTrue) quando existe sessão; sem
+// sessão (acesso público/anon), usa a anon key.
 function buildHeaders(client) {
+  const token = getAuthToken();
   return {
     'Content-Type': 'application/json',
     'apikey': client.key,
-    'Authorization': `Bearer ${client.key}`
+    'Authorization': `Bearer ${token || client.key}`
   };
+}
+
+function limparSessao() {
+  clearAuthToken();
+  clearSession();
+  clearUser();
+}
+
+// Renova o access token com o refresh token do GoTrue; em falha, encerra a
+// sessão local (o router redireciona ao login).
+async function forcarRefresh() {
+  const session = getSession();
+  const refresh = getRefreshToken();
+  if (!session || !refresh) {
+    limparSessao();
+    return false;
+  }
+  try {
+    const res = await fetch(`${client.url}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': client.key, 'Authorization': `Bearer ${client.key}` },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.access_token) {
+      limparSessao();
+      return false;
+    }
+    setSession({
+      access_token: body.access_token,
+      refresh_token: body.refresh_token || refresh,
+      expires_at: body.expires_at || Math.floor(Date.now() / 1000) + (body.expires_in || 3600),
+    });
+    return true;
+  } catch {
+    limparSessao();
+    return false;
+  }
+}
+
+async function garantirTokenAtual() {
+  if (!getSession()) return;
+  if (!isSessionExpired()) return;
+  await forcarRefresh();
+}
+
+// fetch com gestão de sessão: garante token válido antes, e em 401 tenta um
+// único refresh antes de devolver a resposta.
+async function authFetch(url, init = {}) {
+  await garantirTokenAtual();
+  let res = await fetch(url, init);
+  if (res.status === 401 && getSession()) {
+    if (await forcarRefresh()) {
+      res = await fetch(url, { ...init, headers: buildHeaders(client) });
+    }
+  }
+  return res;
+}
+
+// Interceptor 401: sessão inválida/expirada → volta ao login.
+function tratarNaoAutorizado(status) {
+  if (status === 401 && window.location.hash && !window.location.hash.startsWith('#login')) {
+    limparSessao();
+    window.location.hash = 'login';
+    window.location.reload();
+  }
 }
 
 async function request(method, path, body = null) {
@@ -20,8 +93,9 @@ async function request(method, path, body = null) {
   try {
     const options = { method, headers: buildHeaders(client) };
     if (body) options.body = JSON.stringify(body);
-    const res = await fetch(`${client.url}${path}`, options);
+    const res = await authFetch(`${client.url}${path}`, options);
     if (res.status === 204) return { data: null, error: null };
+    tratarNaoAutorizado(res.status);
     let json;
     try {
       const text = await res.text();
@@ -101,11 +175,12 @@ export async function supabaseUpsert(table, rows, onConflict) {
       headers['Prefer'] = ['resolution=merge-duplicates', 'return=minimal'];
       url += `?on_conflict=${onConflict}`;
     }
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(rows)
     });
+    tratarNaoAutorizado(res.status);
     if (res.status >= 400) {
       const text = await res.text();
       return { error: text };
@@ -127,11 +202,12 @@ export async function supabaseRpc(functionName, params = {}) {
   const client = getClient();
   if (!client) return { error: 'Supabase não configurado' };
   try {
-    const res = await fetch(`${client.url}/rest/v1/rpc/${functionName}?apikey=${encodeURIComponent(client.key)}`, {
+    const res = await authFetch(`${client.url}/rest/v1/rpc/${functionName}?apikey=${encodeURIComponent(client.key)}`, {
       method: 'POST',
       headers: buildHeaders(client),
       body: JSON.stringify(params),
     });
+    tratarNaoAutorizado(res.status);
     if (res.status >= 400) {
       const text = await res.text();
       return { data: null, error: text };
@@ -151,10 +227,11 @@ export async function supabaseDelete(table, col, val) {
   const client = getClient();
   if (!client) return { error: 'Supabase não configurado' };
   try {
-    const res = await fetch(`${client.url}/rest/v1/${table}?${col}=eq.${encodeURIComponent(val)}`, {
+    const res = await authFetch(`${client.url}/rest/v1/${table}?${col}=eq.${encodeURIComponent(val)}`, {
       method: 'DELETE',
       headers: buildHeaders(client)
     });
+    tratarNaoAutorizado(res.status);
     if (res.status >= 400) {
       const text = await res.text();
       return { error: text };
