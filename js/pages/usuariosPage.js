@@ -15,6 +15,8 @@ const COLUNAS_SORT = {
 };
 
 let ordenacao = { col: 'cadastro', dir: 'desc' };
+let alvoExcluir = null;
+let alvoReset = null;
 
 export async function render() {
   const main = document.getElementById('main-content');
@@ -45,6 +47,61 @@ export async function render() {
         </div>
       </div>
     </div>
+
+    <div class="modal fade" id="modal-excluir-usuario" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-trash3" style="color:var(--sieac-danger);margin-right:8px;"></i>Excluir Usuário</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body">
+            <p style="color:var(--sieac-text-muted);font-size:0.9rem;margin-bottom:8px;">
+              Tem certeza que deseja excluir o usuário <strong id="excluir-nome"></strong>?
+            </p>
+            <p style="color:var(--sieac-text-muted);font-size:0.85rem;margin-bottom:0;">
+              Essa ação é irreversível: a conta de acesso será removida e o usuário será desconectado do sistema.
+            </p>
+            <div class="auth-alert error" id="excluir-aviso" style="display:none;margin-top:12px;">
+              <strong>Atenção:</strong> você está excluindo a sua própria conta. Após a exclusão, o acesso será encerrado.
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:var(--sieac-radius-pill);">Cancelar</button>
+            <button type="button" class="btn btn-danger" id="excluir-confirmar" style="border-radius:var(--sieac-radius-pill);">Excluir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modal-reset-senha" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-key-fill" style="color:var(--sieac-warning);margin-right:8px;"></i>Redefinir Senha</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body">
+            <p style="color:var(--sieac-text-muted);font-size:0.9rem;margin-bottom:16px;">
+              Defina uma nova senha para <strong id="reset-nome"></strong>. O usuário será desconectado e precisará entrar com a nova senha.
+            </p>
+            <div id="reset-alert"></div>
+            <div class="mb-3">
+              <label class="form-label" for="reset-nova-senha">Nova Senha</label>
+              <input type="password" class="form-control" id="reset-nova-senha" placeholder="Mínimo de 4 caracteres" autocomplete="new-password">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="reset-confirm-senha">Confirmar Nova Senha</label>
+              <input type="password" class="form-control" id="reset-confirm-senha" placeholder="Repita a nova senha" autocomplete="new-password">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:var(--sieac-radius-pill);">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="reset-confirmar" style="border-radius:var(--sieac-radius-pill);">Salvar nova senha</button>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 
   document.querySelectorAll('#usuarios-table th[data-sort]').forEach(th => {
@@ -59,6 +116,11 @@ export async function render() {
       carregarUsuarios();
     });
   });
+
+  document.getElementById('excluir-confirmar').addEventListener('click', abrirConfirmarExclusao);
+  document.getElementById('reset-confirmar').addEventListener('click', confirmarRedefinicao);
+  document.getElementById('modal-excluir-usuario').addEventListener('hidden.bs.modal', () => { alvoExcluir = null; });
+  document.getElementById('modal-reset-senha').addEventListener('hidden.bs.modal', () => { alvoReset = null; });
 
   await carregarUsuarios();
 }
@@ -174,34 +236,81 @@ async function carregarUsuarios() {
   });
 
   tbody.querySelectorAll('.usuario-delete').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
-      const { error } = await excluirUsuario(btn.dataset.id);
-      if (error) {
-        showToast('Erro ao excluir: ' + error, 'error');
-      } else {
-        registrarLog(LOG_ACTIONS.EXCLUIR_USUARIO, { usuario_id: btn.dataset.id, usuario_nome: btn.dataset.nome });
-        showToast('Usuário excluído!', 'success');
-        await carregarUsuarios();
-      }
+    btn.addEventListener('click', () => {
+      const ehProprio = currentUser && String(currentUser.id) === String(btn.dataset.id);
+      alvoExcluir = { id: btn.dataset.id, nome: btn.dataset.nome };
+      document.getElementById('excluir-nome').textContent = alvoExcluir.nome;
+      document.getElementById('excluir-aviso').style.display = ehProprio ? 'block' : 'none';
+      new bootstrap.Modal(document.getElementById('modal-excluir-usuario')).show();
     });
   });
 
   tbody.querySelectorAll('.usuario-reset').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const novaSenha = prompt(`Nova senha para ${btn.dataset.nome}:`, '');
-      if (!novaSenha) return;
-      if (novaSenha.length < 4) {
-        showToast('A senha deve ter no mínimo 4 caracteres.', 'error');
-        return;
-      }
-      const { error } = await resetarSenha(btn.dataset.id, novaSenha);
-      if (error) {
-        showToast('Erro ao redefinir senha: ' + error, 'error');
-      } else {
-        registrarLog(LOG_ACTIONS.RESETAR_SENHA, { usuario_id: btn.dataset.id, usuario_nome: btn.dataset.nome });
-        showToast('Senha redefinida com sucesso! O usuário entrará com a nova senha.', 'success');
-      }
+    btn.addEventListener('click', () => {
+      alvoReset = { id: btn.dataset.id, nome: btn.dataset.nome };
+      document.getElementById('reset-nome').textContent = alvoReset.nome;
+      document.getElementById('reset-nova-senha').value = '';
+      document.getElementById('reset-confirm-senha').value = '';
+      document.getElementById('reset-alert').innerHTML = '';
+      new bootstrap.Modal(document.getElementById('modal-reset-senha')).show();
     });
+  });
+}
+
+function abrirConfirmarExclusao() {
+  const modalEl = document.getElementById('modal-excluir-usuario');
+  const btn = document.getElementById('excluir-confirmar');
+  if (!alvoExcluir || !modalEl) return;
+  btn.disabled = true;
+  btn.textContent = 'Excluindo...';
+  excluirUsuario(alvoExcluir.id).then(({ error }) => {
+    btn.disabled = false;
+    btn.textContent = 'Excluir';
+    if (error) {
+      showToast('Erro ao excluir: ' + error, 'error');
+      return;
+    }
+    registrarLog(LOG_ACTIONS.EXCLUIR_USUARIO, { usuario_id: alvoExcluir.id, usuario_nome: alvoExcluir.nome });
+    const nome = alvoExcluir.nome;
+    alvoExcluir = null;
+    bootstrap.Modal.getInstance(modalEl)?.hide();
+    showToast(`Usuário ${nome} excluído!`, 'success');
+    carregarUsuarios();
+  });
+}
+
+function confirmarRedefinicao() {
+  const modalEl = document.getElementById('modal-reset-senha');
+  const alertEl = document.getElementById('reset-alert');
+  const btn = document.getElementById('reset-confirmar');
+  if (!alvoReset || !modalEl) return;
+
+  const nova = document.getElementById('reset-nova-senha').value;
+  const confirm = document.getElementById('reset-confirm-senha').value;
+
+  if (nova.length < 4) {
+    alertEl.innerHTML = `<div class="auth-alert error">A senha deve ter no mínimo 4 caracteres.</div>`;
+    return;
+  }
+  if (nova !== confirm) {
+    alertEl.innerHTML = `<div class="auth-alert error">As senhas não conferem.</div>`;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+  alertEl.innerHTML = '';
+  resetarSenha(alvoReset.id, nova).then(({ error }) => {
+    btn.disabled = false;
+    btn.textContent = 'Salvar nova senha';
+    if (error) {
+      alertEl.innerHTML = `<div class="auth-alert error">${escapeHtml(error)}</div>`;
+      return;
+    }
+    registrarLog(LOG_ACTIONS.RESETAR_SENHA, { usuario_id: alvoReset.id, usuario_nome: alvoReset.nome });
+    const nome = alvoReset.nome;
+    alvoReset = null;
+    bootstrap.Modal.getInstance(modalEl)?.hide();
+    showToast(`Senha de ${nome} redefinida com sucesso!`, 'success');
   });
 }

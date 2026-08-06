@@ -168,6 +168,13 @@ export async function resetarSenha(id, novaSenha) {
   return { error: res && res.error ? res.error : null };
 }
 
+export async function validarSessao() {
+  const { data, error } = await supabaseRpc('validar_sessao', {});
+  if (error) return { user: null, error };
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  return { user: res || null, error: null };
+}
+
 // Fluxo "Esqueci minha senha" (Supabase Auth, fluxo implicit):
 // 1) recuperarSenha dispara o e-mail de recuperação (POST /auth/v1/recover).
 // 2) O link do e-mail redireciona para <site>#access_token=...&type=recovery.

@@ -1,5 +1,5 @@
-import { getCurrentUser, isAdmin, isGestao } from './services/authService.js';
-import { isAuthenticated } from './utils/helpers.js';
+import { getCurrentUser, isAdmin, isGestao, validarSessao } from './services/authService.js';
+import { isAuthenticated, setUser, clearSession, clearUser } from './utils/helpers.js';
 import { showToast } from './utils/helpers.js';
 
 const routes = {
@@ -44,6 +44,28 @@ export async function navigate() {
   if (route.auth && !isAuthenticated()) {
     window.location.hash = 'login';
     return navigate();
+  }
+
+  // Valida a sessão no servidor a cada navegação: impede que um usuário
+  // excluído/desativado continue navegando entre as telas.
+  if (route.auth) {
+    const { user: sessao, error } = await validarSessao();
+    if (error || !sessao || !sessao.ativo) {
+      clearSession();
+      clearUser();
+      showToast('Sessão inválida. Faça login novamente.', 'warning');
+      window.location.hash = 'login';
+      return navigate();
+    }
+    setUser({
+      id: sessao.id,
+      nome: sessao.nome,
+      email: sessao.email,
+      matricula: sessao.matricula,
+      perfil: sessao.perfil,
+      perfil_id: sessao.perfil_id,
+      expiresAt: Date.now() + 4 * 60 * 60 * 1000
+    });
   }
 
   if (route.can) {
