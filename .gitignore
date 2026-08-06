@@ -4,3 +4,8 @@ node_modules/
 .DS_Store
 Thumbs.db
 ~$*
+
+# Diretórios sensíveis mantidos apenas localmente
+exemplos_arquivos_importacao/
+docs/
+supabase/migrations/
