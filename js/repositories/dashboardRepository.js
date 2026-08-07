@@ -686,6 +686,8 @@ export async function getNotasTurmaDisciplina(filters = {}) {
   const tMap = {}; refCache.turmas.forEach(t => tMap[t.id] = t.nome);
   const alocProf = {}; refCache.alocacoes.forEach(a => alocProf[a.id] = a.professor_id);
   const pMap = {}; refCache.professores.forEach(p => pMap[p.id] = p.nome);
+
+  const data = notas.map(n => {
     const temNota = [n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim].some(v => !isNaN(parseFloat(v)));
     const e = eMap[n.estudante_id];
     return {
