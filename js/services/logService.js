@@ -23,14 +23,23 @@ export const LOG_ACTIONS = {
 export async function registrarLog(acao, detalhes = null) {
   try {
     const user = getCurrentUser();
-    await supabaseRpc('registrar_log', {
-      p_usuario_id: user?.id || null,
-      p_usuario_nome: user?.nome || 'Anônimo',
-      p_email: user?.email || null,
-      p_acao: acao,
-      p_detalhes: detalhes || {},
-      p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-    });
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : null;
+    if (user) {
+      await supabaseRpc('registrar_log', {
+        p_usuario_id: user.id,
+        p_usuario_nome: user.nome,
+        p_email: user.email,
+        p_acao: acao,
+        p_detalhes: detalhes || {},
+        p_user_agent: userAgent,
+      });
+    } else {
+      await supabaseRpc('registrar_log_anon', {
+        p_acao: acao,
+        p_detalhes: detalhes || {},
+        p_user_agent: userAgent,
+      });
+    }
   } catch {
     // logs nunca devem interromper o fluxo principal
   }
