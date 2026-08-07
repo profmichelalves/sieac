@@ -221,7 +221,7 @@ async function carregarEstudante(id) {
   }
   currentStudentId = id;
   saveEstudanteFiltros({ turmaId: turmaAtualId, estudanteId: id });
-  const { data: estudante, error } = await supabaseQuery('estudantes', { select: 'id,nome,matricula', filters: [{ col: 'id', val: id }] });
+  const { data: estudante, error } = await supabaseQuery('estudantes', { select: 'id,id_pessoa,nome,matricula', filters: [{ col: 'id', val: id }] });
   if (error || !estudante || !estudante.length) {
     showToast('Estudante não encontrado', 'error');
     return;
@@ -242,7 +242,7 @@ async function carregarEstudante(id) {
   document.getElementById('e-serie').textContent = studentInfo.serie;
   document.getElementById('e-turno').textContent = studentInfo.turno;
 
-  const nee = await getNecessidadesEstudante(id);
+  const nee = await getNecessidadesEstudante(e.id_pessoa);
   studentInfo.necessidades = nee.tipos.length ? nee.tipos.join(', ') : 'Não informado';
   studentInfo.professorAee = nee.professorAee ? nee.professorAee.nome : 'Não informado';
   document.getElementById('e-necessidades').innerHTML = nee.tipos.length

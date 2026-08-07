@@ -39,7 +39,7 @@ export async function getRefCache() {
     supabaseQuery('etapas_ensino', { select: 'id,nome' }),
   ]);
   const a = await supabaseQuery('alocacoes', { select: 'id,turma_id,componente_id,professor_id' });
-  const est = await supabaseFetchAll('estudantes', { select: 'id,nome,matricula', limit: 30000 });
+  const est = await supabaseFetchAll('estudantes', { select: 'id,id_pessoa,nome,matricula', limit: 30000 });
   refCache = {
     series: s.data || [],
     turmas: t.data || [],
@@ -75,10 +75,16 @@ async function calcularEstudantesPermitidos() {
   if (!vinculo) return new Set();
   if (isProfessorAee()) {
     const { data: aee } = await supabaseFetchAll('estudante_professores_aee', {
-      select: 'estudante_id',
-      filters: [{ col: 'professor_id', val: vinculo.id }],
+      select: 'estudante_id_pessoa',
+      filters: [{ col: 'professor_id_pessoa', val: vinculo.id_pessoa }],
     });
-    return new Set((aee || []).map(a => Number(a.estudante_id)));
+    const idsExternos = new Set((aee || []).map(a => a.estudante_id_pessoa));
+    await getRefCache();
+    const set = new Set();
+    refCache.estudantes.forEach(e => {
+      if (e.id_pessoa != null && idsExternos.has(e.id_pessoa)) set.add(Number(e.id));
+    });
+    return set;
   }
   await getRefCache();
   const aIds = refCache.alocacoes.filter(a => vinculo.turmaIds.includes(a.turma_id)).map(a => a.id);

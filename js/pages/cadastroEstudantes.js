@@ -64,6 +64,9 @@ export async function render() {
             </tbody>
           </table>
         </div>
+        <div class="mt-3" style="font-size:0.78rem;color:var(--sieac-text-muted);">
+          <i class="bi bi-info-circle"></i> As necessidades e o professor de AEE usam os identificadores externos dos estudantes e professores, portanto permanecem mesmo após novas importações de dados.
+        </div>
       </div>
     </div>
 
@@ -282,10 +285,10 @@ async function abrirModal(estudanteId) {
     : '<div class="col-12" style="color:var(--sieac-text-muted);">Nenhum tipo de necessidade cadastrado.</div>';
 
   if (estudante.professorAee) {
-    professorAeeSelecionado = String(estudante.professorAee.professor_id);
-    const item = { id: String(estudante.professorAee.professor_id), nome: estudante.professorAee.nome, matricula: estudante.professorAee.matricula };
+    professorAeeSelecionado = String(estudante.professorAee.professor_id_pessoa);
+    const item = { id: String(estudante.professorAee.professor_id_pessoa), nome: estudante.professorAee.nome, matricula: estudante.professorAee.matricula };
     const res = await listarProfessoresParaAEE();
-    const prof = (res.data || []).find(p => String(p.id) === String(estudante.professorAee.professor_id));
+    const prof = (res.data || []).find(p => String(p.id) === String(estudante.professorAee.professor_id_pessoa));
     if (prof) {
       professorCombo.setItems((res.data || []).map(p => ({ id: p.id, nome: p.nome, matricula: p.matricula })));
       professorCombo.setValue(String(prof.id));
@@ -314,7 +317,7 @@ async function salvarModal() {
     professorAee: estudanteEditando.professorAee ? estudanteEditando.professorAee.nome : 'não informado',
   };
 
-  const { error } = await salvarNecessidadesEstudante(estudanteEditando.id, tipoIds, professorAeeSelecionado);
+  const { error } = await salvarNecessidadesEstudante(estudanteEditando.id_pessoa, tipoIds, professorAeeSelecionado);
   btn.disabled = false;
 
   if (error) {

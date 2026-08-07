@@ -369,8 +369,8 @@ export async function temEstudantesAeeVinculados() {
   const vinculo = await getProfessorVinculo();
   if (!vinculo) return false;
   const { data: aee } = await supabaseFetchAll('estudante_professores_aee', {
-    select: 'estudante_id',
-    filters: [{ col: 'professor_id', val: vinculo.id }],
+    select: 'estudante_id_pessoa',
+    filters: [{ col: 'professor_id_pessoa', val: vinculo.id_pessoa }],
   });
   return (aee || []).length > 0;
 }

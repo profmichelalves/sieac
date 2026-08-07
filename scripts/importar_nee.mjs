@@ -51,7 +51,7 @@ async function main() {
 
   console.log('Lendo planilha...');
   const [estudantes, tipos] = await Promise.all([
-    fetchAll('estudantes', 'id,nome'),
+    fetchAll('estudantes', 'id,id_pessoa,nome'),
     fetchAll('tipo_necessidades', 'id,nome'),
   ]);
 
@@ -77,11 +77,12 @@ async function main() {
     const matches = estByNorm[norm(nome)] || [];
     if (matches.length === 0) { semEstudante++; nomesSemEstudante.add(`${nome} | ${turma}`); continue; }
     if (matches.length > 1) { multplo++; nomesMultiplos.add(`${nome} | ${turma} (${matches.length} registros)`); continue; }
+    if (matches[0].id_pessoa == null) { semEstudante++; nomesSemEstudante.add(`${nome} | ${turma} (sem id externo)`); continue; }
 
     const tipo = tipoByNorm[norm(tipoNome)];
     if (!tipo) { semTipo++; nomesSemTipo.add(tipoNome); continue; }
 
-    vinculos.set(`${matches[0].id}|${tipo.id}`, { estudante_id: matches[0].id, tipo_necessidade_id: tipo.id });
+    vinculos.set(`${matches[0].id_pessoa}|${tipo.id}`, { estudante_id_pessoa: matches[0].id_pessoa, tipo_necessidade_id: tipo.id });
   }
 
   console.log(`Linhas da planilha: ${rows.length}`);
@@ -99,7 +100,7 @@ async function main() {
     console.log('\nInserindo vínculos em estudante_necessidades...');
     const step = 500;
     for (let i = 0; i < lista.length; i += step) {
-      await upsert('estudante_necessidades', lista.slice(i, i + step), 'estudante_id,tipo_necessidade_id');
+      await upsert('estudante_necessidades', lista.slice(i, i + step), 'estudante_id_pessoa,tipo_necessidade_id');
     }
     console.log(`Concluído: ${lista.length} vínculos inseridos/atualizados.`);
   } else {
