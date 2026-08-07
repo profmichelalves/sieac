@@ -1,9 +1,8 @@
-import { $, showToast } from '../utils/helpers.js';
-import { validateLoginFields, validateRegisterFields } from '../utils/validators.js';
-import { login, register, listarPerfis, recuperarSenha, redefinirSenha } from '../services/authService.js';
+import { $, showToast, debounce, escapeHtml } from '../utils/helpers.js';
+import { validateLoginFields, validateRegisterFields, validateEmail } from '../utils/validators.js';
+import { login, register, listarPerfis, verificarPrecisaRedefinir, redefinirSenhaPrimeiroAcesso } from '../services/authService.js';
 import { clearFilterCache } from '../components/FilterPanel.js';
 import { initSidebar } from '../components/Sidebar.js';
-import { setSession, clearSession, clearUser } from '../utils/helpers.js';
 
 export function renderLogin() {
   const container = document.getElementById('auth-container');
@@ -38,9 +37,6 @@ export function renderLogin() {
         <div class="auth-link">
           Não tem conta? <a href="#registrar">Cadastre-se</a>
         </div>
-        <div class="auth-link">
-          <a href="#recuperar-senha">Esqueci minha senha</a>
-        </div>
 
       </div>
     </div>
@@ -72,6 +68,14 @@ export function renderLogin() {
 
     const result = await login(email, senha);
     if (result.error) {
+      const precisa = await verificarPrecisaRedefinir(email);
+      if (precisa.precisa) {
+        sessionStorage.setItem('sieac_reset_email', email.trim().toLowerCase());
+        alertEl.innerHTML = `<div class="auth-alert warning">Por questões de segurança, sua senha precisa ser redefinida. Redirecionando...</div>`;
+        btn.disabled = true;
+        setTimeout(() => { window.location.hash = 'redefinir-primeiro-acesso'; }, 1200);
+        return;
+      }
       alertEl.innerHTML = `<div class="auth-alert error">${result.error}</div>`;
       btn.disabled = false;
       btn.textContent = 'Entrar';
@@ -220,13 +224,19 @@ function normEqual(a, b) {
   return norm(a) === norm(b);
 }
 
-export function renderRecuperarSenha() {
+// Tela de redefinição de primeiro acesso: aparece após uma tentativa de login
+// em que a senha do usuário está zerada no banco (atualização de segurança).
+// Não há envio de e-mail: o usuário valida email + matrícula + perfil do
+// cadastro. O bloqueio de 3 tentativas/15 min é tratado aqui, na própria tela.
+export function renderRedefinirPrimeiroAcesso() {
   const container = document.getElementById('auth-container');
   const shell = document.getElementById('app-shell');
   if (container) container.style.display = 'flex';
   if (shell) shell.style.display = 'none';
 
   if (!container) return;
+  const emailPre = (sessionStorage.getItem('sieac_reset_email') || '').trim();
+
   container.innerHTML = `
     <div class="auth-page">
       <div class="auth-card">
@@ -237,211 +247,128 @@ export function renderRecuperarSenha() {
             <small>Sistema de Indicadores Educacionais Abel Coelho</small>
           </div>
         </div>
-        <h2 class="auth-title">Recuperar Senha</h2>
-        <p style="text-align:center;color:var(--text-muted);font-size:0.9rem;margin-bottom:16px;">
-          Informe seu e-mail cadastrado. Enviaremos um link para você definir uma nova senha.
-        </p>
+        <h2 class="auth-title">Redefinir Senha</h2>
+        <div class="auth-alert warning">
+          Por questões de segurança, sua senha precisa ser redefinida antes do próximo acesso.
+        </div>
         <div id="auth-alert"></div>
-        <form class="auth-form" id="recover-form">
+        <form class="auth-form" id="first-reset-form">
           <div class="mb-3">
             <label class="form-label">Email</label>
-            <input type="email" class="form-control" id="recover-email" placeholder="seu@email.com" required autocomplete="email">
+            <input type="email" class="form-control" id="first-reset-email" value="${escapeHtml(emailPre)}" placeholder="seu@email.com" required autocomplete="email">
           </div>
-          <button type="submit" class="auth-btn" id="recover-btn">Enviar link</button>
+          <div class="mb-3">
+            <label class="form-label">Matrícula</label>
+            <input type="text" class="form-control" id="first-reset-matricula" placeholder="Sua matrícula" required autocomplete="off">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Perfil do Cadastro</label>
+            <select class="form-control" id="first-reset-perfil">
+              <option value="">Carregando...</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Nova Senha</label>
+            <input type="password" class="form-control" id="first-reset-senha" placeholder="Mínimo de 4 caracteres" required autocomplete="new-password">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirmar Nova Senha</label>
+            <input type="password" class="form-control" id="first-reset-confirm" placeholder="Repita a nova senha" required autocomplete="new-password">
+          </div>
+          <button type="submit" class="auth-btn" id="first-reset-btn">Redefinir senha</button>
         </form>
         <div class="auth-link">
-          Lembrou a senha? <a href="#login">Faça login</a>
+          <a href="#login">Voltar ao login</a>
         </div>
       </div>
     </div>
   `;
 
-  document.getElementById('recover-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('recover-email').value;
-    const alertEl = document.getElementById('auth-alert');
-    const btn = document.getElementById('recover-btn');
+  const form = document.getElementById('first-reset-form');
+  const alertEl = document.getElementById('auth-alert');
+  const btn = document.getElementById('first-reset-btn');
 
-    btn.disabled = true;
-    btn.textContent = 'Enviando...';
-    alertEl.innerHTML = '';
-
-    const result = await recuperarSenha(email);
-    if (result.error) {
-      const isRateLimit = /rate limit|limite/i.test(result.error);
-      const msg = isRateLimit
-        ? 'Muitas solicitações de recuperação. Aguarde cerca de 1 hora antes de tentar novamente.'
-        : 'Não foi possível enviar o link. Se o problema persistir, aguarde alguns minutos e tente novamente.';
-      alertEl.innerHTML = `<div class="auth-alert error">${escapeHtmlMsg(msg)}</div>`;
-      btn.disabled = false;
-      btn.textContent = 'Enviar link';
+  async function aplicarBloqueio(email) {
+    const st = await verificarPrecisaRedefinir(email);
+    if (st.bloqueado) {
+      alertEl.innerHTML = `<div class="auth-alert error">Muitas tentativas de redefinição. Aguarde alguns minutos antes de tentar novamente.</div>`;
+      form.querySelectorAll('input, select').forEach(el => { el.disabled = true; });
+      btn.disabled = true;
     } else {
-      alertEl.innerHTML = `<div class="auth-alert success">Se o e-mail estiver cadastrado, você receberá um link de recuperação.</div>`;
-      btn.textContent = 'Link enviado';
+      form.querySelectorAll('input, select').forEach(el => { el.disabled = false; });
+      btn.disabled = false;
     }
-  });
-}
-
-// Extrai access_token/refresh_token/expires_at do fragmento de recuperação do
-// Supabase Auth: <site>#access_token=...&refresh_token=...&type=recovery
-function parseRecoveryFragment() {
-  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
-  const params = new URLSearchParams(hash);
-  if (params.get('type') !== 'recovery' || !params.get('access_token')) return null;
-  const expiresAt = parseInt(params.get('expires_at') || '0', 10);
-  return {
-    access_token: params.get('access_token'),
-    refresh_token: params.get('refresh_token'),
-    expires_at: expiresAt || Math.floor(Date.now() / 1000) + 3600,
-  };
-}
-
-export function renderRedefinirSenha() {
-  const container = document.getElementById('auth-container');
-  const shell = document.getElementById('app-shell');
-  if (container) container.style.display = 'flex';
-  if (shell) shell.style.display = 'none';
-
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="auth-page">
-      <div class="auth-logo">
-        <div class="auth-logo-icon">S</div>
-        <div class="auth-logo-text">
-          SIEAC
-          <small>Sistema de Indicadores Educacionais Abel Coelho</small>
-        </div>
-      </div>
-    </div>
-  `;
-
-  const token = parseRecoveryFragment();
-  if (!token) {
-    const modal = mostrarModalRedefinicao({
-      voltarAoLoginEmHidden: false,
-      body: `
-        <div class="auth-alert error">O link de recuperação é inválido ou já expirou. Solicite um novo link.</div>
-      `,
-      footer: `
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="reset-novo-link" style="border-radius:var(--sieac-radius-pill);">Solicitar novo link</button>
-        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="reset-ir-login" style="border-radius:var(--sieac-radius-pill);">Fazer login</button>
-      `,
-    });
-    modal.querySelector('#reset-novo-link')?.addEventListener('click', () => { window.location.hash = '#recuperar-senha'; });
-    modal.querySelector('#reset-ir-login')?.addEventListener('click', () => { window.location.hash = '#login'; });
-    return;
+    return st;
   }
 
-  // Usa a sessão de recuperação para autenticar a troca de senha.
-  setSession(token);
+  if (emailPre.includes('@')) aplicarBloqueio(emailPre);
 
-  let concluido = false;
-  const modal = mostrarModalRedefinicao({
-    voltarAoLoginEmHidden: true,
-    body: `
-      <div id="auth-alert"></div>
-      <form id="reset-form">
-        <div class="mb-3">
-          <label class="form-label" for="reset-senha">Nova Senha</label>
-          <input type="password" class="form-control" id="reset-senha" placeholder="Crie uma nova senha" required autocomplete="new-password">
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="reset-confirm">Confirmar Nova Senha</label>
-          <input type="password" class="form-control" id="reset-confirm" placeholder="Repita a nova senha" required autocomplete="new-password">
-        </div>
-      </form>
-    `,
-    footer: `
-      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:var(--sieac-radius-pill);">Cancelar</button>
-      <button type="submit" form="reset-form" class="btn btn-primary" id="reset-btn" style="border-radius:var(--sieac-radius-pill);">Salvar nova senha</button>
-    `,
-  });
-  modal.addEventListener('hidden.bs.modal', () => {
-    if (!concluido) clearSession();
-  });
+  carregarPerfisReset();
 
-  const form = modal.querySelector('#reset-form');
-  const btn = modal.querySelector('#reset-btn');
-  const alertEl = modal.querySelector('#auth-alert');
+  document.getElementById('first-reset-email').addEventListener('input', debounce(async () => {
+    const email = document.getElementById('first-reset-email').value;
+    if (email.includes('@')) await aplicarBloqueio(email);
+  }, 500));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const senha = document.getElementById('reset-senha').value;
-    const confirm = document.getElementById('reset-confirm').value;
+    const email = document.getElementById('first-reset-email').value;
+    const matricula = document.getElementById('first-reset-matricula').value;
+    const perfilId = document.getElementById('first-reset-perfil').value;
+    const senha = document.getElementById('first-reset-senha').value;
+    const confirm = document.getElementById('first-reset-confirm').value;
 
-    if (senha.length < 4) {
-      alertEl.innerHTML = `<div class="auth-alert error">A senha deve ter no mínimo 4 caracteres.</div>`;
-      return;
-    }
-    if (senha !== confirm) {
-      alertEl.innerHTML = `<div class="auth-alert error">As senhas não conferem.</div>`;
+    const errors = [];
+    if (!email) errors.push('Email é obrigatório');
+    else if (!validateEmail(email)) errors.push('Email inválido');
+    if (!matricula || matricula.trim().length < 3) errors.push('Matrícula inválida');
+    if (!perfilId) errors.push('Selecione o perfil utilizado no cadastro');
+    if (senha.length < 4) errors.push('A senha deve ter no mínimo 4 caracteres');
+    if (senha !== confirm) errors.push('As senhas não conferem');
+    if (errors.length) {
+      alertEl.innerHTML = `<div class="auth-alert error">${errors.join('<br>')}</div>`;
       return;
     }
 
     btn.disabled = true;
-    btn.textContent = 'Salvando...';
+    btn.textContent = 'Redefinindo...';
     alertEl.innerHTML = '';
 
-    const result = await redefinirSenha(senha);
+    const result = await redefinirSenhaPrimeiroAcesso(email, matricula, perfilId, senha);
     if (result.error) {
-      alertEl.innerHTML = `<div class="auth-alert error">${escapeHtmlMsg(result.error)}</div>`;
+      await aplicarBloqueio(email);
+      alertEl.innerHTML = `<div class="auth-alert error">${escapeHtml(result.error)}</div>`;
       btn.disabled = false;
-      btn.textContent = 'Salvar nova senha';
+      btn.textContent = 'Redefinir senha';
       return;
     }
 
-    concluido = true;
-    clearSession();
-    clearUser();
+    sessionStorage.removeItem('sieac_reset_email');
     sessionStorage.setItem('sieac_senha_redefinida', '1');
-    bootstrap.Modal.getInstance(modal)?.hide();
-    window.location.hash = '#login';
+    if (result.ativo) showToast('Senha redefinida com sucesso!', 'success');
+    window.location.hash = 'login';
     window.location.reload();
   });
 }
 
-// Exibe o formulário de nova senha em uma modal Bootstrap, seguindo o mesmo
-// layout das demais janelas modais da aplicação.
-function mostrarModalRedefinicao({ body, footer, voltarAoLoginEmHidden = true }) {
-  document.getElementById('modal-redefinir-senha')?.remove();
-  const modalEl = document.createElement('div');
-  modalEl.className = 'modal fade';
-  modalEl.id = 'modal-redefinir-senha';
-  modalEl.tabIndex = -1;
-  modalEl.setAttribute('aria-hidden', 'true');
-  modalEl.innerHTML = `
-    <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
-      <div class="modal-content" style="border-radius:var(--sieac-radius-xl);box-shadow:var(--sieac-shadow-lg);">
-        <div class="modal-header">
-          <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-key-fill" style="color:var(--sieac-warning);margin-right:8px;"></i>Definir Nova Senha</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-          <p style="color:var(--sieac-text-muted);font-size:0.9rem;margin-bottom:16px;">Crie uma nova senha para acessar o SIEAC.</p>
-          ${body}
-        </div>
-        <div class="modal-footer">
-          ${footer}
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modalEl);
-  modalEl.addEventListener('hidden.bs.modal', () => {
-    document.getElementById('modal-redefinir-senha')?.remove();
-    if (voltarAoLoginEmHidden && !window.location.hash.startsWith('#redefinir-senha')) {
-      window.location.hash = '#login';
-    }
-  });
-  new bootstrap.Modal(modalEl).show();
-  return modalEl;
-}
+// Perfis exibidos no formulário de primeiro acesso (mesmos do cadastro, mais
+// Administrador, para o caso de um admin ter a própria senha limpa).
+async function carregarPerfisReset() {
+  const sel = document.getElementById('first-reset-perfil');
+  if (!sel) return;
 
-function escapeHtmlMsg(text) {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  const fallback = [
+    { id: 1, nome: 'Administrador' },
+    { id: 2, nome: 'Gestão Escolar' },
+    { id: 3, nome: 'Professor' },
+    { id: 4, nome: 'Professor do AEE' },
+  ];
+
+  let opcoes = fallback;
+  try {
+    const { data: perfis, error } = await listarPerfis();
+    if (!error && perfis && perfis.length) opcoes = perfis;
+  } catch {}
+
+  sel.innerHTML = opcoes.map(p => `<option value="${p.id}">${escapeHtml(p.nome)}</option>`).join('');
 }

@@ -130,3 +130,9 @@
   color: var(--sieac-success);
   border: 1px solid rgba(var(--sieac-success-rgb), 0.2);
 }
+
+.auth-alert.warning {
+  background: rgba(var(--sieac-warning-rgb), 0.1);
+  color: #8a6d00;
+  border: 1px solid rgba(var(--sieac-warning-rgb), 0.35);
+}

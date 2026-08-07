@@ -178,43 +178,42 @@ export async function validarSessao() {
   return { user: res || null, error: null, fatal: false };
 }
 
-// Fluxo "Esqueci minha senha" (Supabase Auth, fluxo implicit):
-// 1) recuperarSenha dispara o e-mail de recuperação (POST /auth/v1/recover).
-// 2) O link do e-mail redireciona para <site>#access_token=...&type=recovery.
-// 3) redefinirSenha troca a senha com a sessão recém-obtida (PUT /auth/v1/update).
-export async function recuperarSenha(email) {
-  const client = getClient();
-  if (!client) return { error: 'Supabase não configurado' };
-  try {
-    const res = await fetch(`${client.url}/auth/v1/recover`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': client.key, 'Authorization': `Bearer ${client.key}` },
-      body: JSON.stringify({ email: email.trim().toLowerCase() }),
-    });
-    if (res.ok) return { error: null };
-    const body = await res.json().catch(() => ({}));
-    return { error: body?.msg || body?.error_description || 'Erro ao solicitar a recuperação de senha.' };
-  } catch {
-    return { error: 'Erro ao conectar ao servidor de autenticação.' };
-  }
+// Redefinição de primeiro acesso (senha zerada no banco por motivo de
+// segurança). Não há envio de e-mail: a tela de redefinição aparece após uma
+// tentativa de login detectar a senha vazia, validando email + matrícula +
+// perfil com limite de 3 tentativas/15 min.
+export async function verificarPrecisaRedefinir(email) {
+  const { data, error } = await supabaseRpc('senha_precisa_redefinicao', { p_email: email.trim().toLowerCase() });
+  if (error) return { precisa: false, tentativas: 0, bloqueado: false };
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  return {
+    precisa: Boolean(res?.precisa),
+    tentativas: Number(res?.tentativas) || 0,
+    bloqueado: Boolean(res?.bloqueado),
+  };
 }
 
-export async function redefinirSenha(novaSenha) {
-  const client = getClient();
-  const token = getAuthToken();
-  if (!client || !token) return { error: 'Sessão inválida. Solicite um novo link de recuperação.' };
-  try {
-    const res = await fetch(`${client.url}/auth/v1/update`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'apikey': client.key, 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ password: novaSenha }),
-    });
-    if (res.ok) return { error: null };
-    const body = await res.json().catch(() => ({}));
-    return { error: body?.msg || body?.error_description || 'Erro ao redefinir a senha.' };
-  } catch {
-    return { error: 'Erro ao conectar ao servidor de autenticação.' };
-  }
+export async function redefinirSenhaPrimeiroAcesso(email, matricula, perfilId, novaSenha) {
+  const { data, error } = await supabaseRpc('redefinir_senha_primeiro_acesso', {
+    p_email: email.trim().toLowerCase(),
+    p_matricula: matricula,
+    p_perfil_id: Number(perfilId),
+    p_nova_senha: novaSenha,
+  });
+  if (error) return { success: false, ativo: false, error: 'Erro ao redefinir a senha. Tente novamente.' };
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  return {
+    success: Boolean(res?.success),
+    ativo: Boolean(res?.ativo),
+    error: res?.error || null,
+  };
+}
+
+export async function limparSenhaUsuario(id) {
+  const { data, error } = await supabaseRpc('limpar_senha_usuario', { p_id: Number(id) });
+  if (error) return { error };
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  return { error: res && res.error ? res.error : null };
 }
 
 export async function logout() {
