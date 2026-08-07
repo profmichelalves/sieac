@@ -221,6 +221,9 @@ function montarFiltrosFrequencia(filters) {
 }
 
 async function queryNotas(filters, selectFields) {
+  if (isProfessorAee() && !selectFields.split(',').map(s => s.trim()).includes('estudante_id')) {
+    selectFields += ',estudante_id';
+  }
   const f = montarFiltrosNotas(filters);
   let rows = [];
   if (!f) {
@@ -248,6 +251,9 @@ async function queryNotas(filters, selectFields) {
 }
 
 async function queryFrequencias(filters, selectFields) {
+  if (isProfessorAee() && !selectFields.split(',').map(s => s.trim()).includes('estudante_id')) {
+    selectFields += ',estudante_id';
+  }
   const f = montarFiltrosFrequencia(filters);
   let rows = [];
   if (!f) {
