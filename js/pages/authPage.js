@@ -2,6 +2,7 @@ import { $, showToast } from '../utils/helpers.js';
 import { validateLoginFields, validateRegisterFields } from '../utils/validators.js';
 import { login, register, listarPerfis, recuperarSenha, redefinirSenha } from '../services/authService.js';
 import { clearFilterCache } from '../components/FilterPanel.js';
+import { initSidebar } from '../components/Sidebar.js';
 import { setSession, clearSession, clearUser } from '../utils/helpers.js';
 
 export function renderLogin() {
@@ -78,8 +79,11 @@ export function renderLogin() {
       clearFilterCache();
       localStorage.removeItem('sieac_aee_alert_dismissed');
       showToast('Bem-vindo, ' + result.user.nome + '!', 'success');
+      // Sem reload(): o hashchange dispara o router, que valida a sessão e
+      // renderiza a rota. O reload antigo abortava o validarSessao em voo,
+      // causando deslogues intermitentes logo após o login.
+      initSidebar();
       window.location.hash = 'dashboard-geral';
-      window.location.reload();
     }
   });
 

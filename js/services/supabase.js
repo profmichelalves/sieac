@@ -27,8 +27,15 @@ function limparSessao() {
   clearUser();
 }
 
-// Renova o access token com o refresh token do GoTrue; em falha, encerra a
-// sessão local (o router redireciona ao login).
+// Renova o access token com o refresh token do GoTrue.
+// - Single-flight: se várias requisições expirarem ao mesmo tempo, apenas uma
+//   renova (o GoTrue ROTACIONA o refresh token; usos paralelos do mesmo token
+//   falham e derrubariam a sessão de quem "perder" a corrida).
+// - Só encerra a sessão local em falha definitiva (refresh token inválido/
+//   revogado). Erros transitórios (rede, 5xx) mantêm a sessão para uma nova
+//   tentativa.
+let refreshPromise = null;
+
 async function forcarRefresh() {
   const session = getSession();
   const refresh = getRefreshToken();
@@ -36,27 +43,35 @@ async function forcarRefresh() {
     limparSessao();
     return false;
   }
-  try {
-    const res = await fetch(`${client.url}/auth/v1/token?grant_type=refresh_token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': client.key, 'Authorization': `Bearer ${client.key}` },
-      body: JSON.stringify({ refresh_token: refresh }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok || !body.access_token) {
-      limparSessao();
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${client.url}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': client.key, 'Authorization': `Bearer ${client.key}` },
+        body: JSON.stringify({ refresh_token: refresh }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 401 || res.status === 403 || res.status === 400) {
+        limparSessao();
+        return false;
+      }
+      if (!res.ok || !body.access_token) {
+        return false;
+      }
+      setSession({
+        access_token: body.access_token,
+        refresh_token: body.refresh_token || refresh,
+        expires_at: body.expires_at || Math.floor(Date.now() / 1000) + (body.expires_in || 3600),
+      });
+      return true;
+    } catch {
       return false;
+    } finally {
+      refreshPromise = null;
     }
-    setSession({
-      access_token: body.access_token,
-      refresh_token: body.refresh_token || refresh,
-      expires_at: body.expires_at || Math.floor(Date.now() / 1000) + (body.expires_in || 3600),
-    });
-    return true;
-  } catch {
-    limparSessao();
-    return false;
-  }
+  })();
+  return refreshPromise;
 }
 
 async function garantirTokenAtual() {
@@ -200,7 +215,7 @@ export async function supabaseUpsert(table, rows, onConflict) {
 
 export async function supabaseRpc(functionName, params = {}) {
   const client = getClient();
-  if (!client) return { error: 'Supabase não configurado' };
+  if (!client) return { data: null, error: 'Supabase não configurado', status: 0 };
   try {
     const res = await authFetch(`${client.url}/rest/v1/rpc/${functionName}?apikey=${encodeURIComponent(client.key)}`, {
       method: 'POST',
@@ -210,16 +225,16 @@ export async function supabaseRpc(functionName, params = {}) {
     tratarNaoAutorizado(res.status);
     if (res.status >= 400) {
       const text = await res.text();
-      return { data: null, error: text };
+      return { data: null, error: text, status: res.status };
     }
     let data = null;
     try {
       const text = await res.text();
       data = text ? JSON.parse(text) : null;
     } catch (e) { data = null; }
-    return { data, error: null };
+    return { data, error: null, status: res.status };
   } catch (err) {
-    return { error: err.message };
+    return { error: err.message, data: null, status: 0 };
   }
 }
 

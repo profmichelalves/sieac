@@ -1,7 +1,11 @@
 import { $$ } from '../utils/helpers.js';
 import { getCurrentUser, isAdmin, isGestao } from '../services/authService.js';
 
+let inicializada = false;
+
 export function initSidebar() {
+  if (inicializada) return;
+  inicializada = true;
   const items = $$('.sidebar-item');
   const toggler = document.getElementById('sidebar-toggler');
   const sidebar = document.getElementById('sidebar');

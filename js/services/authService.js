@@ -169,10 +169,13 @@ export async function resetarSenha(id, novaSenha) {
 }
 
 export async function validarSessao() {
-  const { data, error } = await supabaseRpc('validar_sessao', {});
-  if (error) return { user: null, error };
+  const { data, error, status } = await supabaseRpc('validar_sessao', {});
+  if (error) {
+    const fatal = status === 401 || status === 403 || status === 404;
+    return { user: null, error, fatal };
+  }
   const res = Array.isArray(data) && data.length ? data[0] : null;
-  return { user: res || null, error: null };
+  return { user: res || null, error: null, fatal: false };
 }
 
 // Fluxo "Esqueci minha senha" (Supabase Auth, fluxo implicit):

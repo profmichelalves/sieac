@@ -1,5 +1,5 @@
 import { getCurrentUser, isAdmin, isGestao, validarSessao } from './services/authService.js';
-import { isAuthenticated, setUser, clearSession, clearUser } from './utils/helpers.js';
+import { isAuthenticated, getSession, setUser, clearSession, clearUser } from './utils/helpers.js';
 import { showToast } from './utils/helpers.js';
 
 const routes = {
@@ -46,11 +46,30 @@ export async function navigate() {
     return navigate();
   }
 
+  // Perfil local presente mas sem sessão de acesso (token ausente): estado
+  // inválido, volta ao login.
+  if (route.auth && !getSession()) {
+    clearUser();
+    window.location.hash = 'login';
+    return navigate();
+  }
+
   // Valida a sessão no servidor a cada navegação: impede que um usuário
-  // excluído/desativado continue navegando entre as telas.
+  // excluído/desativado continue navegando entre as telas. Falhas definitivas
+  // (token inválido, RPC inexistente) encerram a sessão; falhas transitórias
+  // (rede, 5xx, rate limit) mantêm a sessão local em vez de derrubar o usuário.
   if (route.auth) {
-    const { user: sessao, error } = await validarSessao();
-    if (error || !sessao || !sessao.ativo) {
+    const { user: sessao, error, fatal } = await validarSessao();
+    if (error) {
+      if (fatal) {
+        clearSession();
+        clearUser();
+        showToast('Sessão inválida. Faça login novamente.', 'warning');
+        window.location.hash = 'login';
+        return navigate();
+      }
+      console.warn('[router] Falha transitória ao validar a sessão. Continuando com a sessão local.', error);
+    } else if (!sessao || !sessao.ativo) {
       clearSession();
       clearUser();
       showToast('Sessão inválida. Faça login novamente.', 'warning');
@@ -58,12 +77,12 @@ export async function navigate() {
       return navigate();
     }
     setUser({
-      id: sessao.id,
-      nome: sessao.nome,
-      email: sessao.email,
-      matricula: sessao.matricula,
-      perfil: sessao.perfil,
-      perfil_id: sessao.perfil_id,
+      id: sessao?.id ?? getCurrentUser()?.id,
+      nome: sessao?.nome ?? getCurrentUser()?.nome,
+      email: sessao?.email ?? getCurrentUser()?.email,
+      matricula: sessao?.matricula ?? getCurrentUser()?.matricula,
+      perfil: sessao?.perfil ?? getCurrentUser()?.perfil,
+      perfil_id: sessao?.perfil_id ?? getCurrentUser()?.perfil_id,
       expiresAt: Date.now() + 4 * 60 * 60 * 1000
     });
   }
