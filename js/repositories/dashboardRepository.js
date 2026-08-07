@@ -1012,7 +1012,7 @@ export async function listarTurmasParaConsulta() {
   await getRefCache();
   const serieMap = {};
   refCache.series.forEach(s => serieMap[s.id] = s.nome);
-  const map = t => ({ id: t.id, nome: t.nome, serie: serieMap[t.serie_id] || '', turno: t.turno || '' });
+  const map = t => ({ id: t.id, nome: t.nome, serie: serieMap[t.serie_id] || '', serie_id: t.serie_id, turno: t.turno || '' });
 
   if (isProfessor()) {
     const vinculo = await getProfessorVinculo();

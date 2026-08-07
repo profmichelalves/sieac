@@ -128,7 +128,8 @@ async function getFilterData() {
   let compData = raw.componentes;
   let profData = raw.professores;
   let alocData = raw.alocacoes;
-  const turnoOptions = raw.turnoOptions;
+  let etapasData = raw.etapas;
+  let turnoOptions = raw.turnoOptions;
 
   if (userIsProfessor && professorVinculo) {
     seriesData = professorVinculo.series;
@@ -138,6 +139,19 @@ async function getFilterData() {
 
   if (isProfessorAee()) {
     turmasData = await listarTurmasParaConsulta();
+    const turmaIdSet = new Set(turmasData.map(t => t.id));
+    const serieIdSet = new Set(turmasData.map(t => t.serie_id).filter(Boolean));
+    const alocAee = (alocData || []).filter(a => turmaIdSet.has(a.turma_id));
+    const profIdSet = new Set(alocAee.map(a => a.professor_id));
+    const compIdSet = new Set(alocAee.map(a => a.componente_id));
+    seriesData = seriesData.filter(s => serieIdSet.has(s.id));
+    turmasData = turmasData.filter(t => serieIdSet.has(t.serie_id));
+    alocData = alocAee;
+    profData = profData.filter(p => profIdSet.has(p.id));
+    compData = compData.filter(c => compIdSet.has(c.id));
+    const etapaIdSet = new Set(seriesData.map(s => s.etapa_ensino_id).filter(Boolean));
+    etapasData = etapasData.filter(e => etapaIdSet.has(e.id));
+    turnoOptions = [...new Set(turmasData.map(t => t.turno).filter(Boolean))].sort();
   }
 
   const def = {};
@@ -151,7 +165,7 @@ async function getFilterData() {
     turmas: turmasData,
     componentes: compData,
     professores: profData,
-    etapas: raw.etapas,
+    etapas: etapasData,
     alocacoes: alocData,
     turnos: turnoOptions,
     userIsProfessor,
@@ -269,7 +283,11 @@ function rebuildSelectOptions(valid, skipId) {
   const profCombo = combos['filter-professor'];
   if (profCombo) {
     const currentVal = getSelectValue('filter-professor');
-    profCombo.setItems(filterData.professores);
+    const profSet = has(valid?.profIds);
+    const filtered = profSet
+      ? filterData.professores.filter(p => profSet.has(Number(p.id)) || profSet.has(p.id))
+      : filterData.professores;
+    profCombo.setItems(filtered);
     setSelectValue('filter-professor', currentVal);
   }
 }
