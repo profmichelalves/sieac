@@ -158,16 +158,6 @@ export async function excluirUsuario(id) {
   return { error: res && res.error ? res.error : null };
 }
 
-export async function resetarSenha(id, novaSenha) {
-  const { data, error } = await supabaseRpc('resetar_senha', {
-    p_id: Number(id),
-    p_nova_senha: novaSenha,
-  });
-  if (error) return { error };
-  const res = Array.isArray(data) && data.length ? data[0] : null;
-  return { error: res && res.error ? res.error : null };
-}
-
 export async function validarSessao() {
   const { data, error, status } = await supabaseRpc('validar_sessao', {});
   if (error) {
@@ -212,6 +202,27 @@ export async function redefinirSenhaPrimeiroAcesso(email, matricula, perfilId, n
 export async function limparSenhaUsuario(id) {
   const { data, error } = await supabaseRpc('limpar_senha_usuario', { p_id: Number(id) });
   if (error) return { error };
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  return { error: res && res.error ? res.error : null };
+}
+
+// Conta do usuário logado: alterar o próprio e-mail (login passa a usar o novo
+// e-mail; o antigo deixa de funcionar) e redefinir a própria senha.
+export async function alterarProprioEmail(novoEmail) {
+  const { data, error } = await supabaseRpc('alterar_proprio_email', {
+    p_novo_email: novoEmail.trim().toLowerCase(),
+  });
+  if (error) return { error: 'Erro ao alterar o e-mail. Tente novamente.' };
+  const res = Array.isArray(data) && data.length ? data[0] : null;
+  return { error: res && res.error ? res.error : null };
+}
+
+export async function mudarPropriaSenha(senhaAtual, novaSenha) {
+  const { data, error } = await supabaseRpc('mudar_propria_senha', {
+    p_senha_atual: senhaAtual,
+    p_nova_senha: novaSenha,
+  });
+  if (error) return { error: 'Erro ao alterar a senha. Tente novamente.' };
   const res = Array.isArray(data) && data.length ? data[0] : null;
   return { error: res && res.error ? res.error : null };
 }

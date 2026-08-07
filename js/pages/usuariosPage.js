@@ -1,6 +1,6 @@
 import { $, showToast, parseDataDb, formatarDataHora, escapeHtml } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
-import { listarUsuarios, listarPerfis, atualizarUsuario, excluirUsuario, resetarSenha, limparSenhaUsuario, getCurrentUser } from '../services/authService.js';
+import { listarUsuarios, listarPerfis, atualizarUsuario, excluirUsuario, limparSenhaUsuario, getCurrentUser } from '../services/authService.js';
 import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
 const PERFIS_FALLBACK = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor', 4: 'Professor do AEE' };
@@ -16,7 +16,7 @@ const COLUNAS_SORT = {
 
 let ordenacao = { col: 'cadastro', dir: 'desc' };
 let alvoExcluir = null;
-let alvoReset = null;
+let alvoLimpar = null;
 
 export async function render() {
   const main = document.getElementById('main-content');
@@ -74,31 +74,25 @@ export async function render() {
       </div>
     </div>
 
-    <div class="modal fade" id="modal-reset-senha" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modal-limpar-senha" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-key-fill" style="color:var(--sieac-warning);margin-right:8px;"></i>Redefinir Senha</h5>
+            <h5 class="modal-title" style="font-weight:700;"><i class="bi bi-key-fill" style="color:var(--sieac-danger);margin-right:8px;"></i>Limpar Senha</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
           </div>
           <div class="modal-body">
-            <p style="color:var(--sieac-text-muted);font-size:0.9rem;margin-bottom:16px;">
-              Defina uma nova senha para <strong id="reset-nome"></strong>. O usuário será desconectado e precisará entrar com a nova senha.
+            <p style="color:var(--sieac-text-muted);font-size:0.9rem;margin-bottom:8px;">
+              Tem certeza que deseja limpar a senha de <strong id="limpar-nome"></strong>?
             </p>
-            <div id="reset-alert"></div>
-            <div class="mb-3">
-              <label class="form-label" for="reset-nova-senha">Nova Senha</label>
-              <input type="password" class="form-control" id="reset-nova-senha" placeholder="Mínimo de 4 caracteres" autocomplete="new-password">
-            </div>
-            <div class="mb-3">
-              <label class="form-label" for="reset-confirm-senha">Confirmar Nova Senha</label>
-              <input type="password" class="form-control" id="reset-confirm-senha" placeholder="Repita a nova senha" autocomplete="new-password">
-            </div>
+            <p style="color:var(--sieac-text-muted);font-size:0.85rem;margin-bottom:0;">
+              O usuário será desconectado e precisará definir uma nova senha no próximo acesso, informando e-mail, matrícula e perfil.
+            </p>
+            <div id="limpar-alert"></div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-outline-danger" id="reset-limpar" style="border-radius:var(--sieac-radius-pill);">Limpar senha</button>
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:var(--sieac-radius-pill);">Cancelar</button>
-            <button type="button" class="btn btn-primary" id="reset-confirmar" style="border-radius:var(--sieac-radius-pill);">Salvar nova senha</button>
+            <button type="button" class="btn btn-danger" id="limpar-confirmar" style="border-radius:var(--sieac-radius-pill);">Limpar senha</button>
           </div>
         </div>
       </div>
@@ -119,10 +113,9 @@ export async function render() {
   });
 
   document.getElementById('excluir-confirmar').addEventListener('click', abrirConfirmarExclusao);
-  document.getElementById('reset-confirmar').addEventListener('click', confirmarRedefinicao);
-  document.getElementById('reset-limpar').addEventListener('click', limparSenha);
+  document.getElementById('limpar-confirmar').addEventListener('click', confirmarLimpeza);
   document.getElementById('modal-excluir-usuario').addEventListener('hidden.bs.modal', () => { alvoExcluir = null; });
-  document.getElementById('modal-reset-senha').addEventListener('hidden.bs.modal', () => { alvoReset = null; });
+  document.getElementById('modal-limpar-senha').addEventListener('hidden.bs.modal', () => { alvoLimpar = null; });
 
   await carregarUsuarios();
 }
@@ -195,8 +188,8 @@ async function carregarUsuarios() {
             <button class="btn btn-sm btn-outline-danger usuario-delete" data-id="${u.id}" data-nome="${escapeHtml(u.nome)}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
               <i class="bi bi-trash"></i>
             </button>
-            <button class="btn btn-sm btn-outline-warning usuario-reset" data-id="${u.id}" data-nome="${escapeHtml(u.nome)}" title="Redefinir senha" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
-              <i class="bi bi-key"></i>
+            <button class="btn btn-sm btn-outline-warning usuario-reset" data-id="${u.id}" data-nome="${escapeHtml(u.nome)}" title="Limpar senha" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
+              <i class="bi bi-eraser"></i>
             </button>
           </div>
         </td>
@@ -249,12 +242,10 @@ async function carregarUsuarios() {
 
   tbody.querySelectorAll('.usuario-reset').forEach(btn => {
     btn.addEventListener('click', () => {
-      alvoReset = { id: btn.dataset.id, nome: btn.dataset.nome };
-      document.getElementById('reset-nome').textContent = alvoReset.nome;
-      document.getElementById('reset-nova-senha').value = '';
-      document.getElementById('reset-confirm-senha').value = '';
-      document.getElementById('reset-alert').innerHTML = '';
-      new bootstrap.Modal(document.getElementById('modal-reset-senha')).show();
+      alvoLimpar = { id: btn.dataset.id, nome: btn.dataset.nome };
+      document.getElementById('limpar-nome').textContent = alvoLimpar.nome;
+      document.getElementById('limpar-alert').innerHTML = '';
+      new bootstrap.Modal(document.getElementById('modal-limpar-senha')).show();
     });
   });
 }
@@ -281,61 +272,27 @@ function abrirConfirmarExclusao() {
   });
 }
 
-function limparSenha() {
-  const modalEl = document.getElementById('modal-reset-senha');
-  const alertEl = document.getElementById('reset-alert');
-  const btn = document.getElementById('reset-limpar');
-  if (!alvoReset || !modalEl) return;
-  if (!confirm(`Limpar a senha de ${alvoReset.nome}? O usuário precisará definir uma nova senha no próximo acesso.`)) return;
+function confirmarLimpeza() {
+  const modalEl = document.getElementById('modal-limpar-senha');
+  const alertEl = document.getElementById('limpar-alert');
+  const btn = document.getElementById('limpar-confirmar');
+  if (!alvoLimpar || !modalEl) return;
 
   btn.disabled = true;
+  btn.textContent = 'Limpando...';
   alertEl.innerHTML = '';
-  limparSenhaUsuario(alvoReset.id).then(({ error }) => {
+  limparSenhaUsuario(alvoLimpar.id).then(({ error }) => {
     btn.disabled = false;
+    btn.textContent = 'Limpar senha';
     if (error) {
       alertEl.innerHTML = `<div class="auth-alert error">${escapeHtml(error)}</div>`;
       return;
     }
-    registrarLog(LOG_ACTIONS.RESETAR_SENHA, { usuario_id: alvoReset.id, usuario_nome: alvoReset.nome, modo: 'limpar_senha' });
-    const nome = alvoReset.nome;
-    alvoReset = null;
+    registrarLog(LOG_ACTIONS.RESETAR_SENHA, { usuario_id: alvoLimpar.id, usuario_nome: alvoLimpar.nome, modo: 'limpar_senha' });
+    const nome = alvoLimpar.nome;
+    alvoLimpar = null;
     bootstrap.Modal.getInstance(modalEl)?.hide();
     showToast(`Senha de ${nome} limpa! O usuário definirá uma nova senha no próximo acesso.`, 'success');
-  });
-}
-
-function confirmarRedefinicao() {
-  const modalEl = document.getElementById('modal-reset-senha');
-  const alertEl = document.getElementById('reset-alert');
-  const btn = document.getElementById('reset-confirmar');
-  if (!alvoReset || !modalEl) return;
-
-  const nova = document.getElementById('reset-nova-senha').value;
-  const confirm = document.getElementById('reset-confirm-senha').value;
-
-  if (nova.length < 4) {
-    alertEl.innerHTML = `<div class="auth-alert error">A senha deve ter no mínimo 4 caracteres.</div>`;
-    return;
-  }
-  if (nova !== confirm) {
-    alertEl.innerHTML = `<div class="auth-alert error">As senhas não conferem.</div>`;
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = 'Salvando...';
-  alertEl.innerHTML = '';
-  resetarSenha(alvoReset.id, nova).then(({ error }) => {
-    btn.disabled = false;
-    btn.textContent = 'Salvar nova senha';
-    if (error) {
-      alertEl.innerHTML = `<div class="auth-alert error">${escapeHtml(error)}</div>`;
-      return;
-    }
-    registrarLog(LOG_ACTIONS.RESETAR_SENHA, { usuario_id: alvoReset.id, usuario_nome: alvoReset.nome });
-    const nome = alvoReset.nome;
-    alvoReset = null;
-    bootstrap.Modal.getInstance(modalEl)?.hide();
-    showToast(`Senha de ${nome} redefinida com sucesso!`, 'success');
+    carregarUsuarios();
   });
 }

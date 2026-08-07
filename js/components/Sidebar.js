@@ -1,5 +1,6 @@
-import { $$ } from '../utils/helpers.js';
-import { getCurrentUser, isAdmin, isGestao } from '../services/authService.js';
+import { $, $$, showToast, escapeHtml } from '../utils/helpers.js';
+import { getCurrentUser, isAdmin, isGestao, alterarProprioEmail, mudarPropriaSenha } from '../services/authService.js';
+import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
 let inicializada = false;
 
@@ -90,6 +91,203 @@ export function initSidebar() {
       logout();
     });
   }
+
+  const btnConta = document.getElementById('user-info-btn');
+  if (btnConta) {
+    btnConta.addEventListener('click', abrirMinhaConta);
+  }
+}
+
+function criarModal(id, titulo, icone, cor) {
+  document.getElementById(id)?.remove();
+  const modalEl = document.createElement('div');
+  modalEl.className = 'modal fade';
+  modalEl.id = id;
+  modalEl.tabIndex = -1;
+  modalEl.setAttribute('aria-hidden', 'true');
+  modalEl.innerHTML = `
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" style="font-weight:700;"><i class="bi ${icone}" style="color:${cor};margin-right:8px;"></i>${titulo}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body" id="${id}-body"></div>
+        <div class="modal-footer" id="${id}-footer"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalEl);
+  modalEl.addEventListener('hidden.bs.modal', () => document.getElementById(id)?.remove());
+  return modalEl;
+}
+
+function abrirMinhaConta() {
+  const user = getCurrentUser();
+  if (!user) return;
+  const modalEl = criarModal('modal-conta', 'Minha Conta', 'bi-person-circle', 'var(--sieac-primary)');
+  const body = modalEl.querySelector('#modal-conta-body');
+  const footer = modalEl.querySelector('#modal-conta-footer');
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+      <div class="sidebar-user-avatar" style="width:52px;height:52px;font-size:1.2rem;flex-shrink:0;">${escapeHtml((user.nome || 'A').charAt(0).toUpperCase())}</div>
+      <div style="min-width:0;">
+        <div style="font-weight:700;font-size:1.05rem;">${escapeHtml(user.nome)}</div>
+        <div style="color:var(--sieac-text-muted);font-size:0.85rem;">${escapeHtml(user.perfil)}</div>
+      </div>
+    </div>
+    <div class="table-responsive-custom">
+      <table class="table-sieac" style="margin:0;">
+        <tbody>
+          <tr><td style="padding:8px 12px;color:var(--sieac-text-muted);">Nome completo</td><td style="padding:8px 12px;"><strong>${escapeHtml(user.nome)}</strong></td></tr>
+          <tr><td style="padding:8px 12px;color:var(--sieac-text-muted);">Perfil</td><td style="padding:8px 12px;"><strong>${escapeHtml(user.perfil)}</strong></td></tr>
+          <tr><td style="padding:8px 12px;color:var(--sieac-text-muted);">Matrícula</td><td style="padding:8px 12px;"><strong>${escapeHtml(user.matricula || '-')}</strong></td></tr>
+          <tr><td style="padding:8px 12px;color:var(--sieac-text-muted);">E-mail</td><td style="padding:8px 12px;"><strong>${escapeHtml(user.email)}</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+  footer.innerHTML = `
+    <button type="button" class="btn btn-outline-primary" id="conta-alterar-email" style="border-radius:var(--sieac-radius-pill);"><i class="bi bi-envelope"></i> Alterar e-mail</button>
+    <button type="button" class="btn btn-outline-warning" id="conta-alterar-senha" style="border-radius:var(--sieac-radius-pill);"><i class="bi bi-key"></i> Alterar senha</button>
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:var(--sieac-radius-pill);">Fechar</button>
+  `;
+
+  modalEl.querySelector('#conta-alterar-email').addEventListener('click', () => {
+    bootstrap.Modal.getInstance(modalEl)?.hide();
+    abrirAlterarEmail();
+  });
+  modalEl.querySelector('#conta-alterar-senha').addEventListener('click', () => {
+    bootstrap.Modal.getInstance(modalEl)?.hide();
+    abrirAlterarSenha();
+  });
+
+  new bootstrap.Modal(modalEl).show();
+}
+
+function abrirAlterarEmail() {
+  const user = getCurrentUser();
+  if (!user) return;
+  const modalEl = criarModal('modal-conta-email', 'Alterar E-mail', 'bi-envelope', 'var(--sieac-primary)');
+  const body = modalEl.querySelector('#modal-conta-email-body');
+  const footer = modalEl.querySelector('#modal-conta-email-footer');
+
+  body.innerHTML = `
+    <div id="conta-email-alert"></div>
+    <div class="mb-3">
+      <label class="form-label">E-mail atual</label>
+      <input type="email" class="form-control" value="${escapeHtml(user.email)}" disabled>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="conta-novo-email">Novo e-mail</label>
+      <input type="email" class="form-control" id="conta-novo-email" placeholder="seu@email.com" autocomplete="email">
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="conta-confirm-email">Confirmar novo e-mail</label>
+      <input type="email" class="form-control" id="conta-confirm-email" placeholder="Repita o novo e-mail" autocomplete="email">
+    </div>
+  `;
+  footer.innerHTML = `
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:var(--sieac-radius-pill);">Cancelar</button>
+    <button type="button" class="btn btn-primary" id="conta-email-salvar" style="border-radius:var(--sieac-radius-pill);">Salvar</button>
+  `;
+
+  const alertEl = body.querySelector('#conta-email-alert');
+  const btn = footer.querySelector('#conta-email-salvar');
+  btn.addEventListener('click', async () => {
+    const novo = modalEl.querySelector('#conta-novo-email').value.trim();
+    const conf = modalEl.querySelector('#conta-confirm-email').value.trim();
+    const errors = [];
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(novo)) errors.push('Novo e-mail inválido.');
+    if (novo.toLowerCase() === String(user.email).toLowerCase()) errors.push('Informe um e-mail diferente do atual.');
+    if (novo !== conf) errors.push('Os e-mails não conferem.');
+    if (errors.length) {
+      alertEl.innerHTML = `<div class="auth-alert error">${errors.join('<br>')}</div>`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+    const result = await alterarProprioEmail(novo);
+    if (result.error) {
+      alertEl.innerHTML = `<div class="auth-alert error">${escapeHtml(result.error)}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Salvar';
+      return;
+    }
+    registrarLog(LOG_ACTIONS.ALTERAR_EMAIL, { email_novo: novo.toLowerCase() });
+    const { setUser } = await import('../utils/helpers.js');
+    const atual = getCurrentUser();
+    if (atual) setUser({ ...atual, email: novo.toLowerCase() });
+    bootstrap.Modal.getInstance(modalEl)?.hide();
+    showToast('E-mail atualizado com sucesso!', 'success');
+  });
+
+  new bootstrap.Modal(modalEl).show();
+}
+
+function abrirAlterarSenha() {
+  const modalEl = criarModal('modal-conta-senha', 'Alterar Senha', 'bi-key', 'var(--sieac-warning)');
+  const body = modalEl.querySelector('#modal-conta-senha-body');
+  const footer = modalEl.querySelector('#modal-conta-senha-footer');
+
+  body.innerHTML = `
+    <div class="auth-alert warning" style="margin-bottom:16px;">Após salvar, você será desconectado e precisará entrar com a nova senha.</div>
+    <div id="conta-senha-alert"></div>
+    <div class="mb-3">
+      <label class="form-label" for="conta-senha-atual">Senha atual</label>
+      <input type="password" class="form-control" id="conta-senha-atual" placeholder="Sua senha atual" autocomplete="current-password">
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="conta-senha-nova">Nova senha</label>
+      <input type="password" class="form-control" id="conta-senha-nova" placeholder="Mínimo de 4 caracteres" autocomplete="new-password">
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="conta-senha-confirm">Confirmar nova senha</label>
+      <input type="password" class="form-control" id="conta-senha-confirm" placeholder="Repita a nova senha" autocomplete="new-password">
+    </div>
+  `;
+  footer.innerHTML = `
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:var(--sieac-radius-pill);">Cancelar</button>
+    <button type="button" class="btn btn-primary" id="conta-senha-salvar" style="border-radius:var(--sieac-radius-pill);">Salvar nova senha</button>
+  `;
+
+  const alertEl = body.querySelector('#conta-senha-alert');
+  const btn = footer.querySelector('#conta-senha-salvar');
+  btn.addEventListener('click', async () => {
+    const atual = modalEl.querySelector('#conta-senha-atual').value;
+    const nova = modalEl.querySelector('#conta-senha-nova').value;
+    const conf = modalEl.querySelector('#conta-senha-confirm').value;
+    const errors = [];
+    if (!atual) errors.push('Informe a senha atual.');
+    if (nova.length < 4) errors.push('A nova senha deve ter no mínimo 4 caracteres.');
+    if (nova !== conf) errors.push('As senhas não conferem.');
+    if (errors.length) {
+      alertEl.innerHTML = `<div class="auth-alert error">${errors.join('<br>')}</div>`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+    const result = await mudarPropriaSenha(atual, nova);
+    if (result.error) {
+      alertEl.innerHTML = `<div class="auth-alert error">${escapeHtml(result.error)}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Salvar nova senha';
+      return;
+    }
+    registrarLog(LOG_ACTIONS.RESETAR_SENHA, { modo: 'propria' });
+    const { clearSession, clearUser } = await import('../utils/helpers.js');
+    bootstrap.Modal.getInstance(modalEl)?.hide();
+    sessionStorage.setItem('sieac_senha_redefinida', '1');
+    clearSession();
+    clearUser();
+    window.location.hash = 'login';
+    window.location.reload();
+  });
+
+  new bootstrap.Modal(modalEl).show();
 }
 
 export function setActiveRoute(route) {

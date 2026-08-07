@@ -200,6 +200,35 @@ body.sidebar-collapsed .sidebar-user-info { display: none; }
   flex-shrink: 0;
 }
 
+.sidebar-user-click {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  margin: -6px -8px;
+  border-radius: var(--sieac-radius-md);
+  cursor: pointer;
+  transition: background var(--sieac-transition);
+}
+
+.sidebar-user-click:hover,
+.sidebar-user-click:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.sidebar-user-gear {
+  font-size: 0.75rem;
+  opacity: 0.5;
+  transition: opacity var(--sieac-transition);
+}
+
+.sidebar-user-click:hover .sidebar-user-gear { opacity: 0.9; }
+
+body.sidebar-collapsed .sidebar-user-gear { display: none; }
+
 .sidebar-user-info { flex: 1; line-height: 1.3; }
 .sidebar-user-name { font-weight: 600; }
 .sidebar-user-perfil { font-size: 0.7rem; opacity: 0.6; }

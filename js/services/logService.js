@@ -7,6 +7,7 @@ export const LOG_ACTIONS = {
   LOGOUT: 'logout',
   CADASTRO: 'cadastro',
   ALTERAR_PERFIL: 'alterar_perfil',
+  ALTERAR_EMAIL: 'alterar_email',
   ATIVAR_USUARIO: 'ativar_usuario',
   DESATIVAR_USUARIO: 'desativar_usuario',
   EXCLUIR_USUARIO: 'excluir_usuario',
