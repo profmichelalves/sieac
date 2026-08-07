@@ -246,8 +246,8 @@ async function loadData() {
       const res = await getNotasTurmaDisciplina(filters);
       const linhas = res.data || [];
       const meta = res.meta || {};
-      document.getElementById('card-notas-turma-disc-titulo').textContent =
-        `Notas por Aluno — ${meta.turma} · ${meta.disciplina}`;
+      const titulo = `Notas por Aluno — ${meta.turma} · ${meta.disciplina}`;
+      document.getElementById('card-notas-turma-disc-titulo').textContent = meta.professor ? `${titulo} · Prof. ${meta.professor}` : titulo;
       if (linhas.length) {
         tbodyNotas.innerHTML = linhas.map(n => `
           <tr>

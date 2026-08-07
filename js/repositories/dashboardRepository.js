@@ -684,8 +684,8 @@ export async function getNotasTurmaDisciplina(filters = {}) {
   const alocComp = {}; refCache.alocacoes.forEach(a => alocComp[a.id] = a.componente_id);
   const cMap = {}; refCache.componentes.forEach(c => cMap[c.id] = c.nome);
   const tMap = {}; refCache.turmas.forEach(t => tMap[t.id] = t.nome);
-
-  const data = notas.map(n => {
+  const alocProf = {}; refCache.alocacoes.forEach(a => alocProf[a.id] = a.professor_id);
+  const pMap = {}; refCache.professores.forEach(p => pMap[p.id] = p.nome);
     const temNota = [n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim].some(v => !isNaN(parseFloat(v)));
     const e = eMap[n.estudante_id];
     return {
@@ -705,11 +705,17 @@ export async function getNotasTurmaDisciplina(filters = {}) {
     a.disciplina.localeCompare(b.disciplina, 'pt-BR')
   );
 
+  const aloc = refCache.alocacoes.find(a =>
+    String(a.turma_id) === String(filters.turma_id) && String(a.componente_id) === String(filters.componente_id)
+  );
+  const professor = aloc ? (pMap[aloc.professor_id] || `Prof ${aloc.professor_id}`) : null;
+
   return {
     data,
     meta: {
       turma: tMap[Number(filters.turma_id)] || 'Turma',
       disciplina: cMap[Number(filters.componente_id)] || 'Disciplina',
+      professor,
     },
     error: null,
   };
