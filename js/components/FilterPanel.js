@@ -29,6 +29,7 @@ function saveFilterCache(data) {
 
 export function clearFilterCache() {
   localStorage.removeItem(CACHE_KEY);
+  localStorage.removeItem(SELECTED_KEY);
 }
 
 function loadSelectedFilters() {
