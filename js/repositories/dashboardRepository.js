@@ -97,7 +97,7 @@ async function calcularEstudantesPermitidos() {
       filters: [{ col: 'alocacao_id', val: chunk, op: 'in' }],
       limit: 30000,
     });
-    (notas || []).forEach(n => set.add(n.estudante_id));
+    (notas || []).forEach(n => set.add(Number(n.estudante_id)));
   }
   for (let i = 0; i < vinculo.turmaIds.length; i += 100) {
     const chunk = vinculo.turmaIds.slice(i, i + 100);
@@ -107,7 +107,7 @@ async function calcularEstudantesPermitidos() {
       filters: [{ col: 'turma_id', val: chunk, op: 'in' }],
       limit: 30000,
     });
-    (freqs || []).forEach(f => set.add(f.estudante_id));
+    (freqs || []).forEach(f => set.add(Number(f.estudante_id)));
   }
   return set;
 }
