@@ -99,6 +99,16 @@ async function calcularEstudantesPermitidos() {
     });
     (notas || []).forEach(n => set.add(n.estudante_id));
   }
+  for (let i = 0; i < vinculo.turmaIds.length; i += 100) {
+    const chunk = vinculo.turmaIds.slice(i, i + 100);
+    if (!chunk.length) continue;
+    const { data: freqs } = await supabaseFetchAll('frequencias', {
+      select: 'estudante_id',
+      filters: [{ col: 'turma_id', val: chunk, op: 'in' }],
+      limit: 30000,
+    });
+    (freqs || []).forEach(f => set.add(f.estudante_id));
+  }
   return set;
 }
 
