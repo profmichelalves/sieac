@@ -32,14 +32,7 @@
 .auth-logo-icon {
   width: 56px;
   height: 56px;
-  border-radius: var(--sieac-radius-md);
-  background: var(--sieac-warning);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  font-size: 1.5rem;
-  color: var(--sieac-primary);
+  object-fit: contain;
   margin-bottom: 12px;
 }
 

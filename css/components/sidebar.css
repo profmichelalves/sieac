@@ -48,14 +48,7 @@ body.sidebar-collapsed {
 .sidebar-logo-icon {
   width: 40px;
   height: 40px;
-  border-radius: var(--sieac-radius-md);
-  background: var(--sieac-warning);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  font-size: 1.1rem;
-  color: var(--sieac-primary);
+  object-fit: contain;
   flex-shrink: 0;
 }
 

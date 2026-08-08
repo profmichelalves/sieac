@@ -15,7 +15,7 @@ export function renderLogin() {
     <div class="auth-page">
       <div class="auth-card">
         <div class="auth-logo">
-          <div class="auth-logo-icon">S</div>
+          <img src="assets/icons/icon-192.png" alt="SIEAC" class="auth-logo-icon">
           <div class="auth-logo-text">
             SIEAC
             <small>Sistema de Indicadores Educacionais Abel Coelho</small>
@@ -104,7 +104,7 @@ export function renderRegister() {
     <div class="auth-page">
       <div class="auth-card">
         <div class="auth-logo">
-          <div class="auth-logo-icon">S</div>
+          <img src="assets/icons/icon-192.png" alt="SIEAC" class="auth-logo-icon">
           <div class="auth-logo-text">
             SIEAC
             <small>Sistema de Indicadores Educacionais Abel Coelho</small>
@@ -241,7 +241,7 @@ export function renderRedefinirPrimeiroAcesso() {
     <div class="auth-page">
       <div class="auth-card">
         <div class="auth-logo">
-          <div class="auth-logo-icon">S</div>
+          <img src="assets/icons/icon-192.png" alt="SIEAC" class="auth-logo-icon">
           <div class="auth-logo-text">
             SIEAC
             <small>Sistema de Indicadores Educacionais Abel Coelho</small>

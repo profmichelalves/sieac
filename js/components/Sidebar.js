@@ -49,6 +49,8 @@ export function initSidebar() {
     });
   }
 
+  initSwipeGestures(sidebar, backdrop);
+
   const user = getCurrentUser();
   if (user) {
     const avatar = document.getElementById('user-avatar');
@@ -96,6 +98,39 @@ export function initSidebar() {
   if (btnConta) {
     btnConta.addEventListener('click', abrirMinhaConta);
   }
+}
+
+function initSwipeGestures(sidebar, backdrop) {
+  const isMobile = () => window.innerWidth <= 768;
+  const isOpen = () => sidebar.classList.contains('open');
+  const openSidebar = () => {
+    sidebar.classList.add('open');
+    backdrop.classList.add('show');
+  };
+  const closeSidebar = () => {
+    sidebar.classList.remove('open');
+    backdrop.classList.remove('show');
+  };
+
+  let startX = null;
+  let startY = null;
+
+  document.addEventListener('touchstart', (e) => {
+    if (!isMobile() || e.touches.length !== 1) { startX = null; return; }
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    if (startX === null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    startX = null;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx > 0 && !isOpen()) openSidebar();
+    else if (dx < 0 && isOpen()) closeSidebar();
+  }, { passive: true });
 }
 
 function criarModal(id, titulo, icone, cor) {
