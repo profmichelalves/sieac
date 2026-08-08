@@ -133,5 +133,5 @@ A plataforma importa os dados a partir de planilhas de **notas** e de **frequên
 
 - Interface web responsiva, com **tema claro/escuro**.
 - **HTML, CSS e JavaScript** — com as bibliotecas Bootstrap (componentes visuais), Chart.js (gráficos), jsPDF (relatórios em PDF) e SheetJS (leitura de planilhas).
-- Dados armazenados de forma **segura na nuvem**.
+- **Supabase** — backend como serviço: banco de dados **PostgreSQL** com políticas de segurança (RLS), **autenticação** por email/senha e **API REST** consumida pelo frontend.
 - Publicado na internet em **GitHub Pages**.
