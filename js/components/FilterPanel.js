@@ -316,12 +316,12 @@ export async function renderFilterPanel(containerId, onChange) {
     <style>
       .filter-bar { position:relative; }
       .filter-select.filter-dirty {
-        border-color: #ffd000 !important;
-        box-shadow: 0 0 0 2px rgba(255,208,0,0.25) !important;
+        border-color: #fff001 !important;
+        box-shadow: 0 0 0 2px rgba(255,240,1,0.25) !important;
       }
       .btn-pesquisar {
         display:none;
-        background:var(--sieac-primary,#1a1a4e);
+        background:var(--sieac-primary,#312f92);
         color:#fff; border:none;
         border-radius:var(--sieac-radius-pill);
         padding:5px 20px;

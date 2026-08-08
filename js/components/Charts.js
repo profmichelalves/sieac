@@ -1,4 +1,4 @@
-import { getChartColors, getChartColorsAlpha } from '../utils/helpers.js';
+import { getChartColors, getChartColorsAlpha, getTooltipOptions } from '../utils/helpers.js';
 
 let chartInstances = {};
 
@@ -38,15 +38,7 @@ export function createBarChart(canvasId, labels, data, label = 'Valor', options 
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          backgroundColor: 'var(--sieac-surface)',
-          titleColor: 'var(--sieac-text)',
-          bodyColor: 'var(--sieac-text-secondary)',
-          borderColor: 'var(--sieac-border)',
-          borderWidth: 1,
-          padding: 12,
-          cornerRadius: 8,
-        }
+        tooltip: getTooltipOptions()
       },
       scales: {
         y: {
@@ -92,15 +84,7 @@ export function createLineChart(canvasId, labels, datasets, options = {}) {
         legend: {
           labels: { color: 'var(--sieac-text-muted)' }
         },
-        tooltip: {
-          backgroundColor: 'var(--sieac-surface)',
-          titleColor: 'var(--sieac-text)',
-          bodyColor: 'var(--sieac-text-secondary)',
-          borderColor: 'var(--sieac-border)',
-          borderWidth: 1,
-          padding: 12,
-          cornerRadius: 8,
-        }
+        tooltip: getTooltipOptions()
       },
       scales: {
         y: {
@@ -145,13 +129,7 @@ export function createDoughnutChart(canvasId, labels, data, colors) {
           labels: { color: 'var(--sieac-text-muted)', padding: 16 }
         },
         tooltip: {
-          backgroundColor: 'var(--sieac-surface)',
-          titleColor: 'var(--sieac-text)',
-          bodyColor: 'var(--sieac-text-secondary)',
-          borderColor: 'var(--sieac-border)',
-          borderWidth: 1,
-          padding: 12,
-          cornerRadius: 8,
+          ...getTooltipOptions(),
           callbacks: {
             label: ctx => {
               const total = ctx.dataset.data.reduce((a, b) => a + b, 0);

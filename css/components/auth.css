@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--sieac-primary) 0%, var(--sieac-primary-dark) 100%);
+  background: linear-gradient(135deg, var(--sieac-primary) 0%, #312f92 100%);
   padding: 20px;
 }
 
@@ -89,7 +89,7 @@
   transition: all var(--sieac-transition);
 }
 
-.auth-btn:hover { background: var(--sieac-primary-light); transform: translateY(-1px); }
+.auth-btn:hover { background: var(--sieac-primary-dark); transform: translateY(-1px); }
 
 .auth-link {
   text-align: center;

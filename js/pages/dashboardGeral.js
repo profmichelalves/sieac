@@ -245,7 +245,7 @@ async function loadData() {
     createDoughnutChart('chart-resultado-final',
       [termos.label.aprovado, termos.label.reprovado, termos.label.recuperacao],
       [d.aprovados, d.reprovados, d.recuperacao],
-      ['#2dc653', '#e63946', '#ffd000']
+      ['#2dc653', '#e63946', '#fff001']
     );
   }
 

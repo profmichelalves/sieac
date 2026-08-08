@@ -173,6 +173,6 @@
 }
 
 .search-select.filter-dirty .search-select-input {
-  border-color: #ffd000 !important;
-  box-shadow: 0 0 0 2px rgba(255, 208, 0, 0.25) !important;
+  border-color: #fff001 !important;
+  box-shadow: 0 0 0 2px rgba(255, 240, 1, 0.25) !important;
 }

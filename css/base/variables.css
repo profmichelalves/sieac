@@ -1,8 +1,8 @@
 :root {
-  --sieac-primary: #1a1a4e;
-  --sieac-primary-light: #2d2d7f;
-  --sieac-primary-dark: #0f0f2e;
-  --sieac-primary-rgb: 26, 26, 78;
+  --sieac-primary: #312f92;
+  --sieac-primary-light: #4a48ab;
+  --sieac-primary-dark: #2c2a83;
+  --sieac-primary-rgb: 49, 47, 146;
 
   --sieac-secondary: #00b4d8;
   --sieac-secondary-light: #48cae4;
@@ -13,9 +13,9 @@
   --sieac-danger-light: #ff6b6b;
   --sieac-danger-rgb: 230, 57, 70;
 
-  --sieac-warning: #ffd000;
-  --sieac-warning-dark: #e6b800;
-  --sieac-warning-rgb: 255, 208, 0;
+  --sieac-warning: #fff001;
+  --sieac-warning-dark: #e6d000;
+  --sieac-warning-rgb: 255, 240, 1;
 
   --sieac-success: #2dc653;
   --sieac-success-rgb: 45, 198, 83;
@@ -46,13 +46,13 @@
 
   --sieac-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  --chart-colors: #1a1a4e, #00b4d8, #ffd000, #e63946, #2dc653, #7c3aed, #ec4899, #f59e0b;
+  --chart-colors: #312f92, #00b4d8, #fff001, #e63946, #2dc653, #7c3aed, #ec4899, #f59e0b;
 }
 
 [data-bs-theme="dark"] {
   --sieac-primary: #4a4a8e;
   --sieac-primary-light: #6b6baf;
-  --sieac-primary-dark: #1a1a4e;
+  --sieac-primary-dark: #2c2a83;
   --sieac-primary-rgb: 74, 74, 142;
 
   --sieac-bg: #0f1117;

@@ -1,4 +1,4 @@
-import { showToast, escapeHtml } from '../utils/helpers.js';
+import { showToast, escapeHtml, getTooltipOptions } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { supabaseQuery } from '../services/supabase.js';
 import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, listarEstudantesParaBusca, listarTurmasParaConsulta, listarEstudantesPorTurma, podeVerEstudante } from '../repositories/dashboardRepository.js';
@@ -310,8 +310,8 @@ async function carregarEstudante(id) {
           datasets: [{
             label: studentInfo.nome,
             data: dados,
-            borderColor: '#1a1a4e',
-            backgroundColor: 'rgba(26,26,78,0.08)',
+            borderColor: '#312f92',
+            backgroundColor: 'rgba(49,47,146,0.08)',
             borderWidth: 3,
             tension: 0.4,
             pointRadius: 5,
@@ -322,7 +322,7 @@ async function carregarEstudante(id) {
           responsive: true, maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: { backgroundColor: 'var(--sieac-surface)', titleColor: 'var(--sieac-text)', bodyColor: 'var(--sieac-text-secondary)', borderColor: 'var(--sieac-border)', borderWidth: 1, padding: 12, cornerRadius: 8 }
+            tooltip: getTooltipOptions()
           },
           scales: {
             y: { beginAtZero: true, max: 10, grid: { color: 'var(--sieac-border)', drawBorder: false }, ticks: { color: 'var(--sieac-text-muted)' } },

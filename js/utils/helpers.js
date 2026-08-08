@@ -62,9 +62,9 @@ export function showToast(message, type = 'info') {
 export function getChartColors() {
   const style = getComputedStyle(document.documentElement);
   return [
-    style.getPropertyValue('--sieac-primary').trim() || '#1a1a4e',
+    style.getPropertyValue('--sieac-primary').trim() || '#312f92',
     style.getPropertyValue('--sieac-secondary').trim() || '#00b4d8',
-    style.getPropertyValue('--sieac-warning').trim() || '#ffd000',
+    style.getPropertyValue('--sieac-warning').trim() || '#fff001',
     style.getPropertyValue('--sieac-danger').trim() || '#e63946',
     style.getPropertyValue('--sieac-success').trim() || '#2dc653',
     '#7c3aed', '#ec4899', '#f59e0b', '#14b8a6', '#8b5cf6'
@@ -73,6 +73,20 @@ export function getChartColors() {
 
 export function getChartColorsAlpha(alpha = 0.2) {
   return getChartColors().map(c => hexToRgba(c, alpha));
+}
+
+export function getTooltipOptions() {
+  const style = getComputedStyle(document.documentElement);
+  const v = (name, fallback) => style.getPropertyValue(name).trim() || fallback;
+  return {
+    backgroundColor: v('--sieac-surface', '#ffffff'),
+    titleColor: v('--sieac-text', '#1a1a2e'),
+    bodyColor: v('--sieac-text-secondary', '#4a5568'),
+    borderColor: v('--sieac-border', '#e2e8f0'),
+    borderWidth: 1,
+    padding: 12,
+    cornerRadius: 8,
+  };
 }
 
 function hexToRgba(hex, alpha) {

@@ -1,4 +1,4 @@
-import { $, formatNumber } from '../utils/helpers.js';
+import { $, formatNumber, getTooltipOptions } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { getScatterFreqNota } from '../repositories/dashboardRepository.js';
@@ -143,15 +143,15 @@ async function loadData() {
             data: scatterData.map(p => ({ x: p.frequencia, y: p.media, nome: p.nome })),
             backgroundColor: scatterData.map(p => {
               if (p.frequencia >= 75 && p.media >= 6) return 'rgba(45,198,83,0.6)';
-              if (p.frequencia >= 75 && p.media < 6) return 'rgba(255,208,0,0.6)';
+              if (p.frequencia >= 75 && p.media < 6) return 'rgba(255,240,1,0.6)';
               if (p.frequencia < 75 && p.media < 6) return 'rgba(230,57,70,0.6)';
-              return 'rgba(26,26,78,0.6)';
+              return 'rgba(49,47,146,0.6)';
             }),
             borderColor: scatterData.map(p => {
               if (p.frequencia >= 75 && p.media >= 6) return '#2dc653';
-              if (p.frequencia >= 75 && p.media < 6) return '#ffd000';
+              if (p.frequencia >= 75 && p.media < 6) return '#fff001';
               if (p.frequencia < 75 && p.media < 6) return '#e63946';
-              return '#1a1a4e';
+              return '#312f92';
             }),
             borderWidth: 1,
             pointRadius: 5,
@@ -164,13 +164,7 @@ async function loadData() {
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: 'var(--sieac-surface)',
-              titleColor: 'var(--sieac-text)',
-              bodyColor: 'var(--sieac-text-secondary)',
-              borderColor: 'var(--sieac-border)',
-              borderWidth: 1,
-              padding: 12,
-              cornerRadius: 8,
+              ...getTooltipOptions(),
               callbacks: {
                 label: ctx => {
                   const raw = ctx.raw;

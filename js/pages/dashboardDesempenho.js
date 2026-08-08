@@ -1,4 +1,4 @@
-import { $, formatNumber, escapeHtml } from '../utils/helpers.js';
+import { $, formatNumber, escapeHtml, getTooltipOptions } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createLineChart, destroyChart } from '../components/Charts.js';
@@ -26,7 +26,7 @@ function criarGraficoBarraHorizontal(canvasId, labels, data, label) {
   if (!canvas || !labels.length) return;
   const container = canvas.closest('.chart-container');
   if (container) container.style.height = Math.max(380, labels.length * 28) + 'px';
-  const colors = ['#1a1a4e', '#00b4d8', '#2dc653', '#e63946', '#ffd000', '#6f42c1', '#fd7e14', '#20c997'];
+  const colors = ['#312f92', '#00b4d8', '#2dc653', '#e63946', '#fff001', '#6f42c1', '#fd7e14', '#20c997'];
   chartInst[canvasId] = new window.Chart(canvas, {
     type: 'bar',
     data: {
@@ -39,7 +39,7 @@ function criarGraficoBarraHorizontal(canvasId, labels, data, label) {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { backgroundColor: 'var(--sieac-surface)', titleColor: 'var(--sieac-text)', bodyColor: 'var(--sieac-text-secondary)', borderColor: 'var(--sieac-border)', borderWidth: 1, padding: 12, cornerRadius: 8 }
+        tooltip: getTooltipOptions()
       },
       scales: {
         x: { beginAtZero: true, max: 10, grid: { color: 'var(--sieac-border)', drawBorder: false }, ticks: { color: 'var(--sieac-text-muted)' } },
@@ -55,7 +55,7 @@ function criarHistograma(canvasId, faixas) {
   if (!canvas) return;
   const labels = Object.keys(faixas);
   const data = Object.values(faixas);
-  const cores = ['#e63946', '#e66746', '#ffd000', '#2dc653', '#1a7a3a'];
+  const cores = ['#e63946', '#e66746', '#fff001', '#2dc653', '#1a7a3a'];
   chartInst[canvasId] = new window.Chart(canvas, {
     type: 'bar',
     data: {
@@ -67,7 +67,7 @@ function criarHistograma(canvasId, faixas) {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { backgroundColor: 'var(--sieac-surface)', titleColor: 'var(--sieac-text)', bodyColor: 'var(--sieac-text-secondary)', borderColor: 'var(--sieac-border)', borderWidth: 1, padding: 12, cornerRadius: 8 }
+        tooltip: getTooltipOptions()
       },
       scales: {
         y: { beginAtZero: true, grid: { color: 'var(--sieac-border)', drawBorder: false }, ticks: { color: 'var(--sieac-text-muted)' } },
@@ -169,8 +169,8 @@ async function loadData() {
           datasets: [{
             label: 'Média',
             data: [d.bim1, d.bim2, d.bim3, d.bim4],
-            borderColor: '#1a1a4e',
-            backgroundColor: 'rgba(26,26,78,0.08)',
+            borderColor: '#312f92',
+            backgroundColor: 'rgba(49,47,146,0.08)',
             borderWidth: 3,
             tension: 0.4,
             pointRadius: 5,
@@ -183,7 +183,7 @@ async function loadData() {
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: { backgroundColor: 'var(--sieac-surface)', titleColor: 'var(--sieac-text)', bodyColor: 'var(--sieac-text-secondary)', borderColor: 'var(--sieac-border)', borderWidth: 1, padding: 12, cornerRadius: 8 }
+            tooltip: getTooltipOptions()
           },
           scales: {
             y: { beginAtZero: true, max: 10, grid: { color: 'var(--sieac-border)', drawBorder: false }, ticks: { color: 'var(--sieac-text-muted)' } },
@@ -223,7 +223,7 @@ async function loadData() {
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: { backgroundColor: 'var(--sieac-surface)', titleColor: 'var(--sieac-text)', bodyColor: 'var(--sieac-text-secondary)', borderColor: 'var(--sieac-border)', borderWidth: 1, padding: 12, cornerRadius: 8 }
+            tooltip: getTooltipOptions()
           },
           scales: {
             y: { beginAtZero: true, grid: { color: 'var(--sieac-border)', drawBorder: false }, ticks: { color: 'var(--sieac-text-muted)' } },
