@@ -1,4 +1,4 @@
-import { $, formatNumber, formatPercent, escapeHtml } from '../utils/helpers.js';
+﻿import { $, formatNumber, formatPercent, escapeHtml } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createLineChart, destroyAllCharts } from '../components/Charts.js';
@@ -184,7 +184,7 @@ function gerarPdfFrequenciaTurma() {
   const meta = [`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 'Corte de alerta: < 75%'];
   gerarPdfRelatorio({
     titulo: 'FREQUÊNCIA POR TURMA — SIEAC',
-    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    subtitulo: 'Sistema de Indicadores Educacionais',
     meta,
     tabelas: [{
       titulo: 'Frequência média por Turma',
@@ -200,7 +200,7 @@ function gerarPdfBaixaFrequencia() {
   const meta = [`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 'Critério: frequência média < 75%'];
   gerarPdfRelatorio({
     titulo: 'ESTUDANTES COM BAIXA FREQUÊNCIA — SIEAC',
-    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    subtitulo: 'Sistema de Indicadores Educacionais',
     meta,
     tabelas: [{
       titulo: `Estudantes com frequência < 75%`,

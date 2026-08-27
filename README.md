@@ -1,8 +1,8 @@
-# SIEAC — Sistema de Indicadores Educacionais Abel Coelho
+# SIEAC — Sistema de Indicadores Educacionais
 
 *Transformando dados em decisões educacionais.*
 
-O SIEAC é uma plataforma web para acompanhamento dos indicadores educacionais do Colégio Abel Coelho. Ele reúne em um só lugar o desempenho acadêmico, a frequência, os estudantes com necessidades educacionais especiais (NEE) e o atendimento do professor de AEE, transformando os dados da escola em painéis visuais, indicadores e relatórios que apoiam a gestão escolar.
+O SIEAC é uma plataforma web para acompanhamento dos indicadores educacionais da escola. Ele reúne em um só lugar o desempenho acadêmico, a frequência, os estudantes com necessidades educacionais especiais (NEE) e o atendimento do professor de AEE, transformando os dados da escola em painéis visuais, indicadores e relatórios que apoiam a gestão escolar.
 
 **Acesso:** [https://profmichelalves.github.io/sieac/](https://profmichelalves.github.io/sieac/)
 

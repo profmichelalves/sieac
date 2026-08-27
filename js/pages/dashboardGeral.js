@@ -1,4 +1,4 @@
-import { $, showToast, formatNumber, formatPercent, escapeHtml } from '../utils/helpers.js';
+﻿import { $, showToast, formatNumber, formatPercent, escapeHtml } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO, termosSituacao } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { createBarChart, createDoughnutChart, destroyChart } from '../components/Charts.js';
@@ -379,7 +379,7 @@ function gerarPdfCard(tipo) {
     const lista = detalheSituacao?.aprovados || [];
     gerarPdfRelatorio({
       titulo: conf.titulo,
-      subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+      subtitulo: 'Sistema de Indicadores Educacionais',
       meta,
       tabelas: [{
         titulo: `${conf.tabela} — Média Geral, Menor e Maior Média`,
@@ -404,7 +404,7 @@ function gerarPdfCard(tipo) {
     const lista = detalheSituacao?.semNotas || [];
     gerarPdfRelatorio({
       titulo: conf.titulo,
-      subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+      subtitulo: 'Sistema de Indicadores Educacionais',
       meta,
       tabelas: [{
         titulo: `${conf.tabela} — Estudantes sem Notas`,
@@ -427,7 +427,7 @@ function gerarPdfCard(tipo) {
 
   gerarPdfRelatorio({
     titulo: conf.titulo,
-    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    subtitulo: 'Sistema de Indicadores Educacionais',
     meta,
     tabelas: [{
       titulo: `${conf.tabela} — Estudante e Disciplinas em Recuperação`,

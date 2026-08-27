@@ -1,4 +1,4 @@
-import { showToast, escapeHtml, getTooltipOptions } from '../utils/helpers.js';
+﻿import { showToast, escapeHtml, getTooltipOptions } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { supabaseQuery } from '../services/supabase.js';
 import { getNotasEstudante, getFrequenciaEstudante, getTurmasEstudante, listarEstudantesParaBusca, listarTurmasParaConsulta, listarEstudantesPorTurma, podeVerEstudante } from '../repositories/dashboardRepository.js';
@@ -359,7 +359,7 @@ function gerarPdfEstudante() {
 
   gerarPdfRelatorio({
     titulo: 'CONSULTA POR ESTUDANTE — SIEAC',
-    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    subtitulo: 'Sistema de Indicadores Educacionais',
     meta: [
       `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
       `Aluno: ${studentInfo.nome}`,

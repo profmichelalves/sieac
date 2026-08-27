@@ -1,4 +1,4 @@
-import { $, formatNumber, getTooltipOptions } from '../utils/helpers.js';
+﻿import { $, formatNumber, getTooltipOptions } from '../utils/helpers.js';
 import { infoBtn, EXPLICACAO_RESULTADO } from '../utils/explanation.js';
 import { renderFilterPanel, getFilters } from '../components/FilterPanel.js';
 import { getScatterFreqNota } from '../repositories/dashboardRepository.js';
@@ -204,7 +204,7 @@ function gerarPdfQuadrante(quad) {
   const alunos = scatterData.filter(info.cond);
   gerarPdfRelatorio({
     titulo: 'QUADRANTE DE ATENÇÃO — SIEAC',
-    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    subtitulo: 'Sistema de Indicadores Educacionais',
     meta: [`Gerado em: ${new Date().toLocaleString('pt-BR')}`, `Quadrante: ${info.label}`, info.desc],
     tabelas: [{
       titulo: info.label,

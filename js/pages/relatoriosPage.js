@@ -1,4 +1,4 @@
-import { renderFilterPanel, getCurrentFilters } from '../components/FilterPanel.js';
+﻿import { renderFilterPanel, getCurrentFilters } from '../components/FilterPanel.js';
 import { supabaseFetchAll, supabaseQuery } from '../services/supabase.js';
 import { getEstudantesPermitidos } from '../repositories/dashboardRepository.js';
 import { gerarPdfRelatorio } from '../utils/pdf.js';
@@ -205,7 +205,7 @@ async function gerarPDF() {
 
   gerarPdfRelatorio({
     titulo: 'RELATÓRIO DE NOTAS — SIEAC',
-    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    subtitulo: 'Sistema de Indicadores Educacionais',
     meta,
     tabelas: [{
       titulo: 'Alunos Abaixo da Média',

@@ -1,4 +1,4 @@
-import { showToast, escapeHtml } from '../utils/helpers.js';
+﻿import { showToast, escapeHtml } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { isProfessor } from '../services/authService.js';
 import { listarEstudantesNEE } from '../repositories/necessidadesRepository.js';
@@ -132,7 +132,7 @@ function gerarPdf() {
 
   gerarPdfRelatorio({
     titulo: 'RELATÓRIO DE ESTUDANTES NEE — SIEAC',
-    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    subtitulo: 'Sistema de Indicadores Educacionais',
     meta: [
       `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
       `Total de estudantes com NEE: ${listaNee.length}`,

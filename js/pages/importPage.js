@@ -1,4 +1,4 @@
-import { $, showToast, formatarDataHora, escapeHtml } from '../utils/helpers.js';
+﻿import { $, showToast, formatarDataHora, escapeHtml } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
 import { importarNotas, importarFrequencia } from '../services/importService.js';
 import { supabaseRpc, supabaseQuery } from '../services/supabase.js';
@@ -288,7 +288,7 @@ function gerarPdfIgnorados(tipoNome, res, fileName) {
 
   gerarPdfRelatorio({
     titulo: 'PROBLEMAS DE IMPORTAÇÃO — SIEAC',
-    subtitulo: 'Sistema de Indicadores Educacionais Abel Coelho',
+    subtitulo: 'Sistema de Indicadores Educacionais',
     meta,
     tabelas: [{
       titulo: `${tipoNome} — Registros ignorados e explicação de cada caso`,
