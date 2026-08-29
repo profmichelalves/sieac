@@ -424,7 +424,27 @@ export async function importarFrequencia(file, onProgress) {
       });
     }
     if (rowsIns.length) {
-      const res = await upsertTabela('frequencias', rowsIns, 'estudante_id,turma_id,mes_referencia');
+      // Remove duplicatas (mesmo estudante + turma + mês) dentro do lote,
+      // pois o upsert em lote falha com 21000 se houver chaves repetidas.
+      // Em caso de duplicidade, mantém a linha com mais meses em MÊS DE REFERÊNCIA.
+      const unicos = [];
+      const best = new Map();
+      for (const r of rowsIns) {
+        const k = `${r.estudante_id}|${r.turma_id}|${r.mes_referencia}`;
+        const meses = String(r.mes_referencia || '').split(',').map(s => s.trim()).filter(Boolean).length;
+        const atual = best.get(k);
+        if (!atual || meses > atual._meses) {
+          if (atual) ignorados.push({ tipo: 'frequencia', matricula: atual.estudante_id, turma: atual.turma_id, motivo: 'Registro duplicado na planilha' });
+          best.set(k, { ...r, _meses: meses });
+        } else {
+          ignorados.push({ tipo: 'frequencia', matricula: r.estudante_id, turma: r.turma_id, motivo: 'Registro duplicado na planilha' });
+        }
+      }
+      for (const v of best.values()) {
+        const { _meses, ...resto } = v;
+        unicos.push(resto);
+      }
+      const res = await upsertTabela('frequencias', unicos, 'estudante_id,turma_id,mes_referencia');
       inseridos += res.inseridos;
       erros += res.erros;
     }
