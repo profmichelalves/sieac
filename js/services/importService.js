@@ -33,7 +33,38 @@ function calcularMedia(nota) {
   const bims = [nota.nota_1bim, nota.nota_2bim, nota.nota_3bim, nota.nota_4bim]
     .filter(v => v != null && !isNaN(v));
   if (!bims.length) return null;
+  if (nota.periodicidade && nota.periodicidade !== 'Anual') {
+    return Math.round((bims.reduce((a, b) => a + b, 0) / 2) * 10) / 10;
+  }
   return Math.round((bims.reduce((a, b) => a + b, 0) / bims.length) * 10) / 10;
+}
+
+function lerNotasUnificadas(row, col, periodicidade) {
+  const n1 = row[col('NOTA 1º BIMESTRE')];
+  const n2 = row[col('NOTA 2º BIMESTRE')];
+  const n3 = row[col('NOTA 3º BIMESTRE')];
+  const n4 = row[col('NOTA 4º BIMESTRE')];
+  const v1 = parseNumber(n1);
+  const v2 = parseNumber(n2);
+  const v3 = parseNumber(n3);
+  const v4 = parseNumber(n4);
+  if (periodicidade === '1º Semestre') {
+    // 1º semestre: apenas as duas primeiras notas estão preenchidas.
+    // Os campos 3º/4º bimestre ficam null (nunca undefined, para que o JSON
+    // enviado ao PostgREST mantenha todas as chaves e o upsert em lote passe).
+    return { nota_1bim: v1, nota_2bim: v2, nota_3bim: null, nota_4bim: null };
+  }
+  if (periodicidade === '2º Semestre') {
+    // 2º semestre: as duas notas representam o 3º e 4º bimestre.
+    // Alguns relatórios preenchem as colunas NOTA 1º/2º para o 2º semestre.
+    return {
+      nota_1bim: null,
+      nota_2bim: null,
+      nota_3bim: v3 ?? v1,
+      nota_4bim: v4 ?? v2,
+    };
+  }
+  return { nota_1bim: v1, nota_2bim: v2, nota_3bim: v3, nota_4bim: v4 };
 }
 
 async function verificarRelacoes() {
@@ -87,7 +118,7 @@ export async function importarNotas(file, onProgress) {
   const componentesList = new Map();
   const estudantesList = new Map();
   const alocacoesList = new Map();
-  const notasList = [];
+  const notasList = new Map();
 
   for (const row of rows) {
     const estudanteNome = row[col('NOME PESSOA')];
@@ -124,18 +155,32 @@ export async function importarNotas(file, onProgress) {
     }
 
     if (idEst) {
-      notasList.push({
+      const chaveNota = `${idEst}_${idProf}_${idTurma}_${idComp}`;
+      const periodicidade = String(row[col('PERIODICIDADE COMPONENTE CURRICULAR')] || '').trim() || 'Anual';
+      const nota = {
         estudante_id: idEst,
         professor_id: idProf,
         turma_id: idTurma,
         componente_id: idComp,
-        nota_1bim: parseNumber(row[col('NOTA 1º BIMESTRE')]),
-        nota_2bim: parseNumber(row[col('NOTA 2º BIMESTRE')]),
-        nota_3bim: parseNumber(row[col('NOTA 3º BIMESTRE')]),
-        nota_4bim: parseNumber(row[col('NOTA 4º BIMESTRE')]),
+        periodicidade,
+        ...lerNotasUnificadas(row, col, periodicidade),
         media_final: parseNumber(row[col('MÉDIA FINAL')]),
         resultado_final: row[col('RESULTADO FINAL')],
-      });
+      };
+      if (notasList.has(chaveNota)) {
+        // Duplicidade: mesmo estudante + mesma alocação (ex.: 1º e 2º semestre
+        // da mesma disciplina). A nota vira 'Anual' e os campos são mesclados,
+        // preservando os valores preenchidos de ambos os semestres.
+        const existente = notasList.get(chaveNota);
+        existente.periodicidade = 'Anual';
+        ['nota_1bim', 'nota_2bim', 'nota_3bim', 'nota_4bim'].forEach(campo => {
+          if (existente[campo] == null && nota[campo] != null) existente[campo] = nota[campo];
+        });
+        if (existente.media_final == null && nota.media_final != null) existente.media_final = nota.media_final;
+        if (!existente.resultado_final && nota.resultado_final) existente.resultado_final = nota.resultado_final;
+      } else {
+        notasList.set(chaveNota, nota);
+      }
     }
   }
 
@@ -209,7 +254,7 @@ export async function importarNotas(file, onProgress) {
   const alocLookup = {};
   (alocacoesDB || []).forEach(a => { alocLookup[`${a.professor_id}_${a.turma_id}_${a.componente_id}`] = a.id; });
 
-  const notasParaInserir = notasList.map(n => {
+  const notasParaInserir = [...notasList.values()].map(n => {
     const estudante_id = estMap[String(n.estudante_id)];
     const alocacao_id = alocLookup[`${profMap[String(n.professor_id)]}_${turmaMap[String(n.turma_id)]}_${compMap[String(n.componente_id)]}`];
     if (!estudante_id || !alocacao_id) {
@@ -229,7 +274,7 @@ export async function importarNotas(file, onProgress) {
       });
       return null;
     }
-    const media = n.media_final != null ? n.media_final : calcularMedia(n);
+    const media = (n.media_final != null && n.media_final !== 0) ? n.media_final : calcularMedia(n);
     const rFinal = String(n.resultado_final || '').trim().toUpperCase();
     let resultado = n.resultado_final;
     if (media == null) {
@@ -240,12 +285,13 @@ export async function importarNotas(file, onProgress) {
     return {
       estudante_id,
       alocacao_id,
-      nota_1bim: n.nota_1bim,
-      nota_2bim: n.nota_2bim,
-      nota_3bim: n.nota_3bim,
-      nota_4bim: n.nota_4bim,
-      media_final: media,
-      resultado_final: resultado,
+      periodicidade: n.periodicidade || 'Anual',
+      nota_1bim: n.nota_1bim ?? null,
+      nota_2bim: n.nota_2bim ?? null,
+      nota_3bim: n.nota_3bim ?? null,
+      nota_4bim: n.nota_4bim ?? null,
+      media_final: media ?? null,
+      resultado_final: resultado ?? null,
     };
   }).filter(r => r);
 
@@ -269,7 +315,7 @@ export async function importarNotas(file, onProgress) {
   await supabaseUpsert('importacoes', [{
     tipo: 'notas',
     arquivo: file?.name || null,
-    registros: notasList.length,
+    registros: notasList.size,
     inseridos,
     atualizados: 0,
     erros,
@@ -277,7 +323,7 @@ export async function importarNotas(file, onProgress) {
     tempo_ms: tempoMs,
   }]);
 
-  return { success: true, registros: notasList.length, inseridos, atualizados: 0, erros, relacoes, errosDetalhes: errosDetalhes.slice(0, 10), ignorados: ignorados.slice(0, 500), tempoMs };
+  return { success: true, registros: notasList.size, inseridos, atualizados: 0, erros, relacoes, errosDetalhes: errosDetalhes.slice(0, 10), ignorados: ignorados.slice(0, 500), tempoMs };
 }
 
 export async function importarFrequencia(file, onProgress) {

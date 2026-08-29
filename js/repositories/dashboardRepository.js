@@ -7,15 +7,23 @@ function notasPreenchidas(n1, n2, n3, n4) {
   return [n1, n2, n3, n4].map(v => parseFloat(v)).filter(v => !isNaN(v));
 }
 
-function calcularMediaAcumulada(n1, n2, n3, n4) {
+function calcularMediaAcumulada(n1, n2, n3, n4, periodicidade) {
   const notas = notasPreenchidas(n1, n2, n3, n4);
   if (!notas.length) return 0;
+  if (periodicidade && periodicidade !== 'Anual') {
+    return Math.round((notas.reduce((a, b) => a + b, 0) / 2) * 10) / 10;
+  }
   return Math.round((notas.reduce((a, b) => a + b, 0) / notas.length) * 10) / 10;
 }
 
-function calcularSituacao(n1, n2, n3, n4) {
+function calcularSituacao(n1, n2, n3, n4, periodicidade) {
   const notas = notasPreenchidas(n1, n2, n3, n4);
-  const media = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : 0;
+  const media = notas.length
+    ? (periodicidade && periodicidade !== 'Anual'
+        ? notas.reduce((a, b) => a + b, 0) / 2
+        : notas.reduce((a, b) => a + b, 0) / notas.length)
+    : 0;
+  if (notas.length >= 2 && periodicidade && periodicidade !== 'Anual') return media >= 6 ? 'Aprovado' : 'Recuperação Final';
   if (notas.length >= 4) return media >= 6 ? 'Aprovado' : 'Recuperação Final';
   return media >= 6 ? 'Em Aprovação' : 'Em Recuperação';
 }
@@ -333,7 +341,7 @@ async function classificarEstudantes(filters) {
   await getRefCache();
   const [idsEstudantes, notas, freqs] = await Promise.all([
     getIdsEstudantesImportados(filters),
-    queryNotas(filters, 'estudante_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final'),
+    queryNotas(filters, 'estudante_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,periodicidade'),
     queryFrequencias(filters, 'estudante_id,percentual_frequencia'),
   ]);
 
@@ -352,7 +360,7 @@ async function classificarEstudantes(filters) {
     medias[n.estudante_id].soma += mf;
     medias[n.estudante_id].count++;
 
-    let media = calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim);
+    let media = calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim, n.periodicidade);
     if (media === 0) {
       const mf2 = parseFloat(n.media_final);
       if (!isNaN(mf2) && mf2 > 0) media = mf2;
@@ -461,7 +469,7 @@ export async function getResultadoFinal(filters = {}) {
 export async function getDetalheResultados(filters = {}) {
   await getRefCache();
   const [notas, dados] = await Promise.all([
-    queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,resultado_final'),
+    queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,resultado_final,periodicidade'),
     classificarEstudantes(filters),
   ]);
   const { classificacao, medias, frequenciasPorEstudante } = dados;
@@ -491,8 +499,8 @@ export async function getDetalheResultados(filters = {}) {
       nota_3bim: n.nota_3bim,
       nota_4bim: n.nota_4bim,
       media_final: n.media_final,
-      media_acumulada: calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim),
-      situacao: calcularSituacao(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim),
+      media_acumulada: calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim, n.periodicidade),
+      situacao: calcularSituacao(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim, n.periodicidade),
       media_estudante: medias[n.estudante_id] ? medias[n.estudante_id].soma / medias[n.estudante_id].count : null,
       frequencia: frequencia != null ? Math.round(frequencia * 10) / 10 : null,
       resultado_final: n.resultado_final || '-',
@@ -525,7 +533,7 @@ export async function getDetalheSituacao(filters = {}) {
   await getRefCache();
   const [idsEstudantes, notas, freqs] = await Promise.all([
     getIdsEstudantesImportados(filters),
-    queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final'),
+    queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,periodicidade'),
     queryFrequencias(filters, 'estudante_id,percentual_frequencia'),
   ]);
 
@@ -540,7 +548,7 @@ export async function getDetalheSituacao(filters = {}) {
     if (disciplinaVazia(n)) return;
     const compId = alocComp[n.alocacao_id];
     const turmaId = alocTurma[n.alocacao_id];
-    let media = calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim);
+    let media = calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim, n.periodicidade);
     if (media === 0) {
       const mf = parseFloat(n.media_final);
       if (!isNaN(mf) && mf > 0) media = mf;
@@ -688,7 +696,7 @@ export async function getMediaPorDisciplina(filters = {}) {
 export async function getNotasTurmaDisciplina(filters = {}) {
   if (!filters.turma_id || !filters.componente_id) return { data: [], meta: null, error: null };
   await getRefCache();
-  const notas = await queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,resultado_final');
+  const notas = await queryNotas(filters, 'estudante_id,alocacao_id,nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,resultado_final,periodicidade');
 
   const eMap = {}; refCache.estudantes.forEach(e => eMap[e.id] = e);
   const alocComp = {}; refCache.alocacoes.forEach(a => alocComp[a.id] = a.componente_id);
@@ -709,8 +717,8 @@ export async function getNotasTurmaDisciplina(filters = {}) {
       nota_3bim: n.nota_3bim,
       nota_4bim: n.nota_4bim,
       media_final: n.media_final,
-      media_acumulada: temNota ? calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim) : null,
-      situacao: temNota ? calcularSituacao(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim) : 'Sem Notas',
+      media_acumulada: temNota ? calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim, n.periodicidade) : null,
+      situacao: temNota ? calcularSituacao(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim, n.periodicidade) : 'Sem Notas',
     };
   }).sort((a, b) =>
     a.estudante.localeCompare(b.estudante, 'pt-BR') ||
@@ -960,7 +968,7 @@ export async function getScatterFreqNota(filters = {}) {
 export async function getNotasEstudante(estudanteId) {
   if (!(await podeVerEstudante(estudanteId))) return { data: [], error: null };
   const { data: notas } = await supabaseQuery('notas', {
-    select: 'nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,alocacao_id',
+    select: 'nota_1bim,nota_2bim,nota_3bim,nota_4bim,media_final,alocacao_id,periodicidade',
     filters: [{ col: 'estudante_id', val: estudanteId }],
   });
   if (!notas) return { data: [], error: null };
@@ -976,8 +984,8 @@ export async function getNotasEstudante(estudanteId) {
     nota_3bim: n.nota_3bim,
     nota_4bim: n.nota_4bim,
     media_final: n.media_final,
-    media_acumulada: calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim),
-    situacao: calcularSituacao(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim),
+    media_acumulada: calcularMediaAcumulada(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim, n.periodicidade),
+    situacao: calcularSituacao(n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim, n.periodicidade),
   }));
   return { data, error: null };
 }
