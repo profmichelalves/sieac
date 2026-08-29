@@ -55,13 +55,12 @@ function lerNotasUnificadas(row, col, periodicidade) {
     return { nota_1bim: v1, nota_2bim: v2, nota_3bim: null, nota_4bim: null };
   }
   if (periodicidade === '2º Semestre') {
-    // 2º semestre: as duas notas representam o 3º e 4º bimestre.
-    // Alguns relatórios preenchem as colunas NOTA 1º/2º para o 2º semestre.
+    // 2º semestre: apenas as duas notas do 3º e 4º bimestre.
     return {
       nota_1bim: null,
       nota_2bim: null,
-      nota_3bim: v3 ?? v1,
-      nota_4bim: v4 ?? v2,
+      nota_3bim: v3,
+      nota_4bim: v4,
     };
   }
   return { nota_1bim: v1, nota_2bim: v2, nota_3bim: v3, nota_4bim: v4 };
