@@ -1,6 +1,7 @@
 import { getCurrentUser, isAdmin, isGestao, validarSessao } from './services/authService.js';
 import { isAuthenticated, getSession, setUser, clearSession, clearUser } from './utils/helpers.js';
 import { showToast } from './utils/helpers.js';
+import { showAppLoading, hideAppLoading, isAppLoadingVisible } from './utils/appLoading.js';
 
 const routes = {
   'login': { page: 'auth', auth: false },
@@ -22,24 +23,6 @@ const routes = {
 };
 
 let currentPage = null;
-const appLoading = document.getElementById('app-loading');
-
-function showAppLoading() {
-  appLoading?.classList.remove('hidden');
-  const sidebar = document.getElementById('sidebar');
-  const backdrop = document.getElementById('sidebar-backdrop');
-  sidebar?.classList.remove('open');
-  backdrop?.classList.remove('show');
-  document.body.classList.remove('sidebar-open');
-}
-
-function hideAppLoading() {
-  appLoading?.classList.add('hidden');
-}
-
-function isAppLoadingVisible() {
-  return !!appLoading && !appLoading.classList.contains('hidden');
-}
 
 export async function navigate() {
   let hash = window.location.hash.replace('#', '') || 'login';

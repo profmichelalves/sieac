@@ -4,6 +4,7 @@ import { listarTurmasParaConsulta } from '../repositories/dashboardRepository.js
 import { createSearchSelect } from './SearchSelect.js';
 import { infoBtn } from '../utils/explanation.js';
 import { escapeHtml } from '../utils/helpers.js';
+import { showAppLoading, hideAppLoading } from '../utils/appLoading.js';
 
 const CACHE_KEY = 'sieac_filter_cache';
 const CACHE_VERSION = 4;
@@ -529,19 +530,26 @@ function bindFilterEvents() {
 
   const btnPesquisar = document.getElementById('btn-pesquisar');
   if (btnPesquisar) {
-    btnPesquisar.addEventListener('click', () => {
+    btnPesquisar.addEventListener('click', async () => {
       rebuildPending();
       appliedFilters = { ...pendingFilters };
       clearDirty();
       updateBadges();
       saveSelectedFilters(appliedFilters);
-      if (onChangeCallback) onChangeCallback(appliedFilters);
+      if (onChangeCallback) {
+        showAppLoading();
+        try {
+          await onChangeCallback(appliedFilters);
+        } finally {
+          hideAppLoading();
+        }
+      }
     });
   }
 
   const clearBtn = document.getElementById('filter-clear');
   if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
+    clearBtn.addEventListener('click', async () => {
       SELECT_IDS.forEach(id => {
         if (combos[id]) {
           combos[id].clear();
@@ -565,7 +573,14 @@ function bindFilterEvents() {
       clearDirty();
       updateBadges();
       saveSelectedFilters(appliedFilters);
-      if (onChangeCallback) onChangeCallback(appliedFilters);
+      if (onChangeCallback) {
+        showAppLoading();
+        try {
+          await onChangeCallback(appliedFilters);
+        } finally {
+          hideAppLoading();
+        }
+      }
     });
   }
 }
