@@ -97,7 +97,7 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* App loading overlay (cores da logo do SIEAC sobre fundo cinza) */
+/* App loading overlay (tons da logo do SIEAC: azul, amarelo e vermelho; fundo transparente) */
 #app-loading {
   position: fixed;
   inset: 0;
@@ -106,8 +106,8 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 22px;
-  background: #ecedf2;
+  gap: 20px;
+  background: transparent;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -124,32 +124,14 @@ body.app-loading-active {
   overflow: hidden;
 }
 
-.app-loading-icon {
-  width: 96px;
-  height: 96px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--sieac-surface);
-  border-radius: 26px;
-  box-shadow: 0 12px 40px rgba(49, 47, 146, 0.18);
-  animation: appLoadingFloat 2.2s ease-in-out infinite;
-}
-
-.app-loading-icon img {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-}
-
 .app-loading-ring {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  border: 4px solid rgba(49, 47, 146, 0.14);
-  border-top-color: var(--sieac-primary);
-  border-right-color: var(--sieac-secondary);
-  border-bottom-color: var(--sieac-warning);
+  border: 4px solid rgba(49, 47, 146, 0.15);
+  border-top-color: #312f92;
+  border-right-color: #fff001;
+  border-bottom-color: #e63946;
   animation: spin 0.9s linear infinite;
 }
 
@@ -158,12 +140,8 @@ body.app-loading-active {
   font-weight: 700;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: var(--sieac-primary);
-}
-
-@keyframes appLoadingFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+  color: #312f92;
+  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.9);
 }
 
 /* Animated number */
