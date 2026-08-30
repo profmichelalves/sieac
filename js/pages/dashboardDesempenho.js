@@ -20,7 +20,7 @@ function destroyCanvas(id) {
   if (chartInst[id]) { chartInst[id].destroy(); delete chartInst[id]; }
 }
 
-function criarGraficoBarraHorizontal(canvasId, labels, data, label) {
+function criarGraficoBarraHorizontal(canvasId, labels, data, label, extras = []) {
   destroyCanvas(canvasId);
   const canvas = document.getElementById(canvasId);
   if (!canvas || !labels.length) return;
@@ -39,7 +39,13 @@ function criarGraficoBarraHorizontal(canvasId, labels, data, label) {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: getTooltipOptions()
+        tooltip: {
+          ...getTooltipOptions(),
+          callbacks: {
+            label: (item) => `${label}: ${item.formattedValue}`,
+            afterLabel: (item) => extras[item.dataIndex] || undefined,
+          }
+        }
       },
       scales: {
         x: { beginAtZero: true, max: 10, grid: { color: 'var(--sieac-border)', drawBorder: false }, ticks: { color: 'var(--sieac-text-muted)' } },
@@ -200,7 +206,8 @@ async function loadData() {
     criarGraficoBarraHorizontal('chart-media-disc',
       sorted.map(d => d.disciplina),
       sorted.map(d => d.media),
-      'Média'
+      'Média',
+      sorted.map(d => d.professores.map(p => `Professor: ${p}`))
     );
   }
 

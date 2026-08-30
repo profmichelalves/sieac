@@ -757,7 +757,9 @@ export async function getMediaPorDisciplina(filters = {}) {
   await getRefCache();
   const notas = await queryNotas(filters, 'media_final,alocacao_id');
   const alocComp = {}; refCache.alocacoes.forEach(a => alocComp[a.id] = a.componente_id);
+  const alocProf = {}; refCache.alocacoes.forEach(a => alocProf[a.id] = a.professor_id);
   const compMap = {}; refCache.componentes.forEach(c => compMap[c.id] = c.nome);
+  const pMap = {}; refCache.professores.forEach(p => pMap[p.id] = p.nome);
 
   const grupos = {};
   notas.forEach(n => {
@@ -765,12 +767,21 @@ export async function getMediaPorDisciplina(filters = {}) {
     if (isNaN(mf)) return;
     const cId = alocComp[n.alocacao_id];
     const nome = compMap[cId] || `Comp ${cId}`;
-    if (!grupos[nome]) grupos[nome] = { soma: 0, count: 0 };
+    if (!grupos[nome]) grupos[nome] = { soma: 0, count: 0, professorIds: new Set() };
     grupos[nome].soma += mf;
     grupos[nome].count++;
+    const pId = alocProf[n.alocacao_id];
+    if (pId != null) grupos[nome].professorIds.add(pId);
   });
   return {
-    data: Object.entries(grupos).map(([disciplina, v]) => ({ disciplina, media: Math.round((v.soma / v.count) * 10) / 10 })).sort((a, b) => b.media - a.media),
+    data: Object.entries(grupos).map(([disciplina, v]) => ({
+      disciplina,
+      media: Math.round((v.soma / v.count) * 10) / 10,
+      professores: [...v.professorIds]
+        .map(id => pMap[id])
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    })).sort((a, b) => b.media - a.media),
     error: null
   };
 }
