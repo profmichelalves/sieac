@@ -26,7 +26,6 @@ const appLoading = document.getElementById('app-loading');
 
 function showAppLoading() {
   appLoading?.classList.remove('hidden');
-  document.body.classList.add('app-loading-active');
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
   sidebar?.classList.remove('open');
@@ -36,7 +35,10 @@ function showAppLoading() {
 
 function hideAppLoading() {
   appLoading?.classList.add('hidden');
-  document.body.classList.remove('app-loading-active');
+}
+
+function isAppLoadingVisible() {
+  return !!appLoading && !appLoading.classList.contains('hidden');
 }
 
 export async function navigate() {
@@ -164,6 +166,14 @@ export async function navigate() {
 }
 
 export function initRouter() {
+  // Durante o loading, permite rolar o conteúdo atrás, mas bloqueia cliques/toques.
+  document.addEventListener('click', (e) => {
+    if (isAppLoadingVisible()) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }, true);
+
   window.addEventListener('hashchange', navigate);
   window.addEventListener('load', navigate);
 }

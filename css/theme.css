@@ -111,7 +111,7 @@ body {
   background: rgba(244, 246, 249, 0.7);
   opacity: 1;
   visibility: visible;
-  pointer-events: auto;
+  pointer-events: none;
   transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 
@@ -119,10 +119,6 @@ body {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-}
-
-body.app-loading-active {
-  overflow: hidden;
 }
 
 [data-bs-theme="dark"] #app-loading {
