@@ -3,6 +3,71 @@ import { isProfessor, isProfessorAee, getProfessorVinculo, getCurrentUser } from
 
 let refCache = null;
 
+const ROW_CACHE_LIMIT = { notas: 8, freqs: 6, ids: 6, turmasEstudantes: 1 };
+const rowCache = { notas: new Map(), freqs: new Map(), ids: new Map(), turmasEstudantes: new Map() };
+const rowCacheInFlight = { notas: new Map(), freqs: new Map(), ids: new Map(), turmasEstudantes: new Map() };
+
+function getCacheScope() {
+  const user = getCurrentUser();
+  return user?.id ?? 'anon';
+}
+
+// Retira a entrada mais antiga do Map e re-insere por último (LRU).
+function cacheGet(map, key) {
+  if (!map.has(key)) return undefined;
+  const value = map.get(key);
+  map.delete(key);
+  map.set(key, value);
+  return value;
+}
+
+// Insere respeitando o limite de entradas (evita a mais antiga).
+function cacheSet(map, key, value, limit) {
+  map.set(key, value);
+  while (map.size > limit) {
+    const oldest = map.keys().next().value;
+    map.delete(oldest);
+  }
+}
+
+// Cache em memória + singleflight: chamadas concorrentes com a mesma chave
+// compartilham a mesma Promise (mesma rede), e resultados são reutilizados
+// entre telas que usam os mesmos filtros.
+function comCache(cacheMap, inFlightMap, key, limit, inicio) {
+  const pendente = inFlightMap.get(key);
+  if (pendente) return pendente;
+  if (cacheMap.has(key)) return Promise.resolve(cacheGet(cacheMap, key));
+  const p = inicio()
+    .then(val => {
+      cacheSet(cacheMap, key, val, limit);
+      return val;
+    })
+    .finally(() => {
+      inFlightMap.delete(key);
+    });
+  inFlightMap.set(key, p);
+  return p;
+}
+
+// Serializa o filtro SQL efetivo de forma ordenada/determinística, para que
+// telas diferentes gerem a mesma chave de cache para o mesmo conjunto
+// selecionado de turmas/alocações.
+function chaveFiltro(f) {
+  if (!f) return 'all';
+  const partes = {};
+  if (f.estudante_id != null) partes.e = Number(f.estudante_id);
+  if (Array.isArray(f.alocacao_ids)) partes.a = [...f.alocacao_ids].map(Number).sort((a, b) => a - b);
+  if (Array.isArray(f.turma_ids)) partes.t = [...f.turma_ids].map(Number).sort((a, b) => a - b);
+  return JSON.stringify(partes);
+}
+
+// Chave do cache de linhas: tabela + colunas (ordenadas/dedupe) + filtro
+// efetivo + escopo do usuário logado.
+function chaveConsulta(tabela, selectFields, f, extra = '') {
+  const cols = [...new Set(selectFields.split(',').map(s => s.trim()).filter(Boolean))].sort().join(',');
+  return `${tabela}|${cols}|${chaveFiltro(f)}|${getCacheScope()}|${extra}`;
+}
+
 function notasPreenchidas(n1, n2, n3, n4) {
   return [n1, n2, n3, n4].map(v => parseFloat(v)).filter(v => !isNaN(v));
 }
@@ -62,7 +127,12 @@ export async function getRefCache() {
 
 let permitidosPromise = null;
 
-export function clearCache() { refCache = null; permitidosPromise = null; }
+export function clearCache() {
+  refCache = null;
+  permitidosPromise = null;
+  Object.values(rowCache).forEach(m => m.clear());
+  Object.values(rowCacheInFlight).forEach(m => m.clear());
+}
 
 // Conjunto de estudantes que o usuário logado pode visualizar:
 //  - Professor: estudantes com notas nas suas turmas (alocações);
@@ -126,23 +196,26 @@ async function calcularEstudantesPermitidos() {
 // Turmas em que pelo menos um estudante do conjunto permitido possui
 // notas ou frequência lançadas (usado pelo perfil Professor do AEE).
 async function getTurmasDosEstudantes(permitidos) {
-  const turmaIds = new Set();
-  if (!permitidos || !permitidos.size) return turmaIds;
-  await getRefCache();
-  const alocTurma = {};
-  refCache.alocacoes.forEach(a => { alocTurma[a.id] = a.turma_id; });
-  const { data: notas } = await supabaseFetchAll('notas', { select: 'estudante_id,alocacao_id', limit: 30000 });
-  (notas || []).forEach(n => {
-    if (permitidos.has(Number(n.estudante_id))) {
-      const tId = alocTurma[n.alocacao_id];
-      if (tId != null) turmaIds.add(tId);
-    }
+  const key = `turmas-estudantes|${getCacheScope()}`;
+  return comCache(rowCache.turmasEstudantes, rowCacheInFlight.turmasEstudantes, key, ROW_CACHE_LIMIT.turmasEstudantes, async () => {
+    const turmaIds = new Set();
+    if (!permitidos || !permitidos.size) return turmaIds;
+    await getRefCache();
+    const alocTurma = {};
+    refCache.alocacoes.forEach(a => { alocTurma[a.id] = a.turma_id; });
+    const { data: notas } = await supabaseFetchAll('notas', { select: 'estudante_id,alocacao_id', limit: 30000 });
+    (notas || []).forEach(n => {
+      if (permitidos.has(Number(n.estudante_id))) {
+        const tId = alocTurma[n.alocacao_id];
+        if (tId != null) turmaIds.add(tId);
+      }
+    });
+    const { data: freqs } = await supabaseFetchAll('frequencias', { select: 'estudante_id,turma_id', limit: 30000 });
+    (freqs || []).forEach(f => {
+      if (permitidos.has(Number(f.estudante_id))) turmaIds.add(f.turma_id);
+    });
+    return turmaIds;
   });
-  const { data: freqs } = await supabaseFetchAll('frequencias', { select: 'estudante_id,turma_id', limit: 30000 });
-  (freqs || []).forEach(f => {
-    if (permitidos.has(Number(f.estudante_id))) turmaIds.add(f.turma_id);
-  });
-  return turmaIds;
 }
 
 export async function podeVerEstudante(estudanteId) {
@@ -246,29 +319,32 @@ async function queryNotas(filters, selectFields) {
     selectFields += ',estudante_id';
   }
   const f = montarFiltrosNotas(filters);
-  let rows = [];
-  if (!f) {
-    const res = await supabaseFetchAll('notas', { select: selectFields });
-    rows = res.data || [];
-  } else if (f.alocacao_ids && f.alocacao_ids.length) {
-    const res = await supabaseFetchAll('notas', {
-      select: selectFields,
-      filters: [{ col: 'alocacao_id', val: f.alocacao_ids, op: 'in' }],
-    });
-    rows = res.data || [];
-  } else if (f.estudante_id) {
-    const fil = [{ col: 'estudante_id', val: f.estudante_id }];
-    if (f.alocacao_ids && f.alocacao_ids.length) {
-      fil.push({ col: 'alocacao_id', val: f.alocacao_ids, op: 'in' });
+  const key = chaveConsulta('notas', selectFields, f);
+  return comCache(rowCache.notas, rowCacheInFlight.notas, key, ROW_CACHE_LIMIT.notas, async () => {
+    let rows = [];
+    if (!f) {
+      const res = await supabaseFetchAll('notas', { select: selectFields });
+      rows = res.data || [];
+    } else if (f.alocacao_ids && f.alocacao_ids.length) {
+      const res = await supabaseFetchAll('notas', {
+        select: selectFields,
+        filters: [{ col: 'alocacao_id', val: f.alocacao_ids, op: 'in' }],
+      });
+      rows = res.data || [];
+    } else if (f.estudante_id) {
+      const fil = [{ col: 'estudante_id', val: f.estudante_id }];
+      if (f.alocacao_ids && f.alocacao_ids.length) {
+        fil.push({ col: 'alocacao_id', val: f.alocacao_ids, op: 'in' });
+      }
+      const res = await supabaseFetchAll('notas', { select: selectFields, filters: fil });
+      rows = res.data || [];
     }
-    const res = await supabaseFetchAll('notas', { select: selectFields, filters: fil });
-    rows = res.data || [];
-  }
-  if (isProfessorAee()) {
-    const permitidos = await getEstudantesPermitidos();
-    if (permitidos) rows = rows.filter(n => permitidos.has(Number(n.estudante_id)));
-  }
-  return rows;
+    if (isProfessorAee()) {
+      const permitidos = await getEstudantesPermitidos();
+      if (permitidos) rows = rows.filter(n => permitidos.has(Number(n.estudante_id)));
+    }
+    return rows;
+  });
 }
 
 async function queryFrequencias(filters, selectFields) {
@@ -276,55 +352,61 @@ async function queryFrequencias(filters, selectFields) {
     selectFields += ',estudante_id';
   }
   const f = montarFiltrosFrequencia(filters);
-  let rows = [];
-  if (!f) {
-    const res = await supabaseFetchAll('frequencias', { select: selectFields });
-    rows = res.data || [];
-  } else if (f.turma_ids && f.turma_ids.length) {
-    const res = await supabaseFetchAll('frequencias', {
-      select: selectFields,
-      filters: [{ col: 'turma_id', val: f.turma_ids, op: 'in' }],
-    });
-    rows = res.data || [];
-  } else if (f.estudante_id) {
-    const fil = [{ col: 'estudante_id', val: f.estudante_id }];
-    if (f.turma_ids && f.turma_ids.length) {
-      fil.push({ col: 'turma_id', val: f.turma_ids, op: 'in' });
+  const key = chaveConsulta('freqs', selectFields, f);
+  return comCache(rowCache.freqs, rowCacheInFlight.freqs, key, ROW_CACHE_LIMIT.freqs, async () => {
+    let rows = [];
+    if (!f) {
+      const res = await supabaseFetchAll('frequencias', { select: selectFields });
+      rows = res.data || [];
+    } else if (f.turma_ids && f.turma_ids.length) {
+      const res = await supabaseFetchAll('frequencias', {
+        select: selectFields,
+        filters: [{ col: 'turma_id', val: f.turma_ids, op: 'in' }],
+      });
+      rows = res.data || [];
+    } else if (f.estudante_id) {
+      const fil = [{ col: 'estudante_id', val: f.estudante_id }];
+      if (f.turma_ids && f.turma_ids.length) {
+        fil.push({ col: 'turma_id', val: f.turma_ids, op: 'in' });
+      }
+      const res = await supabaseFetchAll('frequencias', { select: selectFields, filters: fil });
+      rows = res.data || [];
     }
-    const res = await supabaseFetchAll('frequencias', { select: selectFields, filters: fil });
-    rows = res.data || [];
-  }
-  if (isProfessorAee()) {
-    const permitidos = await getEstudantesPermitidos();
-    if (permitidos) rows = rows.filter(f => permitidos.has(Number(f.estudante_id)));
-  }
-  return rows;
+    if (isProfessorAee()) {
+      const permitidos = await getEstudantesPermitidos();
+      if (permitidos) rows = rows.filter(f => permitidos.has(Number(f.estudante_id)));
+    }
+    return rows;
+  });
 }
 
 // ---- EXPORTED FUNCTIONS ----
 
 async function getIdsEstudantesImportados(filters) {
   await getRefCache();
-  let ids = new Set(refCache.estudantes.map(e => e.id));
-  const permitidos = await getEstudantesPermitidos();
-  if (permitidos) ids = new Set([...ids].filter(id => permitidos.has(Number(id))));
   const f = montarFiltrosNotas(filters);
-  if (f && f.estudante_id) {
-    ids = new Set([...ids].filter(id => Number(id) === Number(f.estudante_id)));
-  } else if (f && f.alocacao_ids && f.alocacao_ids.length) {
-    const idsComNota = new Set();
-    for (let i = 0; i < f.alocacao_ids.length; i += 100) {
-      const chunk = f.alocacao_ids.slice(i, i + 100);
-      const { data: notas } = await supabaseFetchAll('notas', {
-        select: 'estudante_id',
-        filters: [{ col: 'alocacao_id', val: chunk, op: 'in' }],
-        limit: 30000,
-      });
-      (notas || []).forEach(n => idsComNota.add(Number(n.estudante_id)));
+  const key = chaveConsulta('ids', 'estudante_id', f);
+  return comCache(rowCache.ids, rowCacheInFlight.ids, key, ROW_CACHE_LIMIT.ids, async () => {
+    let ids = new Set(refCache.estudantes.map(e => e.id));
+    const permitidos = await getEstudantesPermitidos();
+    if (permitidos) ids = new Set([...ids].filter(id => permitidos.has(Number(id))));
+    if (f && f.estudante_id) {
+      ids = new Set([...ids].filter(id => Number(id) === Number(f.estudante_id)));
+    } else if (f && f.alocacao_ids && f.alocacao_ids.length) {
+      const idsComNota = new Set();
+      for (let i = 0; i < f.alocacao_ids.length; i += 100) {
+        const chunk = f.alocacao_ids.slice(i, i + 100);
+        const { data: notas } = await supabaseFetchAll('notas', {
+          select: 'estudante_id',
+          filters: [{ col: 'alocacao_id', val: chunk, op: 'in' }],
+          limit: 30000,
+        });
+        (notas || []).forEach(n => idsComNota.add(Number(n.estudante_id)));
+      }
+      ids = new Set([...ids].filter(id => idsComNota.has(id)));
     }
-    ids = new Set([...ids].filter(id => idsComNota.has(id)));
-  }
-  return ids;
+    return ids;
+  });
 }
 
 async function getEstudantesImportados(filters) {
