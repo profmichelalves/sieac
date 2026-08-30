@@ -8,6 +8,11 @@ function setScrollLock(open) {
   document.body.classList.toggle('sidebar-open', open);
 }
 
+function isAppLoadingVisible() {
+  const el = document.getElementById('app-loading');
+  return !!el && !el.classList.contains('hidden');
+}
+
 export function initSidebar() {
   if (inicializada) return;
   inicializada = true;
@@ -34,6 +39,7 @@ export function initSidebar() {
 
   if (toggler) {
     toggler.addEventListener('click', () => {
+      if (isAppLoadingVisible() && !sidebar.classList.contains('open')) return;
       const willOpen = !sidebar.classList.contains('open');
       sidebar.classList.toggle('open', willOpen);
       backdrop.classList.toggle('show', willOpen);
@@ -113,6 +119,7 @@ function initSwipeGestures(sidebar, backdrop) {
   const isOpen = () => sidebar.classList.contains('open');
   const EDGE_TOLERANCE = 48;
   const openSidebar = () => {
+    if (isAppLoadingVisible()) return;
     sidebar.classList.add('open');
     backdrop.classList.add('show');
     setScrollLock(true);

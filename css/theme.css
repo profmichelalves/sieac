@@ -97,7 +97,8 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* App loading overlay (tons da logo do SIEAC: azul, amarelo e vermelho; fundo transparente) */
+/* App loading overlay (tons da logo do SIEAC: azul, amarelo e vermelho;
+   fundo cinza claro translúcido que deixa ver o carregamento ao fundo) */
 #app-loading {
   position: fixed;
   inset: 0;
@@ -107,7 +108,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 20px;
-  background: transparent;
+  background: rgba(244, 246, 249, 0.7);
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -124,15 +125,23 @@ body.app-loading-active {
   overflow: hidden;
 }
 
+[data-bs-theme="dark"] #app-loading {
+  background: rgba(15, 17, 23, 0.7);
+}
+
 .app-loading-ring {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  border: 4px solid rgba(49, 47, 146, 0.15);
+  border: 4px solid var(--sieac-border);
   border-top-color: #312f92;
   border-right-color: #fff001;
   border-bottom-color: #e63946;
   animation: spin 0.9s linear infinite;
+}
+
+[data-bs-theme="dark"] .app-loading-ring {
+  border-top-color: #6b6baf;
 }
 
 .app-loading-text {
@@ -142,6 +151,11 @@ body.app-loading-active {
   text-transform: uppercase;
   color: #312f92;
   text-shadow: 0 1px 10px rgba(255, 255, 255, 0.9);
+}
+
+[data-bs-theme="dark"] .app-loading-text {
+  color: #6b6baf;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
 }
 
 /* Animated number */

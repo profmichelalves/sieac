@@ -27,6 +27,11 @@ const appLoading = document.getElementById('app-loading');
 function showAppLoading() {
   appLoading?.classList.remove('hidden');
   document.body.classList.add('app-loading-active');
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  sidebar?.classList.remove('open');
+  backdrop?.classList.remove('show');
+  document.body.classList.remove('sidebar-open');
 }
 
 function hideAppLoading() {
