@@ -151,11 +151,24 @@ export async function atualizarUsuario(id, campos) {
   return { error: res && res.error ? res.error : null };
 }
 
-export async function excluirUsuario(id) {
-  const { data, error } = await supabaseRpc('excluir_usuario', { p_id: Number(id) });
+// Exclui um usuário. Para usuários do perfil 'Professor do AEE', o parâmetro
+// desvincularAee remove também os vínculos em estudante_professores_aee
+// (RPC excluir_usuario com p_desvincular_aee = true).
+export async function excluirUsuario(id, desvincularAee = false) {
+  const params = { p_id: Number(id) };
+  if (desvincularAee) params.p_desvincular_aee = true;
+  const { data, error } = await supabaseRpc('excluir_usuario', params);
   if (error) return { error };
   const res = Array.isArray(data) && data.length ? data[0] : null;
   return { error: res && res.error ? res.error : null };
+}
+
+// Quantidade de estudantes vinculados a um usuário do AEE
+// (estudante_professores_aee.professor_usuario_id).
+export async function contarVinculosAeeUsuario(id) {
+  const { data, error } = await supabaseRpc('contar_vinculos_aee_do_usuario', { p_usuario_id: Number(id) });
+  if (error) return { total: 0, error };
+  return { total: Number(Array.isArray(data) ? data[0] : data) || 0, error: null };
 }
 
 export async function validarSessao() {

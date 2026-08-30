@@ -1,6 +1,6 @@
 import { $, showToast, parseDataDb, formatarDataHora, escapeHtml } from '../utils/helpers.js';
 import { infoBtn } from '../utils/explanation.js';
-import { listarUsuarios, listarPerfis, atualizarUsuario, excluirUsuario, limparSenhaUsuario, getCurrentUser } from '../services/authService.js';
+import { listarUsuarios, listarPerfis, atualizarUsuario, excluirUsuario, contarVinculosAeeUsuario, limparSenhaUsuario, getCurrentUser } from '../services/authService.js';
 import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
 const PERFIS_FALLBACK = { 1: 'Administrador', 2: 'Gestão Escolar', 3: 'Professor', 4: 'Professor do AEE' };
@@ -64,6 +64,12 @@ export async function render() {
             </p>
             <div class="auth-alert error" id="excluir-aviso" style="display:none;margin-top:12px;">
               <strong>Atenção:</strong> você está excluindo a sua própria conta. Após a exclusão, o acesso será encerrado.
+            </div>
+            <div class="form-check mt-3" id="excluir-aee-wrap" style="display:none;">
+              <input class="form-check-input" type="checkbox" id="excluir-aee-check" checked>
+              <label class="form-check-label" for="excluir-aee-check" style="color:var(--sieac-text-muted);font-size:0.85rem;">
+                Desvincular o(s) estudante(s) vinculado(s) a este professor do AEE (<span id="excluir-aee-count"></span>)
+              </label>
             </div>
           </div>
           <div class="modal-footer">
@@ -185,7 +191,7 @@ async function carregarUsuarios() {
             <button class="btn btn-sm btn-outline-primary usuario-toggle" data-id="${u.id}" data-nome="${escapeHtml(u.nome)}" data-ativo="${u.ativo}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
               ${u.ativo ? 'Desativar' : 'Ativar'}
             </button>
-            <button class="btn btn-sm btn-outline-danger usuario-delete" data-id="${u.id}" data-nome="${escapeHtml(u.nome)}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
+            <button class="btn btn-sm btn-outline-danger usuario-delete" data-id="${u.id}" data-nome="${escapeHtml(u.nome)}" data-perfil="${u.perfil_id}" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
               <i class="bi bi-trash"></i>
             </button>
             <button class="btn btn-sm btn-outline-warning usuario-reset" data-id="${u.id}" data-nome="${escapeHtml(u.nome)}" title="Limpar senha" style="border-radius:var(--sieac-radius-pill);font-size:0.75rem;padding:4px 12px;">
@@ -231,11 +237,24 @@ async function carregarUsuarios() {
   });
 
   tbody.querySelectorAll('.usuario-delete').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const ehProprio = currentUser && String(currentUser.id) === String(btn.dataset.id);
-      alvoExcluir = { id: btn.dataset.id, nome: btn.dataset.nome };
+      alvoExcluir = { id: btn.dataset.id, nome: btn.dataset.nome, perfilId: btn.dataset.perfil };
       document.getElementById('excluir-nome').textContent = alvoExcluir.nome;
       document.getElementById('excluir-aviso').style.display = ehProprio ? 'block' : 'none';
+
+      const aeeWrap = document.getElementById('excluir-aee-wrap');
+      const aeeCount = document.getElementById('excluir-aee-count');
+      const aeeCheck = document.getElementById('excluir-aee-check');
+      aeeWrap.style.display = 'none';
+      if (perfisMap[Number(alvoExcluir.perfilId)] === 'Professor do AEE') {
+        const { total } = await contarVinculosAeeUsuario(alvoExcluir.id);
+        if (total > 0) {
+          aeeCount.textContent = `${total} estudante(s)`;
+          aeeCheck.checked = true;
+          aeeWrap.style.display = 'block';
+        }
+      }
       new bootstrap.Modal(document.getElementById('modal-excluir-usuario')).show();
     });
   });
@@ -256,14 +275,15 @@ function abrirConfirmarExclusao() {
   if (!alvoExcluir || !modalEl) return;
   btn.disabled = true;
   btn.textContent = 'Excluindo...';
-  excluirUsuario(alvoExcluir.id).then(({ error }) => {
+  const desvincularAee = document.getElementById('excluir-aee-check')?.checked ?? false;
+  excluirUsuario(alvoExcluir.id, desvincularAee).then(({ error }) => {
     btn.disabled = false;
     btn.textContent = 'Excluir';
     if (error) {
       showToast('Erro ao excluir: ' + error, 'error');
       return;
     }
-    registrarLog(LOG_ACTIONS.EXCLUIR_USUARIO, { usuario_id: alvoExcluir.id, usuario_nome: alvoExcluir.nome });
+    registrarLog(LOG_ACTIONS.EXCLUIR_USUARIO, { usuario_id: alvoExcluir.id, usuario_nome: alvoExcluir.nome, desvincular_aee: desvincularAee });
     const nome = alvoExcluir.nome;
     alvoExcluir = null;
     bootstrap.Modal.getInstance(modalEl)?.hide();
