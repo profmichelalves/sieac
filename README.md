@@ -23,13 +23,13 @@ O SIEAC é uma plataforma web para acompanhamento dos indicadores educacionais d
 
 ¹ Professor enxerga apenas as turmas em que está alocado (e os estudantes com notas/frequência nelas).
 
-² Professor do AEE enxerga somente os **estudantes vinculados ao seu cadastro**. Se o vínculo não for encontrado ou não houver estudantes vinculados, o sistema exibe, após o login, um aviso pedindo para entrar em contato com um usuário da **Gestão Escolar**.
+² Professor do AEE enxerga somente os **estudantes vinculados ao seu cadastro de usuário** (perfil 'Professor do AEE'). Se o vínculo não for encontrado ou não houver estudantes vinculados, o sistema exibe, após o login, um aviso pedindo para entrar em contato com um usuário da **Gestão Escolar**.
 
 ---
 
 ## Funcionalidades gerais
 
-- **Login e cadastro de conta** — acesso por email e senha. No cadastro, a matrícula é validada no cadastro de professores (perfis Professor e Professor do AEE) e é impedida a duplicidade de email/matrícula. A conta é ativada **automaticamente** quando a matrícula e o nome conferem; caso contrário, aguarda liberação pelo administrador.
+- **Login e cadastro de conta** — acesso por email e senha. É impedida a duplicidade de email/matrícula. No perfil **Professor**, a matrícula é validada no cadastro de professores e a conta é ativada **automaticamente** quando a matrícula e o nome conferem; caso contrário, aguarda liberação pelo administrador. No perfil **Professor do AEE**, a matrícula **não** precisa existir no cadastro de professores, e a conta aguarda **ativação pelo administrador**. Demais perfis seguem a liberação pelo administrador.
 - **Controle de sessão** — login, logout e tentativas de login com falha são registrados nos Logs.
 - **Tema claro/escuro** — alternância persistida no navegador.
 - **Sidebar responsiva** — menu recolhível, filtrado conforme o perfil do usuário; colapso persistido.

@@ -1,4 +1,4 @@
-import { supabaseRpc, supabaseQuery, getClient } from './supabase.js';
+import { supabaseRpc, supabaseQuery, supabaseFetchAll, getClient } from './supabase.js';
 import { setUser, clearUser, setSession, clearSession, getAuthToken } from '../utils/helpers.js';
 import { registrarLog, LOG_ACTIONS } from './logService.js';
 
@@ -361,16 +361,16 @@ export function clearProfessorCache() {
 }
 
 // Para o perfil Professor do AEE, verifica se existem estudantes com NEE
-// vinculados ao cadastro do professor (tabela estudante_professores_aee).
-// Retorna true/false para Professor do AEE e null para os demais perfis.
+// vinculados ao usuário logado (tabela estudante_professores_aee, coluna
+// professor_usuario_id). Retorna true/false para Professor do AEE e null para
+// os demais perfis.
 export async function temEstudantesAeeVinculados() {
   const user = getCurrentUser();
   if (!user || user.perfil !== 'Professor do AEE') return null;
-  const vinculo = await getProfessorVinculo();
-  if (!vinculo) return false;
+  if (user.id == null) return false;
   const { data: aee } = await supabaseFetchAll('estudante_professores_aee', {
     select: 'estudante_id_pessoa',
-    filters: [{ col: 'professor_id_pessoa', val: vinculo.id_pessoa }],
+    filters: [{ col: 'professor_usuario_id', val: Number(user.id) }],
   });
   return (aee || []).length > 0;
 }

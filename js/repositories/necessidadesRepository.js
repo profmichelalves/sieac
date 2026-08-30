@@ -14,13 +14,17 @@ export async function listarTiposNecessidades() {
   return { data: data || [], error };
 }
 
+// Professores do AEE disponíveis para vínculo: usuários cadastrados com o
+// perfil 'Professor do AEE' (perfil_id = 4), independentes de estarem na
+// tabela `professores`.
 export async function listarProfessoresParaAEE() {
-  const { data, error } = await supabaseQuery('professores', {
-    select: 'id_pessoa,nome,matricula',
+  const { data: usuarios, error } = await supabaseQuery('usuarios', {
+    select: 'id,nome,matricula',
+    filters: [{ col: 'perfil_id', val: 4 }],
     order: 'nome',
     limit: 1000,
   });
-  return { data: (data || []).filter(p => p.id_pessoa != null).map(p => ({ id: p.id_pessoa, nome: p.nome, matricula: p.matricula || '-' })), error };
+  return { data: (usuarios || []).map(u => ({ id: u.id, nome: u.nome, matricula: u.matricula || '-' })), error };
 }
 
 async function getTurmasPorEstudanteMap() {
@@ -54,11 +58,11 @@ async function getTurmasPorEstudanteMap() {
 }
 
 async function getNecessidadesMaps() {
-  const [{ data: necessidades }, { data: tipos }, { data: aee }, { data: professores }] = await Promise.all([
+  const [{ data: necessidades }, { data: tipos }, { data: aee }, { data: usuarios }] = await Promise.all([
     supabaseFetchAll('estudante_necessidades', { select: 'estudante_id_pessoa,tipo_necessidade_id' }),
     supabaseFetchAll('tipo_necessidades', { select: 'id,nome' }),
-    supabaseFetchAll('estudante_professores_aee', { select: 'estudante_id_pessoa,professor_id_pessoa' }),
-    supabaseFetchAll('professores', { select: 'id_pessoa,nome,matricula' }),
+    supabaseFetchAll('estudante_professores_aee', { select: 'estudante_id_pessoa,professor_usuario_id' }),
+    supabaseFetchAll('usuarios', { select: 'id,nome,matricula' }),
   ]);
 
   const tipoNome = {};
@@ -71,13 +75,13 @@ async function getNecessidadesMaps() {
     if (nome) necessidadesPorEstudante[n.estudante_id_pessoa].push(nome);
   });
 
-  const profMap = {};
-  (professores || []).forEach(p => { if (p.id_pessoa != null) profMap[p.id_pessoa] = p; });
+  const usrMap = {};
+  (usuarios || []).forEach(u => { if (u.id != null) usrMap[u.id] = u; });
 
   const aeePorEstudante = {};
   (aee || []).forEach(a => {
-    const p = profMap[a.professor_id_pessoa];
-    aeePorEstudante[a.estudante_id_pessoa] = p ? { professor_id_pessoa: p.id_pessoa, nome: p.nome, matricula: p.matricula || '-' } : null;
+    const u = usrMap[a.professor_usuario_id];
+    aeePorEstudante[a.estudante_id_pessoa] = u ? { professor_usuario_id: u.id, nome: u.nome, matricula: u.matricula || '-' } : null;
   });
 
   return { necessidadesPorEstudante, aeePorEstudante };
@@ -93,20 +97,20 @@ export async function getNecessidadesEstudante(estudanteIdPessoa) {
   (tipos || []).forEach(t => { tipoMap[t.id] = t.nome; });
 
   const { data: aee } = await supabaseFetchAll('estudante_professores_aee', {
-    select: 'professor_id_pessoa',
+    select: 'professor_usuario_id',
     filters: [{ col: 'estudante_id_pessoa', val: estudanteIdPessoa }],
     limit: 5,
   });
 
   let professorAee = null;
   if (aee && aee.length) {
-    const { data: professores } = await supabaseQuery('professores', {
-      select: 'id_pessoa,nome,matricula',
-      filters: [{ col: 'id_pessoa', val: aee[0].professor_id_pessoa }],
+    const { data: usuarios } = await supabaseQuery('usuarios', {
+      select: 'id,nome,matricula',
+      filters: [{ col: 'id', val: aee[0].professor_usuario_id }],
     });
-    if (professores && professores.length) {
-      const p = professores[0];
-      professorAee = { professor_id_pessoa: p.id_pessoa, nome: p.nome, matricula: p.matricula || '-' };
+    if (usuarios && usuarios.length) {
+      const p = usuarios[0];
+      professorAee = { professor_usuario_id: p.id, nome: p.nome, matricula: p.matricula || '-' };
     }
   }
 
@@ -151,13 +155,13 @@ export async function listarEstudantesCadastro({ turmaId = null, nome = '' } = {
     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
-export async function salvarNecessidadesEstudante(estudanteIdPessoa, tipoIds = [], professorIdPessoa = null) {
+export async function salvarNecessidadesEstudante(estudanteIdPessoa, tipoIds = [], professorUsuarioId = null) {
   const tiposUnicos = [...new Set(tipoIds.map(Number).filter(id => id))];
 
   const { data, error } = await supabaseRpc('salvar_necessidades', {
     p_estudante_id_pessoa: Number(estudanteIdPessoa),
     p_tipo_ids: tiposUnicos,
-    p_professor_id_pessoa: professorIdPessoa ? Number(professorIdPessoa) : null,
+    p_professor_usuario_id: professorUsuarioId ? Number(professorUsuarioId) : null,
   });
 
   if (error) return { error };

@@ -1,5 +1,5 @@
 import { supabaseQuery, supabaseFetchAll } from '../services/supabase.js';
-import { isProfessor, isProfessorAee, getProfessorVinculo } from '../services/authService.js';
+import { isProfessor, isProfessorAee, getProfessorVinculo, getCurrentUser } from '../services/authService.js';
 
 let refCache = null;
 
@@ -66,7 +66,8 @@ export function clearCache() { refCache = null; permitidosPromise = null; }
 
 // Conjunto de estudantes que o usuário logado pode visualizar:
 //  - Professor: estudantes com notas nas suas turmas (alocações);
-//  - Professor do AEE: estudantes vinculados a ele em estudante_professores_aee;
+//  - Professor do AEE: estudantes vinculados a ele (usuários) em
+//    estudante_professores_aee.professor_usuario_id;
 //  - demais perfis: null (todos).
 // O resultado é cacheado como Promise para evitar corrida entre chamadas
 // concorrentes (várias funções chamam isto em Promise.all).
@@ -79,12 +80,12 @@ export function getEstudantesPermitidos() {
 
 async function calcularEstudantesPermitidos() {
   if (!isProfessor() && !isProfessorAee()) return null;
-  const vinculo = await getProfessorVinculo();
-  if (!vinculo) return new Set();
   if (isProfessorAee()) {
+    const user = getCurrentUser();
+    if (!user || user.id == null) return new Set();
     const { data: aee } = await supabaseFetchAll('estudante_professores_aee', {
       select: 'estudante_id_pessoa',
-      filters: [{ col: 'professor_id_pessoa', val: vinculo.id_pessoa }],
+      filters: [{ col: 'professor_usuario_id', val: Number(user.id) }],
     });
     const idsExternos = new Set((aee || []).map(a => a.estudante_id_pessoa));
     await getRefCache();
@@ -94,6 +95,8 @@ async function calcularEstudantesPermitidos() {
     });
     return set;
   }
+  const vinculo = await getProfessorVinculo();
+  if (!vinculo) return new Set();
   await getRefCache();
   const aIds = refCache.alocacoes.filter(a => vinculo.turmaIds.includes(a.turma_id)).map(a => a.id);
   const set = new Set();
