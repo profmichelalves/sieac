@@ -237,6 +237,7 @@ body.sidebar-collapsed .sidebar-user-gear { display: none; }
 
 @media (max-width: 768px) {
   .sidebar-collapse-btn { display: none; }
+  body.sidebar-open { overflow: hidden; }
   body.sidebar-collapsed { --sieac-sidebar-width: 260px; }
   body.sidebar-collapsed .sidebar-logo { justify-content: flex-start; padding: 18px 20px; }
   body.sidebar-collapsed .sidebar-logo-text { display: block; }

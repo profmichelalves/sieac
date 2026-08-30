@@ -4,6 +4,10 @@ import { registrarLog, LOG_ACTIONS } from '../services/logService.js';
 
 let inicializada = false;
 
+function setScrollLock(open) {
+  document.body.classList.toggle('sidebar-open', open);
+}
+
 export function initSidebar() {
   if (inicializada) return;
   inicializada = true;
@@ -22,6 +26,7 @@ export function initSidebar() {
         if (window.innerWidth <= 768) {
           sidebar.classList.remove('open');
           backdrop.classList.remove('show');
+          setScrollLock(false);
         }
       }
     });
@@ -29,8 +34,10 @@ export function initSidebar() {
 
   if (toggler) {
     toggler.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-      backdrop.classList.toggle('show');
+      const willOpen = !sidebar.classList.contains('open');
+      sidebar.classList.toggle('open', willOpen);
+      backdrop.classList.toggle('show', willOpen);
+      setScrollLock(willOpen);
     });
   }
 
@@ -46,6 +53,7 @@ export function initSidebar() {
     backdrop.addEventListener('click', () => {
       sidebar.classList.remove('open');
       backdrop.classList.remove('show');
+      setScrollLock(false);
     });
   }
 
@@ -103,13 +111,16 @@ export function initSidebar() {
 function initSwipeGestures(sidebar, backdrop) {
   const isMobile = () => window.innerWidth <= 768;
   const isOpen = () => sidebar.classList.contains('open');
+  const EDGE_TOLERANCE = 48;
   const openSidebar = () => {
     sidebar.classList.add('open');
     backdrop.classList.add('show');
+    setScrollLock(true);
   };
   const closeSidebar = () => {
     sidebar.classList.remove('open');
     backdrop.classList.remove('show');
+    setScrollLock(false);
   };
 
   let startX = null;
@@ -126,10 +137,16 @@ function initSwipeGestures(sidebar, backdrop) {
     const t = e.changedTouches[0];
     const dx = t.clientX - startX;
     const dy = t.clientY - startY;
+    const startedAtEdge = startX <= EDGE_TOLERANCE;
     startX = null;
     if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx > 0 && !isOpen()) openSidebar();
-    else if (dx < 0 && isOpen()) closeSidebar();
+    if (dx > 0) {
+      // Abre apenas se o gesto começou na margem esquerda (ou bem próxima)
+      // e percorreu pelo menos 50% da largura da tela.
+      if (!isOpen() && startedAtEdge && dx >= window.innerWidth * 0.5) openSidebar();
+    } else if (dx < 0 && isOpen()) {
+      closeSidebar();
+    }
   }, { passive: true });
 }
 

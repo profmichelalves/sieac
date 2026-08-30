@@ -22,6 +22,17 @@ const routes = {
 };
 
 let currentPage = null;
+const appLoading = document.getElementById('app-loading');
+
+function showAppLoading() {
+  appLoading?.classList.remove('hidden');
+  document.body.classList.add('app-loading-active');
+}
+
+function hideAppLoading() {
+  appLoading?.classList.add('hidden');
+  document.body.classList.remove('app-loading-active');
+}
 
 export async function navigate() {
   let hash = window.location.hash.replace('#', '') || 'login';
@@ -88,21 +99,25 @@ export async function navigate() {
     }
   }
 
-  if (['login', 'registrar', 'redefinir-primeiro-acesso'].includes(hash)) {
-    document.getElementById('auth-container').style.display = 'flex';
-    document.getElementById('app-shell').style.display = 'none';
-  } else {
-    document.getElementById('auth-container').style.display = 'none';
-    document.getElementById('app-shell').style.display = 'flex';
+  if (route.auth) {
+    showAppLoading();
   }
-
-  if (currentPage && currentPage.unload) {
-    currentPage.unload();
-  }
-
-  const { setActiveRoute } = await import('./components/Sidebar.js');
 
   try {
+    if (['login', 'registrar', 'redefinir-primeiro-acesso'].includes(hash)) {
+      document.getElementById('auth-container').style.display = 'flex';
+      document.getElementById('app-shell').style.display = 'none';
+    } else {
+      document.getElementById('auth-container').style.display = 'none';
+      document.getElementById('app-shell').style.display = 'flex';
+    }
+
+    if (currentPage && currentPage.unload) {
+      currentPage.unload();
+    }
+
+    const { setActiveRoute } = await import('./components/Sidebar.js');
+
     if (hash === 'login') {
       const { renderLogin } = await import('./pages/authPage.js');
       renderLogin();
@@ -138,6 +153,8 @@ export async function navigate() {
         </div>
       `;
     }
+  } finally {
+    hideAppLoading();
   }
 }
 
