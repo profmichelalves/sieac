@@ -51,7 +51,10 @@
           <div class="sidebar-item" data-route="dashboard-estudante">
             <i class="bi bi-person-lines-fill"></i><span>Estudante</span>
           </div>
-          <div class="sidebar-section">Relatórios</div>
+          <div class="sidebar-section sidebar-group-toggle" data-group="relatorios" role="button" tabindex="0" aria-expanded="true">
+            <span>Relatórios</span><i class="bi bi-chevron-down sidebar-group-chevron"></i>
+          </div>
+          <div class="sidebar-group" data-group-content="relatorios">
           <div class="sidebar-item" data-route="relatorios">
             <i class="bi bi-file-earmark-bar-graph"></i><span>Notas</span>
           </div>
@@ -61,7 +64,11 @@
           <div class="sidebar-item" data-route="relatorio-nee">
             <i class="bi bi-person-wheelchair"></i><span>Estudantes com NEE</span>
           </div>
-          <div class="sidebar-section" id="section-cadastros">Cadastros</div>
+          </div>
+          <div class="sidebar-section sidebar-group-toggle" id="section-cadastros" data-group="cadastros" role="button" tabindex="0" aria-expanded="true">
+            <span>Cadastros</span><i class="bi bi-chevron-down sidebar-group-chevron"></i>
+          </div>
+          <div class="sidebar-group" data-group-content="cadastros">
           <div class="sidebar-item" data-route="cadastro-etapas" id="menu-cadastro-etapas" style="display:none;">
             <i class="bi bi-layers"></i><span>Etapas de Ensino</span>
           </div>
@@ -86,7 +93,11 @@
           <div class="sidebar-item" data-route="lancar-frequencia" id="menu-lancar-frequencia" style="display:none;">
             <i class="bi bi-calendar-check"></i><span>Lançar Frequência</span>
           </div>
-          <div class="sidebar-section">Dados</div>
+          </div>
+          <div class="sidebar-section sidebar-group-toggle" data-group="dados" role="button" tabindex="0" aria-expanded="true">
+            <span>Dados</span><i class="bi bi-chevron-down sidebar-group-chevron"></i>
+          </div>
+          <div class="sidebar-group" data-group-content="dados">
           <div class="sidebar-item" data-route="cadastro-estudantes" id="menu-cadastro-estudantes" style="display:none;">
             <i class="bi bi-person-gear"></i><span>Cadastro de Estudantes</span>
           </div>
@@ -101,6 +112,7 @@
           </div>
           <div class="sidebar-item" data-route="logs" id="menu-logs" style="display:none;">
             <i class="bi bi-clipboard-data"></i><span>Logs</span>
+          </div>
           </div>
         </nav>
         <div class="sidebar-footer">

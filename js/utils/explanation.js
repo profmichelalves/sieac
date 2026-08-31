@@ -60,7 +60,7 @@ export function initInfoButtons() {
     }
 
     document.getElementById('info-modal-title').textContent = btn.dataset.infoTitulo || 'Como é calculado?';
-    document.getElementById('info-modal-body').textContent = btn.dataset.info || '';
+    document.getElementById('info-modal-body').innerHTML = btn.dataset.info || '';
     new bootstrap.Modal(modalEl).show();
   });
 }

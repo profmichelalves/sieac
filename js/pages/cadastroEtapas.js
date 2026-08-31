@@ -18,9 +18,12 @@ export async function render() {
       <div class="card-sieac-header">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <span>Etapas de Ensino</span>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <input type="text" class="form-control form-control-sm" id="etapa-busca"
-              placeholder="Buscar etapa..." style="max-width:220px;">
+          <div style="display:flex;gap:8px;align-items:flex-end;">
+            <div class="filter-group">
+              <label class="filter-label" for="etapa-busca">Buscar etapa</label>
+              <input type="text" class="filter-input" id="etapa-busca"
+                placeholder="Buscar etapa..." style="max-width:220px;">
+            </div>
             <button class="btn btn-sm btn-primary" id="btn-nova-etapa">
               <i class="bi bi-plus-lg"></i> Nova Etapa
             </button>
@@ -54,8 +57,10 @@ export async function render() {
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
           </div>
           <div class="modal-body">
-            <label class="form-label" for="etapa-nome">Nome da etapa</label>
-            <input type="text" class="form-control" id="etapa-nome" placeholder="Ex.: Ensino Médio">
+            <div class="filter-group">
+              <label class="filter-label" for="etapa-nome">Nome da etapa</label>
+              <input type="text" class="filter-input" id="etapa-nome" placeholder="Ex.: Ensino Médio">
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:var(--sieac-radius-pill);">Cancelar</button>

@@ -20,9 +20,12 @@ export async function render() {
       <div class="card-sieac-header">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <span>Séries</span>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <input type="text" class="form-control form-control-sm" id="serie-busca"
-              placeholder="Buscar série..." style="max-width:220px;">
+          <div style="display:flex;gap:8px;align-items:flex-end;">
+            <div class="filter-group">
+              <label class="filter-label" for="serie-busca">Buscar série</label>
+              <input type="text" class="filter-input" id="serie-busca"
+                placeholder="Buscar série..." style="max-width:220px;">
+            </div>
             <button class="btn btn-sm btn-primary" id="btn-nova-serie">
               <i class="bi bi-plus-lg"></i> Nova Série
             </button>
@@ -57,10 +60,14 @@ export async function render() {
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
           </div>
           <div class="modal-body">
-            <label class="form-label" for="serie-nome">Nome da série</label>
-            <input type="text" class="form-control" id="serie-nome" placeholder="Ex.: 1º Ano">
-            <label class="form-label mt-3" for="serie-etapa">Etapa de ensino</label>
-            <select class="form-select" id="serie-etapa"></select>
+            <div class="filter-group">
+              <label class="filter-label" for="serie-nome">Nome da série</label>
+              <input type="text" class="filter-input" id="serie-nome" placeholder="Ex.: 1º Ano">
+            </div>
+            <div class="filter-group mt-3">
+              <label class="filter-label" for="serie-etapa">Etapa de ensino</label>
+              <select class="filter-select" id="serie-etapa"></select>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:var(--sieac-radius-pill);">Cancelar</button>

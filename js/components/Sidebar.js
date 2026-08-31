@@ -21,6 +21,33 @@ export function initSidebar() {
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
 
+  // --- Grupos colapsáveis (tudo exceto Dashboard) ---------------------
+  // O grupo Dashboard não possui toggle e fica sempre expandido. Os demais
+  // grupos nascem colapsados e podem ser expandidos/recolhidos pelo usuário.
+  $$('.sidebar-group-toggle').forEach(toggle => {
+    const groupName = toggle.dataset.group;
+    const content = document.querySelector(`[data-group-content="${groupName}"]`);
+    const setExpanded = (open) => {
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (content) content.classList.toggle('hidden', !open);
+    };
+
+    // Estado inicial: todos colapsados (apenas o Dashboard nasce expandido).
+    setExpanded(false);
+
+    toggle.addEventListener('click', (e) => {
+      if (e.target.closest('.sidebar-group-toggle')) {
+        setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
+      }
+    });
+    toggle.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
+      }
+    });
+  });
+
   items.forEach(item => {
     item.addEventListener('click', () => {
       const route = item.dataset.route;

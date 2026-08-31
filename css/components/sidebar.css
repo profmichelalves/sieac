@@ -101,7 +101,41 @@ body.sidebar-collapsed .sidebar-nav { padding: 16px 8px; }
   padding: 16px 12px 8px;
 }
 
+/* Grupo colapsável (tudo exceto Dashboard) */
+.sidebar-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  opacity: 1;
+}
+.sidebar-group-toggle:hover,
+.sidebar-group-toggle:focus-visible {
+  opacity: 1;
+  color: #fff;
+  outline: none;
+}
+.sidebar-group-toggle .sidebar-group-chevron {
+  font-size: 0.7rem;
+  transition: transform var(--sieac-transition);
+}
+.sidebar-group-toggle[aria-expanded="false"] .sidebar-group-chevron {
+  transform: rotate(-90deg);
+}
+
+.sidebar-group { overflow: hidden; }
+.sidebar-group.hidden { display: none; }
+
+
 body.sidebar-collapsed .sidebar-section { display: none; }
+
+/* No modo colapsado em desktop (trilho de ícones) os grupos ficam sempre
+   visíveis, pois os cabeçalhos de seção ficam ocultos nesse modo. */
+@media (min-width: 769px) {
+  body.sidebar-collapsed .sidebar-group { display: block; }
+}
 
 .sidebar-item {
   display: flex;

@@ -18,9 +18,12 @@ export async function render() {
       <div class="card-sieac-header">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <span>Professores</span>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <input type="text" class="form-control form-control-sm" id="professor-busca"
-              placeholder="Buscar professor..." style="max-width:220px;">
+          <div style="display:flex;gap:8px;align-items:flex-end;">
+            <div class="filter-group">
+              <label class="filter-label" for="professor-busca">Buscar professor</label>
+              <input type="text" class="filter-input" id="professor-busca"
+                placeholder="Buscar professor..." style="max-width:220px;">
+            </div>
             <button class="btn btn-sm btn-primary" id="btn-novo-professor">
               <i class="bi bi-plus-lg"></i> Novo Professor
             </button>
@@ -55,10 +58,14 @@ export async function render() {
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
           </div>
           <div class="modal-body">
-            <label class="form-label" for="professor-nome">Nome</label>
-            <input type="text" class="form-control" id="professor-nome" placeholder="Ex.: Maria da Silva">
-            <label class="form-label mt-3" for="professor-matricula">Matrícula</label>
-            <input type="text" class="form-control" id="professor-matricula" placeholder="Ex.: 1234">
+            <div class="filter-group">
+              <label class="filter-label" for="professor-nome">Nome</label>
+              <input type="text" class="filter-input" id="professor-nome" placeholder="Ex.: Maria da Silva">
+            </div>
+            <div class="filter-group mt-3">
+              <label class="filter-label" for="professor-matricula">Matrícula</label>
+              <input type="text" class="filter-input" id="professor-matricula" placeholder="Ex.: 1234">
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:var(--sieac-radius-pill);">Cancelar</button>

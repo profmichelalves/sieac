@@ -23,16 +23,20 @@ export async function render() {
       <div class="card-sieac-body">
         <div class="row g-3">
           <div class="col-md-8">
-            <label class="form-label" for="lf-turma">Turma</label>
-            <select class="form-select" id="lf-turma">
-              <option value="">— Selecione —</option>
-            </select>
+            <div class="filter-group">
+              <label class="filter-label" for="lf-turma">Turma</label>
+              <select class="filter-select" id="lf-turma">
+                <option value="">— Selecione —</option>
+              </select>
+            </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label" for="lf-mes">Mês de referência</label>
-            <select class="form-select" id="lf-mes">
-              ${MESES.map(m => `<option value="${m}">${m}</option>`).join('')}
-            </select>
+            <div class="filter-group">
+              <label class="filter-label" for="lf-mes">Mês de referência</label>
+              <select class="filter-select" id="lf-mes">
+                ${MESES.map(m => `<option value="${m}">${m}</option>`).join('')}
+              </select>
+            </div>
           </div>
         </div>
       </div>

@@ -21,8 +21,11 @@ export async function render() {
       <div class="card-sieac-header">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <span>Turmas</span>
-          <input type="text" class="form-control form-control-sm" id="turma-busca"
-            placeholder="Buscar turma..." style="max-width:260px;">
+          <div class="filter-group" style="max-width:260px;">
+            <label class="filter-label" for="turma-busca">Buscar turma</label>
+            <input type="text" class="filter-input" id="turma-busca"
+              placeholder="Buscar turma...">
+          </div>
         </div>
       </div>
       <div class="card-sieac-body">

@@ -75,30 +75,38 @@ export async function render() {
       <div class="card-sieac-body">
         <div class="row g-3">
           <div class="col-md-4">
-            <label class="form-label" for="ln-turma">Turma</label>
-            <select class="form-select" id="ln-turma">
-              <option value="">— Selecione —</option>
-            </select>
+            <div class="filter-group">
+              <label class="filter-label" for="ln-turma">Turma</label>
+              <select class="filter-select" id="ln-turma">
+                <option value="">— Selecione —</option>
+              </select>
+            </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label" for="ln-disciplina">Disciplina</label>
-            <select class="form-select" id="ln-disciplina">
-              <option value="">— Selecione —</option>
-            </select>
+            <div class="filter-group">
+              <label class="filter-label" for="ln-disciplina">Disciplina</label>
+              <select class="filter-select" id="ln-disciplina">
+                <option value="">— Selecione —</option>
+              </select>
+            </div>
           </div>
           <div class="col-md-2">
-            <label class="form-label" for="ln-professor">Professor</label>
-            <select class="form-select" id="ln-professor">
-              <option value="">— Selecione —</option>
-            </select>
+            <div class="filter-group">
+              <label class="filter-label" for="ln-professor">Professor</label>
+              <select class="filter-select" id="ln-professor">
+                <option value="">— Selecione —</option>
+              </select>
+            </div>
           </div>
           <div class="col-md-2">
-            <label class="form-label" for="ln-periodicidade">Periodicidade</label>
-            <select class="form-select" id="ln-periodicidade">
-              <option value="Anual">Anual</option>
-              <option value="1º Semestre">1º Semestre</option>
-              <option value="2º Semestre">2º Semestre</option>
-            </select>
+            <div class="filter-group">
+              <label class="filter-label" for="ln-periodicidade">Periodicidade</label>
+              <select class="filter-select" id="ln-periodicidade">
+                <option value="Anual">Anual</option>
+                <option value="1º Semestre">1º Semestre</option>
+                <option value="2º Semestre">2º Semestre</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
