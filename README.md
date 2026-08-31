@@ -46,7 +46,7 @@ Indicadores consolidados com cards:
 - **Estudantes** e **Turmas** (considerando os filtros/perfil).
 - **Média Geral** — média das médias finais.
 - **Frequência** — média dos percentuais de frequência.
-- **Aprovação / Recuperação / Reprovação / Sem Notas Lançadas** — classificam os estudantes conforme a frequência e a quantidade de disciplinas abaixo de 6,0. Cada card tem botão **PDF** com a lista de estudantes.
+- **Aprovação / Recuperação / Reprovação / Sem Notas Lançadas** — classificam os estudantes conforme a frequência e a quantidade de disciplinas abaixo de 6,0. Cada card tem botão **PDF** com a lista de estudantes (no PDF de **Em Aprovação/Aprovados**, os estudantes são ordenados por **Média Geral** e depois por **Frequência**).
 - Gráficos: **Distribuição dos Resultados Finais** (donut) e **Média por Série** (barras).
 
 ### Análise de Desempenho
@@ -70,10 +70,10 @@ Indicadores consolidados com cards:
 
 ### Consulta por Estudante
 - Filtro por **turma** e busca por **nome ou matrícula**.
-- **Informações do Estudante** — nome, matrícula, turma, série, turno, necessidades (NEE) e professor de AEE (exibidas como badges).
-- **Notas por Disciplina** — bimestres, média acumulada e situação por disciplina.
-- **Frequência Mensal** — percentual por mês com status (OK quando ≥ 75%).
-- **Evolução — Média por Bimestre** (gráfico de linha).
+- **Informações do Estudante** — nome, matrícula, turma, série, turno, necessidades (NEE), professor de AEE (exibidas como badges) e a **Situação** (Aprovado/Em Aprovação, Recuperação/Em Recuperação ou Reprovado/Em Reprovação), calculada pela frequência total e pela quantidade de disciplinas abaixo de 6,0, com **Frequência total (%)** e **Disciplinas abaixo da média**.
+- **Notas por Disciplina** — bimestres, média acumulada e situação por disciplina, com ordenação por clique nas colunas.
+- **Evolução — Frequência Mensal** (gráfico de linha) — bolinhas **vermelhas** quando o percentual é menor que 75%.
+- **Evolução — Média por Bimestre** (gráfico de linha) — bolinhas **verdes** (média ≥ 6) e **vermelhas** (média < 6).
 - Botão **Gerar PDF** com os dados do estudante.
 
 ---
@@ -125,7 +125,7 @@ A plataforma importa os dados a partir de planilhas de **notas** e de **frequên
 
 - Registra as ações críticas: login, tentativa de login, logout, cadastro, alteração de perfil, ativação/desativação/exclusão de usuário, redefinição de senha, importações, limpeza de dados, edição de necessidades e geração de PDFs.
 - Filtros por **usuário/email**, **ação** e **período**.
-- Paginação e botão **Limpar Todos os Logs**.
+- Paginação, botão **Limpar Todos os Logs** e botão **Excluir Logs Filtrados** (remove apenas os registros exibidos pelos filtros atuais).
 
 ---
 
