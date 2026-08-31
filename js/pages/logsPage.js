@@ -20,6 +20,7 @@ const ACAO_LABELS = {
   cadastro_entidade: 'Cadastro de informações (Administrador)',
   lancar_notas: 'Lançamento de notas (Administrador)',
   lancar_frequencia: 'Lançamento de frequência (Administrador)',
+  excluir_logs_filtrados: 'Exclusão de logs (filtrados)',
 };
 
 let paginaAtual = 0;
@@ -58,9 +59,12 @@ export async function render() {
             <button class="btn btn-outline-primary" id="log-filtrar" style="width:100%;">Filtrar</button>
           </div>
         </div>
-        <div style="margin-top:12px;text-align:right;">
-          <button class="btn btn-outline-danger btn-sm" id="log-limpar">
-            <i class="bi bi-trash3"></i> Limpar Todos os Logs
+        <div style="margin-top:12px;text-align:right;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-outline-danger btn-sm" id="log-excluir-filtrados">
+            <i class="bi bi-trash3"></i> Excluir Logs Filtrados
+          </button>
+          <button class="btn btn-danger btn-sm" id="log-limpar">
+            <i class="bi bi-x-octagon"></i> Limpar Todos os Logs
           </button>
         </div>
       </div>
@@ -129,7 +133,36 @@ export async function render() {
     showToast('Logs limpos com sucesso!', 'success');
   });
 
+  document.getElementById('log-excluir-filtrados').addEventListener('click', async () => {
+    const f = obterFiltros();
+    if (!confirm('Excluir apenas os logs que correspondem aos filtros atuais? Esta operação não pode ser desfeita.')) return;
+    const res = await supabaseRpc('excluir_logs_filtrados', {
+      p_busca: f.busca || null,
+      p_acao: f.acao || null,
+      p_de: f.de ? dataLocalParaUtc(f.de, false) : null,
+      p_ate: f.ate ? dataLocalParaUtc(f.ate, true) : null,
+    });
+    if (res.error) {
+      showToast('Erro ao excluir logs filtrados: ' + res.error, 'error');
+      return;
+    }
+    const qtd = Number(res.data) || 0;
+    registrarLog(LOG_ACTIONS.EXCLUIR_LOGS_FILTRADOS, { quantidade: qtd, busca: f.busca, acao: f.acao, de: f.de, ate: f.ate, origem: 'tela de logs' });
+    paginaAtual = 0;
+    await carregarLogs();
+    showToast(qtd + (qtd === 1 ? ' log excluído' : ' logs excluídos') + ' com sucesso!', 'success');
+  });
+
   await carregarLogs();
+}
+
+function obterFiltros() {
+  return {
+    busca: document.getElementById('log-busca').value.trim(),
+    acao: document.getElementById('log-acao').value,
+    de: document.getElementById('log-de').value,
+    ate: document.getElementById('log-ate').value,
+  };
 }
 
 function dataHoje() {
@@ -150,16 +183,13 @@ async function carregarLogs() {
   const tbody = document.getElementById('logs-tbody');
   if (!tbody) return;
 
-  const busca = document.getElementById('log-busca').value.trim();
-  const acao = document.getElementById('log-acao').value;
-  const de = document.getElementById('log-de').value;
-  const ate = document.getElementById('log-ate').value;
+  const f = obterFiltros();
 
   const { data, error } = await supabaseRpc('listar_logs', {
-    p_busca: busca || null,
-    p_acao: acao || null,
-    p_de: de ? dataLocalParaUtc(de, false) : null,
-    p_ate: ate ? dataLocalParaUtc(ate, true) : null,
+    p_busca: f.busca || null,
+    p_acao: f.acao || null,
+    p_de: f.de ? dataLocalParaUtc(f.de, false) : null,
+    p_ate: f.ate ? dataLocalParaUtc(f.ate, true) : null,
     p_limit: PAGE_SIZE + 1,
     p_offset: paginaAtual * PAGE_SIZE,
   });

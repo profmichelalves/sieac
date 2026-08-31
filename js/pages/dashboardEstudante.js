@@ -9,6 +9,7 @@ import { loadEstudanteFiltros, saveEstudanteFiltros, clearEstudanteFiltros } fro
 import { gerarPdfRelatorio } from '../utils/pdf.js';
 
 let evolChart = null;
+let freqChart = null;
 let studentCombo = null;
 let turmaCombo = null;
 let currentStudentId = null;
@@ -16,11 +17,12 @@ let turmaAtualId = '';
 let studentInfo = {};
 let studentNotas = [];
 let studentFreqs = [];
+let notasSort = { col: 'disciplina', dir: 'asc' };
 
 function situacaoBadge(s) {
   if (s === 'Aprovado' || s === 'Em Aprovação') return 'badge-sieac-success';
   if (s === 'Recuperação Final' || s === 'Em Recuperação') return 'badge-sieac-warning';
-  return 'badge-sieac-secondary';
+  return 'badge-sieac-danger';
 }
 
 export async function render() {
@@ -31,6 +33,11 @@ export async function render() {
       .student-info-item { background:var(--sieac-bg); border-radius:var(--sieac-radius); padding:12px 16px; }
       .student-info-item label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--sieac-text-muted); display:block; margin-bottom:2px; }
       .student-info-item span { font-size:0.95rem; font-weight:600; color:var(--sieac-text); }
+      #table-notas-estudante th.sortable { cursor:pointer; user-select:none; position:relative; }
+      #table-notas-estudante th.sortable:hover { color:var(--sieac-secondary); }
+      #table-notas-estudante th.sortable .sort-ind { display:inline-block; width:0; height:0; margin-left:4px; vertical-align:middle; opacity:0.35; }
+      #table-notas-estudante th.sortable.sorted-asc .sort-ind { border-left:4px solid transparent; border-right:4px solid transparent; border-bottom:6px solid var(--sieac-secondary); opacity:1; }
+      #table-notas-estudante th.sortable.sorted-desc .sort-ind { border-left:4px solid transparent; border-right:4px solid transparent; border-top:6px solid var(--sieac-secondary); opacity:1; }
     </style>
 
     <div class="page-title">Consulta por Estudante</div>
@@ -62,7 +69,7 @@ export async function render() {
       <div class="card-sieac mb-4">
         <div class="card-sieac-body">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <strong style="font-size:1rem;color:var(--sieac-text);">Informações do Estudante ${infoBtn('Informações do Estudante', 'Dados do estudante (nome, matrícula, turma, série e turno) carregados do cadastro e das notas vinculadas ao aluno.')}</strong>
+            <strong style="font-size:1rem;color:var(--sieac-text);">Informações do Estudante ${infoBtn('Informações do Estudante', 'Dados do estudante (nome, matrícula, turma, série e turno) carregados do cadastro e das notas vinculadas ao aluno. A Situação é calculada pela frequência total (média dos percentuais mensais) e pela quantidade de disciplinas com média inferior a 6,0: Aprovado (nenhuma abaixo e frequência ≥ 75%), Recuperação (1 a 6 abaixo com frequência ≥ 75%) e Reprovado (frequência < 75% ou mais de 6 abaixo).')}</strong>
             <button class="btn btn-sm btn-primary no-print" id="btn-pdf-estudante">
               <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
             </button>
@@ -75,19 +82,20 @@ export async function render() {
             <div class="student-info-item"><label>Turno</label><span id="e-turno">—</span></div>
             <div class="student-info-item"><label>Necessidades</label><span id="e-necessidades">—</span></div>
             <div class="student-info-item"><label>Professor AEE</label><span id="e-professor-aee">—</span></div>
+            <div class="student-info-item"><label>Situação</label><span id="e-situacao">—</span></div>
           </div>
         </div>
       </div>
 
       <div class="row g-4">
-        <div class="col-md-7">
+        <div class="col-md-12">
           <div class="card-sieac">
             <div class="card-sieac-header">Notas por Disciplina ${infoBtn('Notas por Disciplina', 'Notas de cada bimestre e média final por disciplina, extraídas diretamente do cadastro de notas do estudante.' + EXPLICACAO_RESULTADO)}</div>
             <div class="card-sieac-body">
               <div class="table-responsive-custom">
                 <table class="table-sieac" id="table-notas-estudante">
                   <thead>
-                    <tr><th>Disciplina</th><th class="num">1º Bim</th><th class="num">2º Bim</th><th class="num">3º Bim</th><th class="num">4º Bim</th><th class="num">Média Acumulada</th><th>Situação</th></tr>
+                    <tr><th class="sortable" data-sort="disciplina">Disciplina <span class="sort-ind"></span></th><th class="num sortable" data-sort="bim1">1º Bim <span class="sort-ind"></span></th><th class="num sortable" data-sort="bim2">2º Bim <span class="sort-ind"></span></th><th class="num sortable" data-sort="bim3">3º Bim <span class="sort-ind"></span></th><th class="num sortable" data-sort="bim4">4º Bim <span class="sort-ind"></span></th><th class="num sortable" data-sort="media">Média Acumulada <span class="sort-ind"></span></th><th class="sortable" data-sort="situacao">Situação <span class="sort-ind"></span></th></tr>
                   </thead>
                   <tbody id="tbody-notas-estudante">
                     <tr><td colspan="7" style="text-align:center;color:var(--sieac-text-muted);">Nenhum dado disponível</td></tr>
@@ -97,31 +105,22 @@ export async function render() {
             </div>
           </div>
         </div>
-        <div class="col-md-5">
-          <div class="card-sieac">
-            <div class="card-sieac-header">Frequência Mensal ${infoBtn('Frequência Mensal', 'Percentual de frequência por mês de referência, extraído do cadastro de frequências do estudante. Status OK quando ≥ 75%.')}</div>
-            <div class="card-sieac-body">
-              <div class="table-responsive-custom">
-                <table class="table-sieac" id="table-freq-estudante">
-                  <thead>
-                    <tr><th>Mês</th><th class="num">Frequência</th><th>Status</th></tr>
-                  </thead>
-                  <tbody id="tbody-freq-estudante">
-                    <tr><td colspan="3" style="text-align:center;color:var(--sieac-text-muted);">Nenhum dado disponível</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <div class="row g-4 mt-2">
-        <div class="col-md-12">
+        <div class="col-md-6">
           <div class="chart-card">
             <div class="chart-card-title">Evolução — Média por Bimestre ${infoBtn('Evolução — Média por Bimestre', 'Média das notas de cada bimestre do estudante, considerando apenas notas maiores que zero.' + EXPLICACAO_RESULTADO)}</div>
             <div class="chart-container" style="height:280px;">
               <canvas id="chart-evolucao-estudante"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="chart-card">
+            <div class="chart-card-title">Evolução — Frequência Mensal ${infoBtn('Evolução — Frequência Mensal', 'Evolução do percentual de frequência do estudante por mês de referência. O percentual de referência para uma frequência adequada é ≥ 75%.')}</div>
+            <div class="chart-container" style="height:280px;">
+              <canvas id="chart-evolucao-freq"></canvas>
             </div>
           </div>
         </div>
@@ -161,6 +160,7 @@ export function unload() {
   if (studentCombo) { studentCombo.destroy(); studentCombo = null; }
   if (turmaCombo) { turmaCombo.destroy(); turmaCombo = null; }
   if (evolChart) { evolChart.destroy(); evolChart = null; }
+  if (freqChart) { freqChart.destroy(); freqChart = null; }
 }
 
 function atualizarContagem(total, texto) {
@@ -221,6 +221,7 @@ async function carregarEstudante(id) {
   }
   currentStudentId = id;
   saveEstudanteFiltros({ turmaId: turmaAtualId, estudanteId: id });
+  notasSort = { col: 'disciplina', dir: 'asc' };
   const { data: estudante, error } = await supabaseQuery('estudantes', { select: 'id,id_pessoa,nome,matricula', filters: [{ col: 'id', val: id }] });
   if (error || !estudante || !estudante.length) {
     showToast('Estudante não encontrado', 'error');
@@ -254,39 +255,23 @@ async function carregarEstudante(id) {
 
   const notas = await getNotasEstudante(id);
   studentNotas = notas.data || [];
-  const tbodyNotas = document.getElementById('tbody-notas-estudante');
-  if (studentNotas.length) {
-    tbodyNotas.innerHTML = studentNotas.map(n => `
-      <tr>
-        <td><strong>${escapeHtml(n.disciplina)}</strong></td>
-        <td class="num">${n.nota_1bim || '-'}</td>
-        <td class="num">${n.nota_2bim || '-'}</td>
-        <td class="num">${n.nota_3bim || '-'}</td>
-        <td class="num">${n.nota_4bim || '-'}</td>
-        <td class="num" style="font-weight:600;color:${parseFloat(n.media_acumulada) >= 6 ? 'var(--sieac-success)' : 'var(--sieac-danger)'}">${n.media_acumulada == null ? '-' : n.media_acumulada}</td>
-        <td><span class="badge ${situacaoBadge(n.situacao)}">${escapeHtml(n.situacao)}</span></td>
-      </tr>
-    `).join('');
-  } else {
-    tbodyNotas.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--sieac-text-muted);">Nenhuma nota encontrada</td></tr>';
-  }
+  renderNotasTable();
+
+  document.querySelectorAll('#table-notas-estudante thead th.sortable').forEach(th => {
+    th.onclick = () => {
+      const col = th.dataset.sort;
+      if (notasSort.col === col) {
+        notasSort.dir = notasSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        notasSort = { col, dir: 'asc' };
+      }
+      renderNotasTable();
+    };
+  });
 
   const freqs = await getFrequenciaEstudante(id);
   studentFreqs = freqs.data || [];
-  const tbodyFreq = document.getElementById('tbody-freq-estudante');
-  if (studentFreqs.length) {
-    tbodyFreq.innerHTML = studentFreqs.map(f => {
-      const pct = parseFloat(f.frequencia);
-      const ok = pct >= 75;
-      return `<tr>
-        <td>${f.mes}</td>
-        <td class="num" style="font-weight:600;color:${ok ? 'var(--sieac-success)' : 'var(--sieac-danger)'}">${pct}%</td>
-        <td class="num"><span class="badge ${ok ? 'badge-sieac-success' : 'badge-sieac-danger'}">${ok ? 'OK' : 'Alerta'}</span></td>
-      </tr>`;
-    }).join('');
-  } else {
-    tbodyFreq.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--sieac-text-muted);">Nenhuma frequência encontrada</td></tr>';
-  }
+  atualizarSituacaoEstudante();
 
   // Evolução chart
   if (studentNotas.length) {
@@ -303,6 +288,7 @@ async function carregarEstudante(id) {
       });
       const m = arr => arr.length ? Math.round(arr.reduce((a,b) => a+b,0)/arr.length * 10) / 10 : null;
       const dados = [m(b1), m(b2), m(b3), m(b4)];
+      const corPonto = dados.map(v => (v != null && v < 6) ? '#e01e1e' : '#1d9e6f');
       evolChart = new window.Chart(ctx, {
         type: 'line',
         data: {
@@ -315,6 +301,9 @@ async function carregarEstudante(id) {
             borderWidth: 3,
             tension: 0.4,
             pointRadius: 5,
+            pointBackgroundColor: corPonto,
+            pointBorderColor: corPonto,
+            pointHoverBackgroundColor: corPonto,
             fill: true,
           }]
         },
@@ -332,6 +321,159 @@ async function carregarEstudante(id) {
       });
     }
   }
+
+  // Evolução — Frequência Mensal chart
+  const freqCanvas = document.getElementById('chart-evolucao-freq');
+  if (freqCanvas && window.Chart) {
+    if (freqChart) freqChart.destroy();
+    const ordemMes = { 'Jan':1,'Fev':2,'Mar':3,'Abr':4,'Mai':5,'Jun':6,'Jul':7,'Ago':8,'Set':9,'Out':10,'Nov':11,'Dez':12 };
+    const ordenadas = [...studentFreqs].sort((a, b) => (ordemMes[a.mes] || 0) - (ordemMes[b.mes] || 0));
+    const valsFreq = ordenadas.map(f => {
+      const pct = parseFloat(f.frequencia);
+      return isNaN(pct) ? null : pct;
+    });
+    const corPonto = valsFreq.map(v => (v != null && v < 75) ? '#e01e1e' : '#1d9e6f');
+    const ctxFreq = freqCanvas.getContext('2d');
+    freqChart = new window.Chart(ctxFreq, {
+      type: 'line',
+      data: {
+        labels: ordenadas.map(f => f.mes),
+        datasets: [{
+          label: 'Frequência (%)',
+          data: valsFreq,
+          borderColor: '#1d9e6f',
+          backgroundColor: 'rgba(29,158,111,0.10)',
+          borderWidth: 3,
+          tension: 0.4,
+          pointRadius: 5,
+          pointBackgroundColor: corPonto,
+          pointBorderColor: corPonto,
+          pointHoverBackgroundColor: corPonto,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: getTooltipOptions()
+        },
+        scales: {
+          y: { beginAtZero: true, max: 100, grid: { color: 'var(--sieac-border)', drawBorder: false }, ticks: { color: 'var(--sieac-text-muted)', callback: v => v + '%' } },
+          x: { grid: { display: false }, ticks: { color: 'var(--sieac-text-muted)' } }
+        }
+      }
+    });
+  }
+}
+
+function valorNotasCol(n, col) {
+  switch (col) {
+    case 'disciplina': return (n.disciplina || '').toLowerCase();
+    case 'bim1': return parseFloat(n.nota_1bim);
+    case 'bim2': return parseFloat(n.nota_2bim);
+    case 'bim3': return parseFloat(n.nota_3bim);
+    case 'bim4': return parseFloat(n.nota_4bim);
+    case 'media': return parseFloat(n.media_acumulada);
+    case 'situacao': return (n.situacao || '').toLowerCase();
+    default: return '';
+  }
+}
+
+function renderNotasTable() {
+  const tbodyNotas = document.getElementById('tbody-notas-estudante');
+  if (!tbodyNotas) return;
+
+  document.querySelectorAll('#table-notas-estudante thead th.sortable').forEach(th => {
+    th.classList.remove('sorted-asc', 'sorted-desc');
+    if (th.dataset.sort === notasSort.col) th.classList.add(notasSort.dir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+  });
+
+  const ordenadas = [...studentNotas].sort((a, b) => {
+    const va = valorNotasCol(a, notasSort.col);
+    const vb = valorNotasCol(b, notasSort.col);
+    let cmp = 0;
+    if (typeof va === 'number' && typeof vb === 'number') {
+      const aN = isNaN(va), bN = isNaN(vb);
+      if (aN && bN) cmp = 0;
+      else if (aN) cmp = 1;
+      else if (bN) cmp = -1;
+      else cmp = va - vb;
+    } else {
+      cmp = String(va).localeCompare(String(vb), 'pt-BR', { numeric: true });
+    }
+    return notasSort.dir === 'asc' ? cmp : -cmp;
+  });
+
+  if (!ordenadas.length) {
+    tbodyNotas.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--sieac-text-muted);">Nenhuma nota encontrada</td></tr>';
+    return;
+  }
+
+  tbodyNotas.innerHTML = ordenadas.map(n => `
+    <tr>
+      <td><strong>${escapeHtml(n.disciplina)}</strong></td>
+      <td class="num">${n.nota_1bim || '-'}</td>
+      <td class="num">${n.nota_2bim || '-'}</td>
+      <td class="num">${n.nota_3bim || '-'}</td>
+      <td class="num">${n.nota_4bim || '-'}</td>
+      <td class="num" style="font-weight:600;color:${parseFloat(n.media_acumulada) >= 6 ? 'var(--sieac-success)' : 'var(--sieac-danger)'}">${n.media_acumulada == null ? '-' : n.media_acumulada}</td>
+      <td><span class="badge ${situacaoBadge(n.situacao)}">${escapeHtml(n.situacao)}</span></td>
+    </tr>
+  `).join('');
+}
+
+function disciplinaPossuiDados(n) {
+  const vals = [n.nota_1bim, n.nota_2bim, n.nota_3bim, n.nota_4bim];
+  if (vals.some(v => !isNaN(parseFloat(v)))) return true;
+  return !isNaN(parseFloat(n.media_final));
+}
+
+function mediaDisciplina(n) {
+  let m = parseFloat(n.media_acumulada);
+  if (isNaN(m)) m = 0;
+  if (m === 0) {
+    const mf = parseFloat(n.media_final);
+    if (!isNaN(mf) && mf > 0) m = mf;
+  }
+  return m;
+}
+
+function atualizarSituacaoEstudante() {
+  const el = document.getElementById('e-situacao');
+  if (!el) return;
+
+  const freqsVals = studentFreqs.map(f => parseFloat(f.frequencia)).filter(v => !isNaN(v));
+  const frequencia = freqsVals.length ? freqsVals.reduce((a, b) => a + b, 0) / freqsVals.length : null;
+
+  const qtdAbaixo = studentNotas.filter(n => disciplinaPossuiDados(n) && mediaDisciplina(n) < 6).length;
+
+  const tem4Bim = studentNotas.some(n => !isNaN(parseFloat(n.nota_4bim)));
+  const periodo = tem4Bim ? 'anual' : 'parcial';
+
+  let situacao;
+  if (frequencia != null && frequencia < 75) situacao = 'reprovado';
+  else if (qtdAbaixo > 6) situacao = 'reprovado';
+  else if (qtdAbaixo >= 1) situacao = 'recuperacao';
+  else situacao = 'aprovado';
+
+  const labelMap = {
+    aprovado: periodo === 'anual' ? 'Aprovado' : 'Em Aprovação',
+    recuperacao: periodo === 'anual' ? 'Recuperação Final' : 'Em Recuperação',
+    reprovado: periodo === 'anual' ? 'Reprovado' : 'Em Reprovação',
+  };
+  const badgeClass = situacao === 'aprovado' ? 'badge-sieac-success'
+    : situacao === 'recuperacao' ? 'badge-sieac-warning'
+    : 'badge-sieac-danger';
+
+  const freqTxt = frequencia == null ? '—' : Math.round(frequencia * 10) / 10 + '%';
+
+  el.innerHTML = `
+    <span class="badge ${badgeClass}">${escapeHtml(labelMap[situacao])}</span>
+    <div style="font-size:0.75rem;font-weight:400;color:var(--sieac-text-muted);margin-top:6px;line-height:1.5;">
+      Frequência total: <strong>${freqTxt}</strong><br>
+      Disciplinas abaixo da média: <strong>${qtdAbaixo}</strong>
+    </div>`;
 }
 
 function gerarPdfEstudante() {

@@ -9,4 +9,6 @@ Thumbs.db
 exemplos_arquivos_importacao/
 docs/
 supabase/migrations/
+supabase/.temp/
+arquivos/
 planos/

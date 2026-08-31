@@ -22,6 +22,7 @@ export const LOG_ACTIONS = {
   CADASTRO_ENTIDADE: 'cadastro_entidade',
   LANCAR_NOTAS: 'lancar_notas',
   LANCAR_FREQUENCIA: 'lancar_frequencia',
+  EXCLUIR_LOGS_FILTRADOS: 'excluir_logs_filtrados',
 };
 
 export async function registrarLog(acao, detalhes = null) {

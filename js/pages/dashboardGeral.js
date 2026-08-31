@@ -376,7 +376,13 @@ function gerarPdfCard(tipo) {
   if (relFiltrosAtivos.length) meta.push(`Filtros: ${relFiltrosAtivos.join(' | ')}`);
 
   if (tipo === 'aprovados') {
-    const lista = detalheSituacao?.aprovados || [];
+    const lista = [...(detalheSituacao?.aprovados || [])].sort((a, b) => {
+      const mgB = parseFloat(b.mediaGeral), mgA = parseFloat(a.mediaGeral);
+      const fB = parseFloat(b.frequencia), fA = parseFloat(a.frequencia);
+      const dM = (isNaN(mgB) ? -Infinity : mgB) - (isNaN(mgA) ? -Infinity : mgA);
+      if (dM !== 0) return dM;
+      return (isNaN(fB) ? -Infinity : fB) - (isNaN(fA) ? -Infinity : fA);
+    });
     gerarPdfRelatorio({
       titulo: conf.titulo,
       subtitulo: 'Sistema de Indicadores Educacionais',
