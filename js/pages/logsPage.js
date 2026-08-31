@@ -17,6 +17,9 @@ const ACAO_LABELS = {
   importar_frequencia: 'Importação de frequência',
   limpar_dados: 'Limpeza de dados',
   gerar_pdf: 'Geração de relatório (PDF)',
+  cadastro_entidade: 'Cadastro de informações (Administrador)',
+  lancar_notas: 'Lançamento de notas (Administrador)',
+  lancar_frequencia: 'Lançamento de frequência (Administrador)',
 };
 
 let paginaAtual = 0;

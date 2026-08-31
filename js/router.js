@@ -20,6 +20,14 @@ const routes = {
   'importar': { page: 'importPage', auth: true, can: isGestao },
   'usuarios': { page: 'usuariosPage', auth: true, can: isAdmin },
   'logs': { page: 'logsPage', auth: true, can: isAdmin },
+  'cadastro-etapas': { page: 'cadastroEtapas', auth: true, can: isAdmin },
+  'cadastro-series': { page: 'cadastroSeries', auth: true, can: isAdmin },
+  'cadastro-turmas-admin': { page: 'cadastroTurmasAdmin', auth: true, can: isAdmin },
+  'cadastro-disciplinas': { page: 'cadastroDisciplinas', auth: true, can: isAdmin },
+  'cadastro-professores': { page: 'cadastroProfessores', auth: true, can: isAdmin },
+  'cadastro-estudantes-admin': { page: 'cadastroEstudantesAdmin', auth: true, can: isAdmin },
+  'lancar-notas': { page: 'lancarNotasPage', auth: true, can: isAdmin },
+  'lancar-frequencia': { page: 'lancarFrequenciaPage', auth: true, can: isAdmin },
 };
 
 let currentPage = null;

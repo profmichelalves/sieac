@@ -84,6 +84,18 @@ export function initSidebar() {
       menuLogs.style.display = isAdmin() ? 'flex' : 'none';
     }
 
+    // --- "Cadastros" section: visible only for Administrador ---
+    const cadastrosItems = ['menu-cadastro-etapas', 'menu-cadastro-series', 'menu-cadastro-turmas-admin', 'menu-cadastro-disciplinas', 'menu-cadastro-professores', 'menu-cadastro-estudantes-admin', 'menu-lancar-notas', 'menu-lancar-frequencia'];
+    const sectionCadastros = document.getElementById('section-cadastros');
+    const algumCadastroVisivel = isAdmin();
+    if (sectionCadastros) {
+      sectionCadastros.style.display = algumCadastroVisivel ? '' : 'none';
+    }
+    cadastrosItems.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = isAdmin() ? 'flex' : 'none';
+    });
+
     const menuImportar = document.getElementById('menu-importar');
     if (menuImportar) {
       menuImportar.style.display = (user.perfil === 'Professor' || user.perfil === 'Professor do AEE') ? 'none' : 'flex';
@@ -366,6 +378,14 @@ export function setActiveRoute(route) {
     'dashboard-estudante': 'Consulta por Estudante',
     'cadastro-estudantes': 'Cadastro de Estudantes',
     'turmas': 'Cadastro de Turmas',
+    'cadastro-etapas': 'Cadastro de Etapas de Ensino',
+    'cadastro-series': 'Cadastro de Séries',
+    'cadastro-turmas-admin': 'Cadastro de Turmas',
+    'cadastro-disciplinas': 'Cadastro de Disciplinas',
+    'cadastro-professores': 'Cadastro de Professores',
+    'cadastro-estudantes-admin': 'Cadastro de Estudantes',
+    'lancar-notas': 'Lançar Notas',
+    'lancar-frequencia': 'Lançar Frequência',
     'importar': 'Importar Dados',
     'usuarios': 'Gerenciar Usuários',
     'logs': 'Logs de Atividade',

@@ -19,6 +19,9 @@ export const LOG_ACTIONS = {
   EDITAR_NECESSIDADES: 'editar_necessidades',
   RELATORIO_NEE: 'relatorio_nee',
   VINCULAR_CONSELHEIRO: 'vincular_conselheiro',
+  CADASTRO_ENTIDADE: 'cadastro_entidade',
+  LANCAR_NOTAS: 'lancar_notas',
+  LANCAR_FREQUENCIA: 'lancar_frequencia',
 };
 
 export async function registrarLog(acao, detalhes = null) {
