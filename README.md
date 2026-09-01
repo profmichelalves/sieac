@@ -8,6 +8,21 @@ O SIEAC é uma plataforma web para acompanhamento dos indicadores educacionais d
 
 ---
 
+## Diferenciais
+
+O SIEAC vai além do registro de notas e frequência: transforma os dados da escola em **indicadores e previsões acionáveis**, apoiando a gestão na identificação precoce de riscos e na promoção de equidade.
+
+- **Decisão baseada em dados, não em achismo** — indicadores consolidados (média, aprovação, frequência, dispersão) reunidos em um único painel, prontos para a tomada de decisão.
+- **Análise estatística e preditiva embutida** — estatística descritiva (mediana, desvio-padrão, coeficiente de variação, quartis, outliers e curva de Gauss) e preditiva (regressão logística para risco de reprovação, k-means para perfis de risco e regressão linear para tendência de frequência), tudo calculado em **JavaScript puro**, sem dependências ou custos adicionais.
+- **Foco em inclusão e equidade (NEE/AEE)** — compara desempenho, frequência e aprovação entre estudantes **com e sem NEE**, por tipo de necessidade e por professor de AEE, evidenciando lacunas que passariam despercebidas.
+- **Situação do estudante automatizada** — Aprovado/Recuperação/Reprovado calculado automaticamente pela regra real (frequência < 75% e quantidade de disciplinas abaixo de 6,0), eliminando o levantamento manual.
+- **Dados em tempo real** — os indicadores e as Estatísticas sempre refletem os filtros atuais, sem cache ou dados desatualizados.
+- **Acesso por perfil com escopo de dados** — Administrador, Gestão, Professor e Professor do AEE enxergam apenas o que lhes compete, com as ações críticas auditadas em Logs.
+- **Importação de planilhas e limpeza de dados** — importação de notas e frequência a partir de planilhas, reduzindo o trabalho de digitação.
+- **100% na nuvem** — backend em **Supabase** (PostgreSQL com autenticação e políticas de segurança) e plataforma publicada em **GitHub Pages**, acessível de qualquer lugar, com tema claro/escuro.
+
+---
+
 ## Perfis de usuário e permissões
 
 | Funcionalidade | Administrador | Gestão Escolar | Professor | Professor do AEE |
