@@ -20,6 +20,7 @@ O SIEAC é uma plataforma web para acompanhamento dos indicadores educacionais d
 | Importar Dados | ✔ | ✔ | – | – |
 | Gerenciar Usuários | ✔ | – | – | – |
 | Logs de Atividade | ✔ | – | – | – |
+| Estatísticas | ✔ | ✔ | ✔¹ | ✔² |
 
 ¹ Professor enxerga apenas as turmas em que está alocado (e os estudantes com notas/frequência nelas).
 
@@ -75,6 +76,40 @@ Indicadores consolidados com cards:
 - **Evolução — Frequência Mensal** (gráfico de linha) — bolinhas **vermelhas** quando o percentual é menor que 75%.
 - **Evolução — Média por Bimestre** (gráfico de linha) — bolinhas **verdes** (média ≥ 6) e **vermelhas** (média < 6).
 - Botão **Gerar PDF** com os dados do estudante.
+
+---
+
+## Estatísticas
+
+A seção **Estatísticas** reúne indicadores estatísticos e preditivos calculados em tempo real a partir dos filtros aplicados (sem cache), acessível a **todos** os perfis — com o escopo de dados por papel (Professor e Professor do AEE veem apenas os seus estudantes). Todos os indicadores são calculados em **JavaScript puro**, sem dependências adicionais. Está organizada em 5 abas:
+
+### Dispersão
+- **Média, Mediana, Desvio-padrão e Coeficiente de Variação (CV)** por turma, com badge colorido de dispersão (baixa/média/alta).
+- **Boxplot (quartis e outliers)** por turma, em CSS puro.
+- **Gráfico de dispersão Frequência x Média Final** com linha de **regressão linear** e coeficiente de correlação de Pearson.
+- **Matriz de risco** cruzando frequência (< 75%) com reprovação/recurso.
+
+### Distribuição
+- **Histograma das Médias** (barras por faixa) com **curva de Gauss** (distribuição normal) sobreposta a partir da média e do desvio-padrão dos dados.
+- **Boxplot geral** e indicadores de assimetria/cauda.
+
+### Evolução
+- **Evolução entre bimestres** — contagem de estudantes que subiram (Δ > 0,5), caíram (Δ < -0,5) ou se mantiveram, usando o **primeiro e o último bimestre disponíveis** de cada estudante.
+- **Estudantes que mais evoluíram / regrediram** — tabela com as notas por bimestre e a variação (Δ).
+- **Disciplinas Críticas** — disciplinas com maior percentual de estudantes abaixo de 6,0 (cor reflete o coeficiente de variação).
+- **Ranking por Professor** — média, aprovação e quantidade de alocações.
+
+### Equidade NEE
+- Comparativo **Com NEE vs Sem NEE** (quantidade, média, frequência e aprovação).
+- **Aprovação por Tipo de Necessidade**.
+- **Indicadores por Professor de AEE**.
+
+### Predição
+- **Risco estimado de reprovação (Top 20)** — probabilidade calculada por **regressão logística** quando há dados suficientes (com fallback heurístico calibrado), considerando média e frequência.
+- **Perfis de Risco (k-means)** — agrupamento automático em 3 perfis por média/frequência, com rótulos descritivos e resumo abaixo do gráfico.
+- **Alerta de Frequência (tendência)** — estudantes com frequência média abaixo de 75% ou em queda acentuada (regressão linear sobre os meses).
+
+Todas as tabelas da seção possuem **ordenação por coluna** (clique no cabeçalho alterna crescente/decrescente; terceiro clique restaura a ordem original).
 
 ---
 
