@@ -20,6 +20,7 @@ const routes = {
   'importar': { page: 'importPage', auth: true, can: isGestao },
   'usuarios': { page: 'usuariosPage', auth: true, can: isAdmin },
   'logs': { page: 'logsPage', auth: true, can: isAdmin },
+  'estatisticas': { page: 'estatisticasPage', auth: true },
   'cadastro-etapas': { page: 'cadastroEtapas', auth: true, can: isAdmin },
   'cadastro-series': { page: 'cadastroSeries', auth: true, can: isAdmin },
   'cadastro-turmas-admin': { page: 'cadastroTurmasAdmin', auth: true, can: isAdmin },

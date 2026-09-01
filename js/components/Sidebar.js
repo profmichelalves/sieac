@@ -416,6 +416,7 @@ export function setActiveRoute(route) {
     'importar': 'Importar Dados',
     'usuarios': 'Gerenciar Usuários',
     'logs': 'Logs de Atividade',
+    'estatisticas': 'Estatísticas',
   };
   const title = document.getElementById('page-title');
   if (title) title.textContent = titles[route] || 'SIEAC';
